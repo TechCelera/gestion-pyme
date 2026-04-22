@@ -1,17 +1,14 @@
 'use client'
 
 import { useEffect } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { useAuthStore } from '@/stores/auth-store'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((state) => state.setUser)
   const clearUser = useAuthStore((state) => state.clearUser)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = createSafeBrowserClient()
 
   useEffect(() => {
     // Check initial session
