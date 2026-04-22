@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useTransactionStore } from '@/stores/transaction-store'
 import { toast } from 'sonner'
-import type { UpdateTransactionInput, TransactionStatus } from '@/lib/validations/transaction'
+import type { CreateTransactionInput } from '@/lib/validations/transaction'
 
 export function useUpdateTransaction() {
   const [isLoading, setIsLoading] = useState(false)
   const editTransaction = useTransactionStore((state) => state.editTransaction)
 
-  const update = async (id: string, data: UpdateTransactionInput) => {
+  const update = async (id: string, data: CreateTransactionInput) => {
     setIsLoading(true)
     
     try {

@@ -25,7 +25,7 @@ import {
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { TrendingUp, Zap, Target, Activity, BarChart3, PieChart, Radar } from 'lucide-react'
+import { TrendingUp, Zap, Target, Activity, BarChart3, PieChart as PieChartIcon, Radar as RadarIcon } from 'lucide-react'
 
 // Vibrant color palette for "wow" effect
 const COLORS = {
@@ -138,11 +138,11 @@ export function WowDashboardCharts() {
             <span className="hidden md:inline">Ingresos</span>
           </TabsTrigger>
           <TabsTrigger value="expenses" className="gap-2">
-            <PieChart className="h-4 w-4" />
+            <PieChartIcon className="h-4 w-4" />
             <span className="hidden md:inline">Gastos</span>
           </TabsTrigger>
           <TabsTrigger value="kpi" className="gap-2">
-            <Radar className="h-4 w-4" />
+            <RadarIcon className="h-4 w-4" />
             <span className="hidden md:inline">KPIs</span>
           </TabsTrigger>
           <TabsTrigger value="cashflow" className="gap-2">
@@ -185,7 +185,7 @@ export function WowDashboardCharts() {
                         borderRadius: '12px',
                         color: '#fff',
                       }}
-                      formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
+                      formatter={(value) => [`${Number(value).toLocaleString()}`, '']}
                     />
                     <Area
                       type="monotone"
@@ -249,7 +249,7 @@ export function WowDashboardCharts() {
                         borderRadius: '12px',
                         color: '#fff',
                       }}
-                      formatter={(value: number) => [`${value}%`, '']}
+                      formatter={(value) => [`${value}%`, '']}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -340,7 +340,7 @@ export function WowDashboardCharts() {
                         borderRadius: '12px',
                         color: '#fff',
                       }}
-                      formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
+                      formatter={(value) => [`${Number(value).toLocaleString()}`, '']}
                     />
                     <Bar dataKey="entrada" fill="#92FE9D" name="Entradas" radius={[8, 8, 0, 0]} />
                     <Bar dataKey="salida" fill="#FF6B6B" name="Salidas" radius={[8, 8, 0, 0]} />

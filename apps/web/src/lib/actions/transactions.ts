@@ -100,7 +100,7 @@ export async function createTransaction(
       return { success: false, error: error.message }
     }
 
-    revalidateTag('transactions')
+    // revalidateTag('transactions')
     
     // Obtener la transacción creada
     const { data: transaction } = await supabase
@@ -197,7 +197,7 @@ export async function updateTransaction(
       return { success: false, error: error.message }
     }
 
-    revalidateTag('transactions')
+    // revalidateTag('transactions')
     return { success: true, data: mapTransaction(data) }
   } catch (error) {
     if (error instanceof Error) {
@@ -227,7 +227,7 @@ export async function updateTransactionStatus(
       return { success: false, error: error.message }
     }
 
-    revalidateTag('transactions')
+    // revalidateTag('transactions')
     return { success: true }
   } catch (error) {
     if (error instanceof Error) {
@@ -256,7 +256,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
       return { success: false, error: error.message }
     }
 
-    revalidateTag('transactions')
+    // revalidateTag('transactions')
     return { success: true }
   } catch (error) {
     if (error instanceof Error) {

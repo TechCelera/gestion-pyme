@@ -92,7 +92,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis dataKey="month" stroke="#6B7280" fontSize={12} />
                 <YAxis stroke="#6B7280" fontSize={12} tickFormatter={(v) => `$${v/1000}k`} />
-                <Tooltip contentStyle={{backgroundColor: '#1F2937', border: 'none', borderRadius: '12px', color: '#fff'}} formatter={(v: number) => [`$${v.toLocaleString()}`, '']} />
+                <Tooltip contentStyle={{backgroundColor: '#1F2937', border: 'none', borderRadius: '12px', color: '#fff'}} formatter={(v) => [`$${Number(v).toLocaleString()}`, '']} />
                 <Area type="monotone" dataKey="ingresos" stroke="#7B68EE" strokeWidth={3} fill="url(#ingresos)" name="Ingresos" />
                 <Area type="monotone" dataKey="gastos" stroke="#FF6B6B" strokeWidth={3} fill="url(#gastos)" name="Gastos" />
                 <Area type="monotone" dataKey="utilidad" stroke="#92FE9D" strokeWidth={3} fill="url(#utilidad)" name="Utilidad" />
@@ -109,7 +109,7 @@ export default function DashboardPage() {
                   <Pie data={expenseData} cx="50%" cy="50%" innerRadius={70} outerRadius={120} paddingAngle={4} dataKey="value">
                     {expenseData.map((e, i) => <Cell key={i} fill={e.color} strokeWidth={2} stroke="#fff" />)}
                   </Pie>
-                  <Tooltip contentStyle={{backgroundColor: '#1F2937', border: 'none', borderRadius: '12px', color: '#fff'}} formatter={(v: number, n: string) => [`${v}% - $${((v/100)*875000).toLocaleString()}`, n]} />
+                  <Tooltip contentStyle={{backgroundColor: '#1F2937', border: 'none', borderRadius: '12px', color: '#fff'}} formatter={(v, n) => [`${v}% - $${((Number(v)/100)*875000).toLocaleString()}`, n]} />
                 </RePieChart>
               </ResponsiveContainer>
               <div className="space-y-3 flex flex-col justify-center">
@@ -137,7 +137,7 @@ export default function DashboardPage() {
                 <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} />
                 <Radar name="Actual" dataKey="actual" stroke="#7B68EE" strokeWidth={3} fill="#7B68EE" fillOpacity={0.4} />
                 <Radar name="Meta" dataKey="meta" stroke="#00C9FF" strokeWidth={2} strokeDasharray="5 5" fill="#00C9FF" fillOpacity={0.1} />
-                <Tooltip contentStyle={{backgroundColor: '#1F2937', border: 'none', borderRadius: '12px', color: '#fff'}} formatter={(v: number, n: string) => [`${v}%`, n]} />
+                <Tooltip contentStyle={{backgroundColor: '#1F2937', border: 'none', borderRadius: '12px', color: '#fff'}} formatter={(v, n) => [`${v}%`, n]} />
               </RadarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -150,7 +150,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis dataKey="dia" stroke="#6B7280" fontSize={12} />
                 <YAxis stroke="#6B7280" fontSize={12} tickFormatter={(v) => `$${v/1000}k`} />
-                <Tooltip contentStyle={{backgroundColor: '#1F2937', border: 'none', borderRadius: '12px', color: '#fff'}} formatter={(v: number, n: string) => [`$${v.toLocaleString()}`, n]} />
+                <Tooltip contentStyle={{backgroundColor: '#1F2937', border: 'none', borderRadius: '12px', color: '#fff'}} formatter={(v, n) => [`$${Number(v).toLocaleString()}`, n]} />
                 <Bar dataKey="entradas" fill="#92FE9D" name="Entradas" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="salidas" fill="#FF6B6B" name="Salidas" radius={[6, 6, 0, 0]} />
                 <Line type="monotone" dataKey="entradas" stroke="#7B68EE" strokeWidth={3} dot={{ r: 5 }} />

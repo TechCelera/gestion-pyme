@@ -11,14 +11,8 @@ export const DocumentTypeEnum = z.enum(['invoice', 'receipt', 'ticket', 'other']
 // Base schema
 const baseTransactionSchema = {
   type: TransactionTypeEnum,
-  date: z.coerce.date({
-    required_error: 'La fecha es requerida',
-    invalid_type_error: 'Fecha inválida',
-  }),
-  amount: z.number({
-    required_error: 'El monto es requerido',
-    invalid_type_error: 'Monto debe ser un número',
-  }).positive('El monto debe ser mayor a 0'),
+  date: z.coerce.date(),
+  amount: z.number().positive('El monto debe ser mayor a 0'),
   currency: z.string().default('USD'),
   description: z.string()
     .min(3, 'La descripción debe tener al menos 3 caracteres')

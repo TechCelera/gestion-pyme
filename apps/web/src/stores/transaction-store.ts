@@ -1,10 +1,9 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
+import type { Transaction } from '@/lib/actions/transactions'
 import type { 
-  Transaction, 
   TransactionFilters, 
   CreateTransactionInput,
-  UpdateTransactionInput,
   TransactionStatus 
 } from '@/lib/validations/transaction'
 import {
@@ -37,7 +36,7 @@ interface TransactionState {
   // Async Actions
   fetchTransactions: () => Promise<void>
   addTransaction: (data: CreateTransactionInput) => Promise<boolean>
-  editTransaction: (id: string, data: UpdateTransactionInput) => Promise<boolean>
+  editTransaction: (id: string, data: CreateTransactionInput) => Promise<boolean>
   changeStatus: (id: string, status: TransactionStatus, reason?: string) => Promise<boolean>
   removeTransaction: (id: string) => Promise<boolean>
 }

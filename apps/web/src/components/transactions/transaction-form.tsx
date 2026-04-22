@@ -217,7 +217,7 @@ export function TransactionForm({
               <Label>Motivo del Ajuste</Label>
               <Select
                 value={adjustmentReason}
-                onValueChange={setAdjustmentReason}
+                onValueChange={(value) => setAdjustmentReason(value ?? '')}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccione motivo" />
@@ -246,7 +246,7 @@ export function TransactionForm({
             </div>
             <div className="grid gap-2">
               <Label>Moneda</Label>
-              <Select value={currency} onValueChange={setCurrency}>
+              <Select value={currency} onValueChange={(value) => setCurrency(value ?? 'USD')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

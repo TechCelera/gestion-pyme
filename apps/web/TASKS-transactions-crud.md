@@ -64,19 +64,19 @@
 
 ## Phase 6: UI Components (apps/web)
 
-- [ ] **TX-030** Crear `src/components/transactions/transaction-status-badge.tsx`: Badge de estado con colores (draft, pending, approved, posted, rejected)
+- [x] **TX-030** Crear `src/components/transactions/transaction-status-badge.tsx`: Badge de estado con colores (draft, pending, approved, posted, rejected)
 - [ ] **TX-031** Crear `src/components/transactions/transaction-filters.tsx`: Filtros avanzados con sync a URL query params
-- [ ] **TX-032** Crear `src/components/transactions/transaction-form.tsx`: Formulario dinámico con campos condicionales por tipo
+- [x] **TX-032** Crear `src/components/transactions/transaction-form.tsx`: Formulario dinámico con campos condicionales por tipo
 - [ ] **TX-033** Crear `src/components/transactions/transaction-modal.tsx`: Modal crear/editar con TransactionForm
 - [ ] **TX-034** Crear `src/components/transactions/transaction-actions.tsx`: Botones de acción por fila (editar, eliminar, aprobar, rechazar, postear)
-- [ ] **TX-035** Crear `src/components/transactions/transaction-table.tsx`: Tabla con sorting, paginación y columnas dinámicas
+- [x] **TX-035** Crear `src/components/transactions/transaction-table.tsx`: Tabla con sorting, paginación y columnas dinámicas
 
 ---
 
 ## Phase 7: Pages y Layout (apps/web)
 
 - [ ] **TX-036** Crear `src/app/(dashboard)/transactions/layout.tsx`: Layout con metadatos y providers
-- [ ] **TX-037** Crear `src/app/(dashboard)/transactions/page.tsx`: Página principal integrando tabla, filtros, modal y acciones
+- [x] **TX-037** Crear `src/app/(dashboard)/transactions/page.tsx`: Página principal integrando tabla, filtros, modal y acciones
 
 ---
 
