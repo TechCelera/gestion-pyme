@@ -1,0 +1,265 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { Plus } from 'lucide-react'
+import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TransactionTable } from '@/components/transactions/transaction-table'
+import { TransactionForm } from '@/components/transactions/transaction-form'
+import { useTransactionStore } from '@/stores/transaction-store'
+import type { Transaction } from '@/lib/actions/transactions'
+import type { CreateTransactionInput } from '@/lib/validations/transaction'
+
+export default function TransactionsPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+
+  const {
+    transactions,
+    pagination,
+    isLoading,
+    error,
+    fetchTransactions,
+    addTransaction,
+    editTransaction,
+    changeStatus,
+    removeTransaction,
+    setPagination,
+  } = useTransactionStore()
+
+  // Cargar transacciones al montar
+  useEffect(() => {
+    fetchTransactions()
+  }, [fetchTransactions])
+
+  // Atajo de teclado Ctrl+N
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault()
+        handleOpenModal()
+      }
+      if (e.key === 'Escape') {
+        setIsModalOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  const handleOpenModal = () => {
+    setEditingTransaction(null)
+    setIsModalOpen(true)
+  }
+
+  const handleEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setEditingTransaction(null)
+  }
+
+  const handleSubmit = async (data: CreateTransactionInput, asDraft: boolean) => {
+    if (editingTransaction) {
+      const success = await editTransaction(editingTransaction.id, data)
+      if (success) {
+        toast.success('Transacción actualizada exitosamente')
+        handleCloseModal()
+      } else {
+        toast.error('Error al actualizar la transacción')
+      }
+    } else {
+      const success = await addTransaction(data)
+      if (success) {
+        toast.success(
+          asDraft
+            ? 'Transacción guardada como borrador'
+            : 'Transacción enviada a aprobación'
+        )
+        handleCloseModal()
+      } else {
+        toast.error('Error al crear la transacción')
+      }
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta transacción?')) return
+
+    const success = await removeTransaction(id)
+    if (success) {
+      toast.success('Transacción eliminada')
+    } else {
+      toast.error('Error al eliminar la transacción')
+    }
+  }
+
+  const handleApprove = async (id: string) => {
+    const success = await changeStatus(id, 'approved')
+    if (success) {
+      toast.success('Transacción aprobada')
+    } else {
+      toast.error('Error al aprobar la transacción')
+    }
+  }
+
+  const handlePost = async (id: string) => {
+    const success = await changeStatus(id, 'posted')
+    if (success) {
+      toast.success('Transacción contabilizada')
+    } else {
+      toast.error('Error al contabilizar la transacción')
+    }
+  }
+
+  const handlePageChange = (page: number) => {
+    setPagination({ page })
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Card className="w-[400px]">
+          <CardHeader>
+            <CardTitle>Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">{error}</p>
+            <Button onClick={fetchTransactions} className="mt-4 w-full">
+              Reintentar
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Transacciones</h1>
+          <p className="text-muted-foreground">
+            Gestiona los ingresos, egresos y transferencias de tu empresa
+          </p>
+        </div>
+        <Button
+          onClick={handleOpenModal}
+          className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Nueva Transacción
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Transacciones
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pagination.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Pendientes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">
+              {transactions.filter((t) => t.status === 'pending').length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Aprobadas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-[#7B68EE]">
+              {transactions.filter((t) => t.status === 'approved').length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Contabilizadas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {transactions.filter((t) => t.status === 'posted').length}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Table */}
+      <TransactionTable
+        transactions={transactions}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onApprove={handleApprove}
+        onPost={handlePost}
+        isLoading={isLoading}
+      />
+
+      {/* Pagination */}
+      {pagination.total > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {transactions.length} de {pagination.total} transacciones
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={pagination.page === 1 || isLoading}
+            >
+              Anterior
+            </Button>
+            <span className="flex items-center px-2 text-sm">
+              Página {pagination.page}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={
+                pagination.page * pagination.pageSize >= pagination.total ||
+                isLoading
+              }
+            >
+              Siguiente
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
+      <TransactionForm
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmit}
+        transaction={editingTransaction}
+        isLoading={isLoading}
+      />
+    </div>
+  )
+}
