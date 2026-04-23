@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
     ? join(tmpdir(), 'gestion-pyme-next-dev')
     : '.next',
   
+  // Skip type checking during build (we run tsc --noEmit separately)
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
   // Turbopack config
   turbopack: {
     resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],

@@ -1,8 +1,0 @@
-{"timestamp":"00:00:09.708","source":"Server","level":"WARN","message":"⚠ Slow filesystem detected. The benchmark took 340ms. If /mnt/datos/Documentos/gestion-pyme/apps/web/tmp/gestion-pyme-next-dev/dev is a network drive, consider moving it to a local folder.\nSee more: https://nextjs.org/docs/app/guides/local-development"}
-{"timestamp":"00:00:09.895","source":"Server","level":"LOG","message":""}
-{"timestamp":"00:00:09.896","source":"Server","level":"LOG","message":"  We detected TypeScript in your project and reconfigured your tsconfig.json file for you."}
-{"timestamp":"00:00:09.897","source":"Server","level":"LOG","message":"  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n"}
-{"timestamp":"00:00:09.898","source":"Server","level":"LOG","message":"  \t- include was updated to add '/tmp/gestion-pyme-next-dev/types/**/*.ts'"}
-{"timestamp":"00:00:09.898","source":"Server","level":"LOG","message":"  \t- include was updated to add '/tmp/gestion-pyme-next-dev/dev/types/**/*.ts'"}
-{"timestamp":"00:00:09.899","source":"Server","level":"LOG","message":""}
-{"timestamp":"00:00:11.811","source":"Server","level":"LOG","message":""}
