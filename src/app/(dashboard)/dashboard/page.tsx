@@ -56,34 +56,28 @@ export default function DashboardPage() {
     return <DashboardSkeleton />
   }
 
-  // AFTER hydration: branch based on auth state with fade-in
-  const content = (() => {
-    if (isDemoMode) {
-      return <DemoDashboard />
-    }
+  // AFTER hydration: branch based on auth state
+  if (isDemoMode) {
+    return <DemoDashboard />
+  }
 
-    if (loading && !stats && !error) {
-      return <DashboardSkeleton />
-    }
+  // Real user states
+  if (loading && !stats && !error) {
+    return <DashboardSkeleton />
+  }
 
-    if (error) {
-      return <DashboardError message={error} onRetry={fetchStats} />
-    }
+  if (error) {
+    return <DashboardError message={error} onRetry={fetchStats} />
+  }
 
-    if (!stats) {
-      return <DashboardSkeleton />
-    }
+  if (!stats) {
+    // Should not happen, but show skeleton as safe fallback
+    return <DashboardSkeleton />
+  }
 
-    if (stats.totalTransactions === 0) {
-      return <EmptyState />
-    }
+  if (stats.totalTransactions === 0) {
+    return <EmptyState />
+  }
 
-    return <RealDashboard stats={stats} />
-  })()
-
-  return (
-    <div className="animate-in fade-in duration-500">
-      {content}
-    </div>
-  )
+  return <RealDashboard stats={stats} />
 }

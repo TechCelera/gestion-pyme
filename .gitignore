@@ -9,7 +9,6 @@ dist/
 .vercel/
 supabase/.temp/
 tmp/
-.atl/
 
 # Sensitive setup files
 setup-database.sql

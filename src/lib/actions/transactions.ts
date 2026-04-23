@@ -41,18 +41,23 @@ interface ActionResult<T = unknown> {
 
 // Helper para obtener companyId del usuario actual
 async function getCurrentUserCompany(): Promise<string | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) return null
-  
-  const { data } = await supabase
-    .from('users')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-  
-  return data?.company_id ?? null
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) return null
+    
+    const { data } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single()
+    
+    return data?.company_id ?? null
+  } catch (error) {
+    console.error('getCurrentUserCompany error:', error)
+    return null
+  }
 }
 
 // CREATE
@@ -272,6 +277,11 @@ export async function getTransactions(
   filters: TransactionFilters
 ): Promise<ActionResult<{ transactions: Transaction[]; total: number }>> {
   try {
+    // Validate input
+    if (!filters || typeof filters !== 'object') {
+      return { success: false, error: 'Filtros inválidos' }
+    }
+
     const validated = transactionFiltersSchema.parse(filters)
     const companyId = await getCurrentUserCompany()
     
@@ -295,8 +305,8 @@ export async function getTransactions(
     })
 
     if (error) {
-      console.error('Error fetching transactions:', error)
-      return { success: false, error: error.message }
+      console.error('get_transactions RPC error:', error)
+      return { success: false, error: `Error de base de datos: ${error.message}` }
     }
 
     // Obtener conteo total
@@ -316,10 +326,11 @@ export async function getTransactions(
       } 
     }
   } catch (error) {
+    console.error('getTransactions uncaught error:', error)
     if (error instanceof Error) {
       return { success: false, error: error.message }
     }
-    return { success: false, error: 'Error desconocido' }
+    return { success: false, error: 'Error desconocido al cargar transacciones' }
   }
 }
 
