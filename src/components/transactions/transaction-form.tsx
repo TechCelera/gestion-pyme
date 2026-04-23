@@ -189,6 +189,31 @@ export function TransactionForm({
     onClose()
   }
 
+  // Resolve display labels from current values (base-ui SelectValue shows raw value, not label)
+  const methodLabel = methods.find(m => m.value === method)?.label ?? ''
+  const accountLabel = accountId ? (() => {
+    const a = accounts.find(acc => acc.id === accountId)
+    return a ? `${a.name} (${a.currency})` : ''
+  })() : ''
+  const sourceAccountLabel = sourceAccountId ? (() => {
+    const a = accounts.find(acc => acc.id === sourceAccountId)
+    return a ? `${a.name} (${a.currency})` : ''
+  })() : ''
+  const destAccountLabel = destinationAccountId ? (() => {
+    const a = accounts.find(acc => acc.id === destinationAccountId)
+    return a ? `${a.name} (${a.currency})` : ''
+  })() : ''
+  const categoryLabel = categoryId ? (() => {
+    const c = categories.find(cat => cat.id === categoryId)
+    return c?.name ?? ''
+  })() : ''
+  const adjustmentReasonLabels: Record<string, string> = {
+    reconciliation: 'Conciliación',
+    correction: 'Corrección',
+    other: 'Otro',
+  }
+  const adjustmentReasonLabel = adjustmentReason ? adjustmentReasonLabels[adjustmentReason] ?? adjustmentReason : ''
+
   // Filter categories by transaction type
   const filteredCategories = categories.filter((c) => {
     if (type === 'income') return c.type === CATEGORY_TYPES.INCOME
@@ -287,7 +312,7 @@ export function TransactionForm({
                     disabled={isLoading}
                   >
                     <SelectTrigger id="method" className="w-full">
-                      <SelectValue placeholder="Seleccione método" />
+                      {methodLabel || <span className="text-muted-foreground">Seleccione método</span>}
                     </SelectTrigger>
                     <SelectContent>
                       {methods.map((m) => (
@@ -321,7 +346,7 @@ export function TransactionForm({
                       disabled={isLoading || isLoadingData}
                     >
                       <SelectTrigger id="sourceAccount" className="w-full">
-                        <SelectValue placeholder={isLoadingData ? 'Cargando...' : 'Seleccione cuenta'} />
+                        {sourceAccountLabel || <span className="text-muted-foreground">{isLoadingData ? 'Cargando...' : 'Seleccione cuenta'}</span>}
                       </SelectTrigger>
                       <SelectContent>
                         {accounts.map((account) => (
@@ -340,7 +365,7 @@ export function TransactionForm({
                       disabled={isLoading || isLoadingData}
                     >
                       <SelectTrigger id="destAccount" className="w-full">
-                        <SelectValue placeholder={isLoadingData ? 'Cargando...' : 'Seleccione cuenta'} />
+                        {destAccountLabel || <span className="text-muted-foreground">{isLoadingData ? 'Cargando...' : 'Seleccione cuenta'}</span>}
                       </SelectTrigger>
                       <SelectContent>
                         {accounts.map((account) => (
@@ -363,7 +388,7 @@ export function TransactionForm({
                     disabled={isLoading || isLoadingData}
                   >
                     <SelectTrigger id="account" className="w-full">
-                      <SelectValue placeholder={isLoadingData ? 'Cargando...' : 'Seleccione cuenta'} />
+                      {accountLabel || <span className="text-muted-foreground">{isLoadingData ? 'Cargando...' : 'Seleccione cuenta'}</span>}
                     </SelectTrigger>
                     <SelectContent>
                       {accounts.map((account) => (
@@ -395,7 +420,7 @@ export function TransactionForm({
                       disabled={isLoading || isLoadingData}
                     >
                       <SelectTrigger id="category" className="w-full">
-                        <SelectValue placeholder={isLoadingData ? 'Cargando...' : 'Seleccione categoría'} />
+                        {categoryLabel || <span className="text-muted-foreground">{isLoadingData ? 'Cargando...' : 'Seleccione categoría'}</span>}
                       </SelectTrigger>
                       <SelectContent>
                         {filteredCategories.map((cat) => (
@@ -426,7 +451,7 @@ export function TransactionForm({
                       disabled={isLoading}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccione motivo" />
+                        {adjustmentReasonLabel || <span className="text-muted-foreground">Seleccione motivo</span>}
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="reconciliation">Conciliación</SelectItem>
@@ -471,7 +496,10 @@ export function TransactionForm({
                     disabled={isLoading}
                   >
                     <SelectTrigger id="currency" className="w-full">
-                      <SelectValue />
+                      {(() => {
+                        const c = currencies.find(cur => cur.value === currency)
+                        return c ? <>{c.flag} {c.value}</> : currency
+                      })()}
                     </SelectTrigger>
                     <SelectContent>
                       {currencies.map((c) => (
