@@ -14,6 +14,7 @@ import {
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
+import { useAuthStore } from '@/stores/auth-store'
 import { toast } from 'sonner'
 
 const navItems = [
@@ -27,11 +28,22 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  
+  const isDemoMode = useAuthStore((state) => state.isDemoMode)
+  const clearUser = useAuthStore((state) => state.clearUser)
+
   const supabase = createSafeBrowserClient()
-  
+
   async function handleLogout() {
     try {
+      if (isDemoMode) {
+        // En modo demo, solo limpiar el store local
+        clearUser()
+        toast.success('Sesión demo cerrada')
+        router.push('/login')
+        router.refresh()
+        return
+      }
+
       await supabase.auth.signOut()
       toast.success('Sesión cerrada')
       router.push('/login')
@@ -50,7 +62,14 @@ export function Sidebar() {
     >
       <div className="flex items-center justify-between p-4 border-b border-border">
         {!collapsed && (
-          <h1 className="text-lg font-bold text-primary">Gestion PYME</h1>
+          <div>
+            <h1 className="text-lg font-bold text-primary">Gestion PYME</h1>
+            {isDemoMode && (
+              <span className="text-xs bg-yellow-500/20 text-yellow-600 px-2 py-0.5 rounded-full">
+                Modo Demo
+              </span>
+            )}
+          </div>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
