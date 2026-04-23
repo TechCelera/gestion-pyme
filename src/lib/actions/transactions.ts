@@ -23,6 +23,7 @@ export interface Transaction {
   categoryName: string | null
   type: 'income' | 'expense' | 'transfer' | 'adjustment'
   status: TransactionStatus
+  method: string
   amount: number
   currency: string
   date: string
@@ -328,17 +329,18 @@ function mapTransaction(raw: unknown): Transaction {
   return {
     id: t.id as string,
     accountId: t.account_id as string,
-    accountName: (t.accounts as Record<string, string>)?.name ?? '',
+    accountName: (t.accounts as Record<string, string>)?.name ?? (t.account_name as string) ?? '',
     categoryId: t.category_id as string | null,
-    categoryName: (t.categories as Record<string, string>)?.name ?? null,
+    categoryName: (t.categories as Record<string, string>)?.name ?? (t.category_name as string) ?? null,
     type: t.type as 'income' | 'expense' | 'transfer' | 'adjustment',
     status: t.status as TransactionStatus,
+    method: (t.method as string) || 'cash',
     amount: t.amount as number,
     currency: t.currency as string,
     date: t.date as string,
     description: t.description as string,
     createdAt: t.created_at as string,
     createdBy: t.created_by as string,
-    creatorName: (t.users as Record<string, string>)?.full_name ?? null,
+    creatorName: (t.users as Record<string, string>)?.full_name ?? (t.creator_name as string) ?? null,
   }
 }

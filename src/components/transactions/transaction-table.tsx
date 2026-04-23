@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { TransactionStatusBadge } from './transaction-status-badge'
 import type { Transaction } from '@/lib/actions/transactions'
 import type { TransactionStatus } from '@/lib/validations/transaction'
+import { TRANSACTION_METHOD_LABELS } from '@/lib/constants'
 
 interface TransactionTableProps {
   transactions: Transaction[]
@@ -64,6 +65,7 @@ export function TransactionTable({
             <TableRow>
               <TableHead>Fecha</TableHead>
               <TableHead>Tipo</TableHead>
+              <TableHead>Método</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead>Monto</TableHead>
               <TableHead>Estado</TableHead>
@@ -73,7 +75,7 @@ export function TransactionTable({
           <TableBody>
             {[...Array(5)].map((_, i) => (
               <TableRow key={i}>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={7}>
                   <div className="h-8 animate-pulse rounded bg-muted" />
                 </TableCell>
               </TableRow>
@@ -116,6 +118,11 @@ export function TransactionTable({
                 {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: es })}
               </TableCell>
               <TableCell>{typeLabels[transaction.type] || transaction.type}</TableCell>
+              <TableCell>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-muted">
+                  {TRANSACTION_METHOD_LABELS[transaction.method] || transaction.method}
+                </span>
+              </TableCell>
               <TableCell className="max-w-[200px] truncate">
                 {transaction.description}
               </TableCell>

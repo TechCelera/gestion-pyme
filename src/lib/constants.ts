@@ -13,9 +13,20 @@ export const TRANSACTION_TYPES = {
 } as const
 
 export const TRANSACTION_METHODS = {
-  ACCRUAL: 'accrual',
   CASH: 'cash',
+  TRANSFER: 'transfer',
+  CARD: 'card',
+  NEQUI: 'nequi',
+  OTHER: 'other',
 } as const
+
+export const TRANSACTION_METHOD_LABELS: Record<string, string> = {
+  cash: 'Efectivo',
+  transfer: 'Transferencia',
+  card: 'Tarjeta',
+  nequi: 'Nequi',
+  other: 'Otro',
+}
 
 export const USER_ROLES = {
   SUPERADMIN: 'superadmin',

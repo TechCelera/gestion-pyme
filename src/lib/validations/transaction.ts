@@ -3,7 +3,7 @@ import { z } from 'zod'
 // Enums
 export const TransactionTypeEnum = z.enum(['income', 'expense', 'transfer', 'adjustment'])
 export const TransactionStatusEnum = z.enum(['draft', 'pending', 'approved', 'posted', 'rejected'])
-export const TransactionMethodEnum = z.enum(['accrual', 'cash'])
+export const TransactionMethodEnum = z.enum(['cash', 'transfer', 'card', 'nequi', 'other'])
 export const ContactTypeEnum = z.enum(['cliente', 'proveedor'])
 export const AdjustmentReasonEnum = z.enum(['reconciliation', 'correction', 'other'])
 export const DocumentTypeEnum = z.enum(['invoice', 'receipt', 'ticket', 'other'])

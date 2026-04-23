@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
 import { 
   ArrowRightLeft, 
@@ -10,7 +10,8 @@ import {
   Calendar,
   DollarSign,
   FileText,
-  Tag
+  Tag,
+  Loader2,
 } from 'lucide-react'
 
 import {
@@ -33,12 +34,16 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import { TRANSACTION_METHOD_LABELS } from '@/lib/constants'
+import { getAccounts, getCategories } from '@/lib/actions/lookups'
+import type { Account, Category } from '@/lib/actions/lookups'
 import type { Transaction } from '@/lib/actions/transactions'
 import type {
   CreateTransactionInput,
   TransactionType,
   TransactionMethod,
 } from '@/lib/validations/transaction'
+import { CATEGORY_TYPES } from '@/lib/constants'
 
 interface TransactionFormProps {
   isOpen: boolean
@@ -57,7 +62,10 @@ const transactionTypes: { value: TransactionType; label: string; icon: React.Ele
 
 const methods: { value: TransactionMethod; label: string }[] = [
   { value: 'cash', label: 'Efectivo' },
-  { value: 'accrual', label: 'Crédito' },
+  { value: 'transfer', label: 'Transferencia' },
+  { value: 'card', label: 'Tarjeta' },
+  { value: 'nequi', label: 'Nequi' },
+  { value: 'other', label: 'Otro' },
 ]
 
 const currencies = [
@@ -85,9 +93,43 @@ export function TransactionForm({
   const [destinationAccountId, setDestinationAccountId] = useState('')
   const [adjustmentReason, setAdjustmentReason] = useState('')
 
+  // Data from server
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(false)
+
   const isEditing = !!transaction
   const selectedType = transactionTypes.find(t => t.value === type)
 
+  // Fetch accounts and categories on open
+  const loadFormData = useCallback(async () => {
+    setIsLoadingData(true)
+    try {
+      const [accountsResult, categoriesResult] = await Promise.all([
+        getAccounts(),
+        getCategories(),
+      ])
+
+      if (accountsResult.success && accountsResult.data) {
+        setAccounts(accountsResult.data)
+      }
+      if (categoriesResult.success && categoriesResult.data) {
+        setCategories(categoriesResult.data)
+      }
+    } catch (error) {
+      console.error('Error loading form data:', error)
+    } finally {
+      setIsLoadingData(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isOpen) {
+      loadFormData()
+    }
+  }, [isOpen, loadFormData])
+
+  // Reset form when transaction changes
   useEffect(() => {
     if (transaction) {
       setType(transaction.type)
@@ -146,6 +188,18 @@ export function TransactionForm({
     resetForm()
     onClose()
   }
+
+  // Filter categories by transaction type
+  const filteredCategories = categories.filter((c) => {
+    if (type === 'income') return c.type === CATEGORY_TYPES.INCOME
+    if (type === 'expense') return ([
+      CATEGORY_TYPES.COST,
+      CATEGORY_TYPES.ADMIN_EXPENSE,
+      CATEGORY_TYPES.COMMERCIAL_EXPENSE,
+      CATEGORY_TYPES.FINANCIAL_EXPENSE,
+    ] as string[]).includes(c.type)
+    return false // No categories for transfer/adjustment
+  })
 
   const TypeIcon = selectedType?.icon || Wallet
 
@@ -226,14 +280,14 @@ export function TransactionForm({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="method">Método</Label>
+                  <Label htmlFor="method">Método de Pago</Label>
                   <Select 
                     value={method} 
                     onValueChange={(v) => setMethod(v as TransactionMethod)}
                     disabled={isLoading}
                   >
-                    <SelectTrigger id="method">
-                      <SelectValue />
+                    <SelectTrigger id="method" className="w-full">
+                      <SelectValue placeholder="Seleccione método" />
                     </SelectTrigger>
                     <SelectContent>
                       {methods.map((m) => (
@@ -254,29 +308,48 @@ export function TransactionForm({
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Wallet className="h-4 w-4" />
                 <span>Cuentas</span>
+                {isLoadingData && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               </div>
 
               {type === 'transfer' ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="sourceAccount">Origen</Label>
-                    <Input
-                      id="sourceAccount"
-                      placeholder="ID Cuenta"
+                    <Label htmlFor="sourceAccount">Cuenta Origen</Label>
+                    <Select
                       value={sourceAccountId}
-                      onChange={(e) => setSourceAccountId(e.target.value)}
-                      disabled={isLoading}
-                    />
+                      onValueChange={(v) => setSourceAccountId(v ?? '')}
+                      disabled={isLoading || isLoadingData}
+                    >
+                      <SelectTrigger id="sourceAccount" className="w-full">
+                        <SelectValue placeholder={isLoadingData ? 'Cargando...' : 'Seleccione cuenta'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name} ({account.currency})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="destAccount">Destino</Label>
-                    <Input
-                      id="destAccount"
-                      placeholder="ID Cuenta"
+                    <Label htmlFor="destAccount">Cuenta Destino</Label>
+                    <Select
                       value={destinationAccountId}
-                      onChange={(e) => setDestinationAccountId(e.target.value)}
-                      disabled={isLoading}
-                    />
+                      onValueChange={(v) => setDestinationAccountId(v ?? '')}
+                      disabled={isLoading || isLoadingData}
+                    >
+                      <SelectTrigger id="destAccount" className="w-full">
+                        <SelectValue placeholder={isLoadingData ? 'Cargando...' : 'Seleccione cuenta'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name} ({account.currency})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               ) : (
@@ -284,13 +357,22 @@ export function TransactionForm({
                   <Label htmlFor="account">
                     {type === 'adjustment' ? 'Cuenta a Ajustar' : 'Cuenta'}
                   </Label>
-                  <Input
-                    id="account"
-                    placeholder="ID de cuenta"
+                  <Select
                     value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    disabled={isLoading}
-                  />
+                    onValueChange={(v) => setAccountId(v ?? '')}
+                    disabled={isLoading || isLoadingData}
+                  >
+                    <SelectTrigger id="account" className="w-full">
+                      <SelectValue placeholder={isLoadingData ? 'Cargando...' : 'Seleccione cuenta'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name} ({account.currency})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>
@@ -303,16 +385,26 @@ export function TransactionForm({
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <Tag className="h-4 w-4" />
                     <span>Categorización</span>
+                    {isLoadingData && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Categoría</Label>
-                    <Input
-                      id="category"
-                      placeholder="ID de categoría"
+                    <Select
                       value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
-                      disabled={isLoading}
-                    />
+                      onValueChange={(v) => setCategoryId(v ?? '')}
+                      disabled={isLoading || isLoadingData}
+                    >
+                      <SelectTrigger id="category" className="w-full">
+                        <SelectValue placeholder={isLoadingData ? 'Cargando...' : 'Seleccione categoría'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredCategories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </>
@@ -333,7 +425,7 @@ export function TransactionForm({
                       onValueChange={(value) => setAdjustmentReason(value ?? '')}
                       disabled={isLoading}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Seleccione motivo" />
                       </SelectTrigger>
                       <SelectContent>
@@ -378,7 +470,7 @@ export function TransactionForm({
                     onValueChange={(value) => setCurrency(value ?? 'COP')}
                     disabled={isLoading}
                   >
-                    <SelectTrigger id="currency">
+                    <SelectTrigger id="currency" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
