@@ -8,8 +8,8 @@ dist/
 .turbo/
 .vercel/
 supabase/.temp/
+tmp/
 
 # Sensitive setup files
 setup-database.sql
-*.sql
 SECURITY.md
