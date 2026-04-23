@@ -344,3 +344,61 @@ function mapTransaction(raw: unknown): Transaction {
     creatorName: (t.users as Record<string, string>)?.full_name ?? (t.creator_name as string) ?? null,
   }
 }
+
+// DASHBOARD STATS
+export interface DashboardStats {
+  totalTransactions: number
+  totalIncome: number
+  totalExpenses: number
+  pendingCount: number
+  approvedCount: number
+  postedCount: number
+  netBalance: number
+}
+
+export async function getDashboardStats(): Promise<ActionResult<DashboardStats>> {
+  try {
+    const companyId = await getCurrentUserCompany()
+    if (!companyId) {
+      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    }
+
+    const supabase = await createClient()
+
+    // Get all transactions for the company
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('type, status, amount')
+      .eq('company_id', companyId)
+      .is('deleted_at', null)
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    const transactions = data || []
+
+    const stats: DashboardStats = {
+      totalTransactions: transactions.length,
+      totalIncome: transactions
+        .filter((t: Record<string, unknown>) => t.type === 'income' && t.status === 'posted')
+        .reduce((sum: number, t: Record<string, unknown>) => sum + (t.amount as number), 0),
+      totalExpenses: transactions
+        .filter((t: Record<string, unknown>) => t.type === 'expense' && t.status === 'posted')
+        .reduce((sum: number, t: Record<string, unknown>) => sum + (t.amount as number), 0),
+      pendingCount: transactions.filter((t: Record<string, unknown>) => t.status === 'pending').length,
+      approvedCount: transactions.filter((t: Record<string, unknown>) => t.status === 'approved').length,
+      postedCount: transactions.filter((t: Record<string, unknown>) => t.status === 'posted').length,
+      netBalance: 0,
+    }
+
+    stats.netBalance = stats.totalIncome - stats.totalExpenses
+
+    return { success: true, data: stats }
+  } catch (error) {
+    if (error instanceof Error) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'Error desconocido' }
+  }
+}

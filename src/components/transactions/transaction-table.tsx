@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Pencil, CheckCircle, Send, Trash2 } from 'lucide-react'
+import { Pencil, CheckCircle, Send, Trash2, ArrowRightLeft, Plus } from 'lucide-react'
 
 import {
   Table,
