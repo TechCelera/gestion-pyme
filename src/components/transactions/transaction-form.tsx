@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
+import Link from 'next/link'
 import { 
   ArrowRightLeft, 
   Wallet, 
@@ -12,6 +13,7 @@ import {
   FileText,
   Tag,
   Loader2,
+  ArrowRight,
 } from 'lucide-react'
 
 import {
@@ -346,7 +348,23 @@ export function TransactionForm({
                 {isLoadingData && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               </div>
 
-              {type === 'transfer' ? (
+              {!isDemoMode && !isLoadingData && accounts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 px-4 rounded-lg border border-dashed border-muted-foreground/20 bg-muted/30 text-center space-y-3">
+                  <Wallet className="h-10 w-10 text-muted-foreground/40" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">No tienes cuentas registradas</p>
+                    <p className="text-xs text-muted-foreground">Crea una cuenta en Configuración para poder registrar transacciones.</p>
+                  </div>
+                  <Link
+                    href="/settings"
+                    onClick={handleClose}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#7B68EE] text-white hover:bg-[#7B68EE]/90 transition-colors"
+                  >
+                    Ir a Configuración
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              ) : type === 'transfer' ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="sourceAccount">Cuenta Origen</Label>
@@ -559,7 +577,7 @@ export function TransactionForm({
             <Button
               variant="secondary"
               onClick={() => handleSubmit(true)}
-              disabled={isLoading}
+              disabled={isLoading || (!isDemoMode && accounts.length === 0)}
               className="w-full sm:w-auto"
             >
               Guardar Borrador
@@ -567,7 +585,7 @@ export function TransactionForm({
           )}
           <Button
             onClick={() => handleSubmit(false)}
-            disabled={isLoading}
+            disabled={isLoading || (!isDemoMode && accounts.length === 0)}
             className="bg-[#7B68EE] hover:bg-[#7B68EE]/90 w-full sm:w-auto"
           >
             {isLoading ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Enviar Aprobación'}

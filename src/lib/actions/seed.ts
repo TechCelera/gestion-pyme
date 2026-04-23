@@ -38,7 +38,8 @@ async function getCompanyCountry(companyId: string): Promise<string | null> {
 }
 
 /**
- * Siembra cuentas y categorías por defecto según el país de la empresa.
+ * Siembra categorías por defecto según el país de la empresa.
+ * Las cuentas se crean manualmente por el usuario desde Configuración.
  * Se llama después del registro o desde el dashboard en primer acceso.
  */
 export async function seedCompanyDefaults(): Promise<ActionResult> {
@@ -58,32 +59,15 @@ export async function seedCompanyDefaults(): Promise<ActionResult> {
       return { success: false, error: `Configuración no disponible para país: ${country}` }
     }
 
-    // Verificar si ya tiene cuentas (para no sembrar dos veces)
-    const { count: existingAccounts } = await supabase
-      .from('accounts')
+    // Verificar si ya tiene categorías (para no sembrar dos veces)
+    const { count: existingCategories } = await supabase
+      .from('categories')
       .select('*', { count: 'exact', head: true })
       .eq('company_id', companyId)
       .is('deleted_at', null)
 
-    if (existingAccounts && existingAccounts > 0) {
-      return { success: true, error: 'La empresa ya tiene cuentas configuradas' }
-    }
-
-    // Insertar cuentas por defecto
-    const accountsToInsert = config.accounts.map(acc => ({
-      company_id: companyId,
-      name: acc.name,
-      type: acc.type,
-      currency: acc.currency,
-      balance: 0,
-    }))
-
-    const { error: accountsError } = await supabase
-      .from('accounts')
-      .insert(accountsToInsert)
-
-    if (accountsError) {
-      return { success: false, error: `Error al crear cuentas: ${accountsError.message}` }
+    if (existingCategories && existingCategories > 0) {
+      return { success: true, error: 'La empresa ya tiene categorías configuradas' }
     }
 
     // Insertar categorías por defecto
