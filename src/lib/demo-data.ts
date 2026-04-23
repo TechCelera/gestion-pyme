@@ -1,6 +1,103 @@
 import type { Transaction } from '@/lib/actions/transactions'
 
-// Datos de demo que coinciden con la interfaz Transaction
+// Tipos compartidos para demo data
+export interface DemoAccount {
+  id: string
+  name: string
+  type: string
+  currency: string
+  balance: number
+}
+
+export interface DemoCategory {
+  id: string
+  name: string
+  type: string
+}
+
+// ============================================================================
+// CUENTAS DEMO
+// ============================================================================
+export const DEMO_ACCOUNTS: DemoAccount[] = [
+  {
+    id: 'demo-acc-1',
+    name: 'Cuenta Corriente',
+    type: 'bank',
+    currency: 'COP',
+    balance: 15500000,
+  },
+  {
+    id: 'demo-acc-2',
+    name: 'Ahorros',
+    type: 'bank',
+    currency: 'COP',
+    balance: 8200000,
+  },
+  {
+    id: 'demo-acc-3',
+    name: 'Efectivo',
+    type: 'cash',
+    currency: 'COP',
+    balance: 850000,
+  },
+]
+
+// ============================================================================
+// CATEGORÍAS DEMO
+// ============================================================================
+export const DEMO_CATEGORIES: DemoCategory[] = [
+  // Ingresos
+  {
+    id: 'demo-cat-1',
+    name: 'Ventas',
+    type: 'income',
+  },
+  {
+    id: 'demo-cat-4',
+    name: 'Servicios',
+    type: 'income',
+  },
+  {
+    id: 'demo-cat-5',
+    name: 'Otros Ingresos',
+    type: 'income',
+  },
+  // Costos
+  {
+    id: 'demo-cat-2',
+    name: 'Nómina',
+    type: 'admin_expense',
+  },
+  {
+    id: 'demo-cat-3',
+    name: 'Insumos',
+    type: 'cost',
+  },
+  {
+    id: 'demo-cat-6',
+    name: 'Transporte',
+    type: 'commercial_expense',
+  },
+  {
+    id: 'demo-cat-7',
+    name: 'Intereses Bancarios',
+    type: 'financial_expense',
+  },
+  {
+    id: 'demo-cat-8',
+    name: 'Servicios Públicos',
+    type: 'admin_expense',
+  },
+  {
+    id: 'demo-cat-9',
+    name: 'Marketing',
+    type: 'commercial_expense',
+  },
+]
+
+// ============================================================================
+// TRANSACCIONES DEMO
+// ============================================================================
 export const DEMO_TRANSACTIONS: Transaction[] = [
   {
     id: 'demo-1',
@@ -40,7 +137,7 @@ export const DEMO_TRANSACTIONS: Transaction[] = [
     id: 'demo-3',
     accountId: 'demo-acc-2',
     accountName: 'Ahorros',
-    categoryId: 'demo-cat-1',
+    categoryId: 'demo-cat-4',
     categoryName: 'Servicios',
     type: 'income',
     status: 'pending',
@@ -89,6 +186,9 @@ export const DEMO_TRANSACTIONS: Transaction[] = [
   },
 ]
 
+// ============================================================================
+// ESTADÍSTICAS DEMO
+// ============================================================================
 export const DEMO_STATS = {
   totalTransactions: DEMO_TRANSACTIONS.length,
   pendingCount: DEMO_TRANSACTIONS.filter(t => t.status === 'pending').length,

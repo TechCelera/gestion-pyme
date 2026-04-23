@@ -30,20 +30,22 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { TRANSACTION_METHOD_LABELS } from '@/lib/constants'
-import { getAccounts, getCategories } from '@/lib/actions/lookups'
-import type { Account, Category } from '@/lib/actions/lookups'
+import { TRANSACTION_METHOD_LABELS, CATEGORY_TYPES } from '@/lib/constants'
+import { getAccounts } from '@/lib/actions/accounts'
+import { getCategories } from '@/lib/actions/categories'
+import type { Account } from '@/lib/actions/accounts'
+import type { Category } from '@/lib/actions/categories'
+import { DEMO_ACCOUNTS, DEMO_CATEGORIES } from '@/lib/demo-data'
+import { useAuthStore } from '@/stores/auth-store'
 import type { Transaction } from '@/lib/actions/transactions'
 import type {
   CreateTransactionInput,
   TransactionType,
   TransactionMethod,
 } from '@/lib/validations/transaction'
-import { CATEGORY_TYPES } from '@/lib/constants'
 
 interface TransactionFormProps {
   isOpen: boolean
@@ -98,11 +100,19 @@ export function TransactionForm({
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoadingData, setIsLoadingData] = useState(false)
 
+  const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const isEditing = !!transaction
   const selectedType = transactionTypes.find(t => t.value === type)
 
   // Fetch accounts and categories on open
   const loadFormData = useCallback(async () => {
+    if (isDemoMode) {
+      // Modo demo: usar datos locales
+      setAccounts(DEMO_ACCOUNTS.map(a => ({ ...a })))
+      setCategories(DEMO_CATEGORIES.map(c => ({ ...c })))
+      return
+    }
+
     setIsLoadingData(true)
     try {
       const [accountsResult, categoriesResult] = await Promise.all([
@@ -121,7 +131,7 @@ export function TransactionForm({
     } finally {
       setIsLoadingData(false)
     }
-  }, [])
+  }, [isDemoMode])
 
   useEffect(() => {
     if (isOpen) {
@@ -189,7 +199,19 @@ export function TransactionForm({
     onClose()
   }
 
-  // Resolve display labels from current values (base-ui SelectValue shows raw value, not label)
+  // Filter categories by transaction type
+  const filteredCategories = categories.filter((c) => {
+    if (type === 'income') return c.type === CATEGORY_TYPES.INCOME
+    if (type === 'expense') return ([
+      CATEGORY_TYPES.COST,
+      CATEGORY_TYPES.ADMIN_EXPENSE,
+      CATEGORY_TYPES.COMMERCIAL_EXPENSE,
+      CATEGORY_TYPES.FINANCIAL_EXPENSE,
+    ] as string[]).includes(c.type)
+    return false // No categories for transfer/adjustment
+  })
+
+  // Resolve display labels from current values (base-ui shows raw value, not label)
   const methodLabel = methods.find(m => m.value === method)?.label ?? ''
   const accountLabel = accountId ? (() => {
     const a = accounts.find(acc => acc.id === accountId)
@@ -213,18 +235,6 @@ export function TransactionForm({
     other: 'Otro',
   }
   const adjustmentReasonLabel = adjustmentReason ? adjustmentReasonLabels[adjustmentReason] ?? adjustmentReason : ''
-
-  // Filter categories by transaction type
-  const filteredCategories = categories.filter((c) => {
-    if (type === 'income') return c.type === CATEGORY_TYPES.INCOME
-    if (type === 'expense') return ([
-      CATEGORY_TYPES.COST,
-      CATEGORY_TYPES.ADMIN_EXPENSE,
-      CATEGORY_TYPES.COMMERCIAL_EXPENSE,
-      CATEGORY_TYPES.FINANCIAL_EXPENSE,
-    ] as string[]).includes(c.type)
-    return false // No categories for transfer/adjustment
-  })
 
   const TypeIcon = selectedType?.icon || Wallet
 
