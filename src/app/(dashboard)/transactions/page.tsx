@@ -122,26 +122,24 @@ export default function TransactionsPage() {
     setPagination({ page })
   }
 
-  if (error) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Card className="w-[400px]">
-          <CardHeader>
-            <CardTitle>Error</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">{error}</p>
-            <Button onClick={fetchTransactions} className="mt-4 w-full">
+  // En modo demo, ignorar errores de autenticación
+  const isDemoError = error?.includes('no autenticado') || error?.includes('demo')
+  const showError = error && !isDemoError
+
+  return (
+    <div className="space-y-6 p-6">
+      {/* Error Message (non-blocking) */}
+      {showError && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="flex items-center justify-between py-4">
+            <p className="text-red-700">{error}</p>
+            <Button onClick={fetchTransactions} variant="outline" size="sm">
               Reintentar
             </Button>
           </CardContent>
         </Card>
-      </div>
-    )
-  }
+      )}
 
-  return (
-    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
