@@ -147,7 +147,7 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
               <Label htmlFor="accountName">Nombre</Label>
               <Input
                 id="accountName"
-                placeholder="Ej: Cuenta Corriente Bancaria"
+                placeholder="Ej: Cuenta Corriente"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={isSaving}

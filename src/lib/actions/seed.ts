@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { COUNTRY_CONFIGS } from '@/lib/country-config'
 
 interface ActionResult<T = unknown> {
   success: boolean
@@ -24,34 +25,20 @@ async function getCurrentUserCompany(): Promise<string | null> {
   return data?.company_id ?? null
 }
 
-// Datos por defecto para nuevas empresas (PYME colombiana)
-const DEFAULT_ACCOUNTS = [
-  { name: 'Caja General', type: 'cash', currency: 'COP', balance: 0 },
-  { name: 'Bancolombia Corriente', type: 'bank', currency: 'COP', balance: 0 },
-  { name: 'Bancolombia Ahorros', type: 'bank', currency: 'COP', balance: 0 },
-]
+// Helper: obtener país de la empresa
+async function getCompanyCountry(companyId: string): Promise<string | null> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('companies')
+    .select('country')
+    .eq('id', companyId)
+    .single()
 
-const DEFAULT_CATEGORIES = [
-  // Ingresos
-  { name: 'Ventas de Productos', type: 'income' },
-  { name: 'Ventas de Servicios', type: 'income' },
-  { name: 'Otros Ingresos', type: 'income' },
-  // Costos
-  { name: 'Costo de Mercancía', type: 'cost' },
-  // Gastos Administrativos
-  { name: 'Nómina', type: 'admin_expense' },
-  { name: 'Servicios Públicos', type: 'admin_expense' },
-  { name: 'Arriendo', type: 'admin_expense' },
-  // Gastos Comerciales
-  { name: 'Publicidad y Marketing', type: 'commercial_expense' },
-  { name: 'Transporte y Logística', type: 'commercial_expense' },
-  // Gastos Financieros
-  { name: 'Intereses Bancarios', type: 'financial_expense' },
-  { name: 'Comisiones Bancarias', type: 'financial_expense' },
-]
+  return data?.country ?? null
+}
 
 /**
- * Siembra cuentas y categorías por defecto para una nueva empresa.
+ * Siembra cuentas y categorías por defecto según el país de la empresa.
  * Se llama después del registro o desde el dashboard en primer acceso.
  */
 export async function seedCompanyDefaults(): Promise<ActionResult> {
@@ -63,8 +50,13 @@ export async function seedCompanyDefaults(): Promise<ActionResult> {
       return { success: false, error: 'Usuario no autenticado o sin empresa' }
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
-    const userId = user?.id
+    // Obtener país de la empresa
+    const country = await getCompanyCountry(companyId)
+    const config = COUNTRY_CONFIGS[country ?? 'AR'] // Default Argentina si no hay país
+
+    if (!config) {
+      return { success: false, error: `Configuración no disponible para país: ${country}` }
+    }
 
     // Verificar si ya tiene cuentas (para no sembrar dos veces)
     const { count: existingAccounts } = await supabase
@@ -78,12 +70,12 @@ export async function seedCompanyDefaults(): Promise<ActionResult> {
     }
 
     // Insertar cuentas por defecto
-    const accountsToInsert = DEFAULT_ACCOUNTS.map(acc => ({
+    const accountsToInsert = config.accounts.map(acc => ({
       company_id: companyId,
       name: acc.name,
       type: acc.type,
       currency: acc.currency,
-      balance: acc.balance,
+      balance: 0,
     }))
 
     const { error: accountsError } = await supabase
@@ -95,7 +87,7 @@ export async function seedCompanyDefaults(): Promise<ActionResult> {
     }
 
     // Insertar categorías por defecto
-    const categoriesToInsert = DEFAULT_CATEGORIES.map(cat => ({
+    const categoriesToInsert = config.categories.map(cat => ({
       company_id: companyId,
       name: cat.name,
       type: cat.type,

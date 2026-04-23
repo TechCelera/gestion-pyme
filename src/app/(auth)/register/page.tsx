@@ -9,13 +9,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Loader2, CheckCircle } from 'lucide-react'
+import { Loader2, CheckCircle, Globe } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/ui/select'
+import { COUNTRY_OPTIONS } from '@/lib/country-config'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [country, setCountry] = useState('AR')
   const [loading, setLoading] = useState(false)
   const [registered, setRegistered] = useState(false)
   const router = useRouter()
@@ -34,6 +42,7 @@ export default function RegisterPage() {
           data: {
             full_name: fullName,
             company_name: companyName,
+            country,
           },
         },
       })
@@ -131,6 +140,26 @@ export default function RegisterPage() {
                 onChange={(e) => setFullName(e.target.value)}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">País</Label>
+              <Select value={country} onValueChange={setCountry}>
+                <SelectTrigger id="country" className="w-full">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    {COUNTRY_OPTIONS.find(c => c.value === country)?.flag}{' '}
+                    {COUNTRY_OPTIONS.find(c => c.value === country)?.label}
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      <span className="mr-2">{c.flag}</span>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

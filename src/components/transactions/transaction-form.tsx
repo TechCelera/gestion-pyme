@@ -66,7 +66,7 @@ const methods: { value: TransactionMethod; label: string }[] = [
   { value: 'cash', label: 'Efectivo' },
   { value: 'transfer', label: 'Transferencia' },
   { value: 'card', label: 'Tarjeta' },
-  { value: 'nequi', label: 'Nequi' },
+  { value: 'digital', label: 'Billetera Digital' },
   { value: 'other', label: 'Otro' },
 ]
 

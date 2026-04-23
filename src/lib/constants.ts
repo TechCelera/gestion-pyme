@@ -16,7 +16,7 @@ export const TRANSACTION_METHODS = {
   CASH: 'cash',
   TRANSFER: 'transfer',
   CARD: 'card',
-  NEQUI: 'nequi',
+  DIGITAL: 'digital',
   OTHER: 'other',
 } as const
 
@@ -24,7 +24,7 @@ export const TRANSACTION_METHOD_LABELS: Record<string, string> = {
   cash: 'Efectivo',
   transfer: 'Transferencia',
   card: 'Tarjeta',
-  nequi: 'Nequi',
+  digital: 'Billetera Digital',
   other: 'Otro',
 }
 
