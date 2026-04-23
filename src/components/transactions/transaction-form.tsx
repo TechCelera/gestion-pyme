@@ -546,7 +546,7 @@ export function TransactionForm({
         </div>
 
         {/* Footer */}
-        <SheetFooter className="border-t bg-muted/50 px-6 py-4 flex-col-reverse sm:flex-row gap-2">
+        <SheetFooter className="border-t bg-muted/50 px-6 py-4 flex-col-reverse sm:flex-row gap-2 shrink-0 flex-wrap">
           <Button 
             variant="outline" 
             onClick={handleClose} 

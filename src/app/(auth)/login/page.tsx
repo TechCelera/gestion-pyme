@@ -53,34 +53,14 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      // Intentar login con Supabase primero
-      const demoEmail = 'demo@gestionpyme.com'
-      const demoPassword = 'Demo123!'
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: demoEmail,
-        password: demoPassword,
-      })
-
-      if (!error && data.user) {
-        // Login exitoso con Supabase
-        toast.success('Modo Demo activado - Explora con datos de prueba')
-        router.push('/dashboard')
-        router.refresh()
-        return
-      }
-
-      // Si falla Supabase, usar modo demo local
+      // Modo demo local directo — sin llamar a Supabase
+      // (el usuario demo no existe en Supabase y causaría error 400)
       setDemoUser()
-      toast.success('Modo Demo Offline activado - Datos locales de prueba')
+      toast.success('Modo Demo activado — Explora con datos de prueba')
       router.push('/dashboard')
       router.refresh()
     } catch (error) {
-      // Fallback a modo demo local
-      setDemoUser()
-      toast.success('Modo Demo Offline activado - Datos locales de prueba')
-      router.push('/dashboard')
-      router.refresh()
+      toast.error('Error al activar el modo demo')
     } finally {
       setLoading(false)
     }
