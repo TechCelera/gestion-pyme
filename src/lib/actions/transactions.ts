@@ -50,8 +50,14 @@ async function getCurrentUserCompany(): Promise<string | null> {
       return null
     }
 
-    console.log('getCurrentUserCompany: user id:', user.id)
+    // Try app_metadata.company_id first (from JWT)
+    const companyIdFromMeta = (user as Record<string, unknown>).app_metadata?.company_id as string | undefined
+    if (companyIdFromMeta) {
+      console.log('getCurrentUserCompany: from app_metadata:', companyIdFromMeta)
+      return companyIdFromMeta
+    }
 
+    // Fallback: query public.users table (RLS might block this)
     const { data, error: queryError } = await supabase
       .from('users')
       .select('company_id')
