@@ -57,13 +57,6 @@ async function getCurrentUserCompany(): Promise<string | null> {
   }
 }
 
-// ACCOUNT TYPE LABELS
-export const ACCOUNT_TYPE_LABELS: Record<string, string> = {
-  cash: 'Efectivo',
-  bank: 'Bancaria',
-  other: 'Otra',
-}
-
 // GET ACCOUNTS
 export async function getAccounts(): Promise<ActionResult<Account[]>> {
   try {

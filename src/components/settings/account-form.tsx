@@ -21,9 +21,9 @@ import {
   SelectItem,
   SelectTrigger,
 } from '@/components/ui/select'
-import { ACCOUNT_TYPE_LABELS } from '@/lib/actions/accounts'
 import { createAccount, updateAccount } from '@/lib/actions/accounts'
 import type { Account } from '@/lib/actions/accounts'
+import { ACCOUNT_TYPE_LABELS } from '@/lib/constants'
 import { DEMO_ACCOUNTS } from '@/lib/demo-data'
 import { useAuthStore } from '@/stores/auth-store'
 

@@ -43,6 +43,20 @@ export const CATEGORY_TYPES = {
   FINANCIAL_EXPENSE: 'financial_expense',
 } as const
 
+export const ACCOUNT_TYPE_LABELS: Record<string, string> = {
+  cash: 'Efectivo',
+  bank: 'Bancaria',
+  other: 'Otra',
+}
+
+export const CATEGORY_TYPE_LABELS: Record<string, string> = {
+  income: 'Ingreso',
+  cost: 'Costo',
+  admin_expense: 'Gasto Administrativo',
+  commercial_expense: 'Gasto Comercial',
+  financial_expense: 'Gasto Financiero',
+}
+
 export const PERIOD_STATUS = {
   OPEN: 'open',
   CLOSED: 'closed',

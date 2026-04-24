@@ -22,8 +22,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { getAccounts, deleteAccount, ACCOUNT_TYPE_LABELS } from '@/lib/actions/accounts'
-import { getCategories, deleteCategory, CATEGORY_TYPE_LABELS } from '@/lib/actions/categories'
+import { getAccounts, deleteAccount } from '@/lib/actions/accounts'
+import { getCategories, deleteCategory } from '@/lib/actions/categories'
+import { ACCOUNT_TYPE_LABELS, CATEGORY_TYPE_LABELS } from '@/lib/constants'
 import { CATEGORY_TYPES } from '@/lib/constants'
 import { DEMO_ACCOUNTS, DEMO_CATEGORIES } from '@/lib/demo-data'
 import { useAuthStore } from '@/stores/auth-store'

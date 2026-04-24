@@ -21,9 +21,9 @@ import {
   SelectItem,
   SelectTrigger,
 } from '@/components/ui/select'
-import { CATEGORY_TYPE_LABELS } from '@/lib/actions/categories'
 import { createCategory, updateCategory } from '@/lib/actions/categories'
 import type { Category } from '@/lib/actions/categories'
+import { CATEGORY_TYPE_LABELS } from '@/lib/constants'
 import { useAuthStore } from '@/stores/auth-store'
 
 interface CategoryFormProps {

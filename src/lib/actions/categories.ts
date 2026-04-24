@@ -55,15 +55,6 @@ async function getCurrentUserCompany(): Promise<string | null> {
   }
 }
 
-// CATEGORY TYPE LABELS
-export const CATEGORY_TYPE_LABELS: Record<string, string> = {
-  income: 'Ingreso',
-  cost: 'Costo',
-  admin_expense: 'Gasto Administrativo',
-  commercial_expense: 'Gasto Comercial',
-  financial_expense: 'Gasto Financiero',
-}
-
 // GET CATEGORIES
 export async function getCategories(
   type?: string
