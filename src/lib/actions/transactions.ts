@@ -43,14 +43,17 @@ interface ActionResult<T = unknown> {
 async function getCurrentUserCompany(): Promise<string | null> {
   try {
     const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { user }, error } = await supabase.auth.getUser()
     
-    if (!session?.user) return null
+    if (error || !user) {
+      console.log('getCurrentUserCompany: no authenticated user', error?.message)
+      return null
+    }
     
     const { data } = await supabase
       .from('users')
       .select('company_id')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single()
     
     return data?.company_id ?? null

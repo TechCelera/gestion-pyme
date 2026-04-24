@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { clearDemoCookie } from '@/lib/actions/demo-cookie'
 
 interface User {
   id: string
@@ -61,7 +60,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           isDemoMode: true,
         }),
-      clearUser: () => {
+      clearUser: () =>
         set({
           userId: null,
           email: null,
@@ -70,10 +69,7 @@ export const useAuthStore = create<AuthState>()(
           fullName: null,
           isAuthenticated: false,
           isDemoMode: false,
-        })
-        // Limpiar cookie de demo en paralelo (no bloquea)
-        clearDemoCookie().catch(() => {})
-      },
+        }),
     }),
     { name: 'gestion-pyme-auth' }
   )

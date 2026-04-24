@@ -37,7 +37,8 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        await clearDemoCookie()
+        // Limpiar cookie de demo en background (no bloquea login)
+        clearDemoCookie().catch(() => {})
         toast.success('Inicio de sesión exitoso')
         router.push('/dashboard')
         router.refresh()
@@ -58,7 +59,8 @@ export default function LoginPage() {
       // Modo demo local directo — sin llamar a Supabase
       // (el usuario demo no existe en Supabase y causaría error 400)
       setDemoUser()
-      await setDemoCookie()
+      // Setear cookie de demo en background (no bloquea)
+      setDemoCookie().catch(() => {})
       toast.success('Modo Demo activado — Explora con datos de prueba')
       router.push('/dashboard')
       router.refresh()

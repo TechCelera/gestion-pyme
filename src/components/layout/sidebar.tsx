@@ -37,8 +37,9 @@ export function Sidebar() {
   async function handleLogout() {
     try {
       if (isDemoMode) {
-        // En modo demo, limpiar store local y cookie
-        await clearDemoCookie()
+        // En modo demo, limpiar store local SIEMPRE
+        // Limpiar cookie en background (no bloquea)
+        clearDemoCookie().catch(() => {})
         clearUser()
         toast.success('Sesión demo cerrada')
         router.push('/login')
