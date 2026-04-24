@@ -73,6 +73,7 @@ const methods: { value: TransactionMethod; label: string }[] = [
 ]
 
 const currencies = [
+  { value: 'ARS', label: 'ARS ($)', flag: '🇦🇷' },
   { value: 'USD', label: 'USD ($)', flag: '🇺🇸' },
   { value: 'COP', label: 'COP ($)', flag: '🇨🇴' },
   { value: 'EUR', label: 'EUR (€)', flag: '🇪🇺' },
@@ -90,7 +91,7 @@ export function TransactionForm({
   const [accountId, setAccountId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState('COP')
+  const [currency, setCurrency] = useState('ARS')
   const [description, setDescription] = useState('')
   const [method, setMethod] = useState<TransactionMethod>('cash')
   const [sourceAccountId, setSourceAccountId] = useState('')
@@ -163,7 +164,7 @@ export function TransactionForm({
     setAccountId('')
     setCategoryId('')
     setAmount('')
-    setCurrency('COP')
+    setCurrency('ARS')
     setDescription('')
     setMethod('cash')
     setSourceAccountId('')
@@ -520,7 +521,7 @@ export function TransactionForm({
                   <Label htmlFor="currency">Moneda</Label>
                   <Select 
                     value={currency} 
-                    onValueChange={(value) => setCurrency(value ?? 'COP')}
+                    onValueChange={(value) => setCurrency(value ?? 'ARS')}
                     disabled={isLoading}
                   >
                     <SelectTrigger id="currency" className="w-full">

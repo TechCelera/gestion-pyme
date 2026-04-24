@@ -9,6 +9,11 @@ interface ActionResult<T = unknown> {
   error?: string
 }
 
+interface SeedSummary {
+  accountsCreated: number
+  categoriesCreated: number
+}
+
 // Helper: obtener companyId del usuario actual
 async function getCurrentUserCompany(): Promise<string | null> {
   try {
@@ -60,11 +65,11 @@ async function getCompanyCountry(companyId: string): Promise<string | null> {
 }
 
 /**
- * Siembra categorías por defecto según el país de la empresa.
- * Las cuentas se crean manualmente por el usuario desde Configuración.
+ * Siembra cuentas y categorías por defecto según el país de la empresa.
+ * Es idempotente: solo crea faltantes para evitar duplicados.
  * Se llama después del registro o desde el dashboard en primer acceso.
  */
-export async function seedCompanyDefaults(): Promise<ActionResult> {
+export async function seedCompanyDefaults(): Promise<ActionResult<SeedSummary>> {
   try {
     const supabase = await createClient()
     const companyId = await getCurrentUserCompany()
@@ -81,33 +86,74 @@ export async function seedCompanyDefaults(): Promise<ActionResult> {
       return { success: false, error: `Configuración no disponible para país: ${country}` }
     }
 
-    // Verificar si ya tiene categorías (para no sembrar dos veces)
-    const { count: existingCategories } = await supabase
-      .from('categories')
-      .select('*', { count: 'exact', head: true })
+    const { data: existingAccounts, error: accountsQueryError } = await supabase
+      .from('accounts')
+      .select('name')
       .eq('company_id', companyId)
       .is('deleted_at', null)
 
-    if (existingCategories && existingCategories > 0) {
-      return { success: true, error: 'La empresa ya tiene categorías configuradas' }
+    if (accountsQueryError) {
+      return { success: false, error: `Error consultando cuentas existentes: ${accountsQueryError.message}` }
     }
 
-    // Insertar categorías por defecto
-    const categoriesToInsert = config.categories.map(cat => ({
+    const { data: existingCategories, error: categoriesQueryError } = await supabase
+      .from('categories')
+      .select('name')
+      .eq('company_id', companyId)
+      .is('deleted_at', null)
+
+    if (categoriesQueryError) {
+      return { success: false, error: `Error consultando categorías existentes: ${categoriesQueryError.message}` }
+    }
+
+    const existingAccountNames = new Set((existingAccounts ?? []).map((account) => account.name))
+    const existingCategoryNames = new Set((existingCategories ?? []).map((category) => category.name))
+
+    const accountsToInsert = config.accounts
+      .filter((account) => !existingAccountNames.has(account.name))
+      .map((account) => ({
+        company_id: companyId,
+        name: account.name,
+        type: account.type,
+        currency: account.currency,
+        balance: 0,
+      }))
+
+    const categoriesToInsert = config.categories
+      .filter((category) => !existingCategoryNames.has(category.name))
+      .map((cat) => ({
       company_id: companyId,
       name: cat.name,
       type: cat.type,
     }))
 
-    const { error: categoriesError } = await supabase
-      .from('categories')
-      .insert(categoriesToInsert)
+    if (accountsToInsert.length > 0) {
+      const { error: accountsError } = await supabase
+        .from('accounts')
+        .insert(accountsToInsert)
 
-    if (categoriesError) {
-      return { success: false, error: `Error al crear categorías: ${categoriesError.message}` }
+      if (accountsError) {
+        return { success: false, error: `Error al crear cuentas: ${accountsError.message}` }
+      }
     }
 
-    return { success: true }
+    if (categoriesToInsert.length > 0) {
+      const { error: categoriesError } = await supabase
+        .from('categories')
+        .insert(categoriesToInsert)
+
+      if (categoriesError) {
+        return { success: false, error: `Error al crear categorías: ${categoriesError.message}` }
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        accountsCreated: accountsToInsert.length,
+        categoriesCreated: categoriesToInsert.length,
+      },
+    }
   } catch (error) {
     return {
       success: false,

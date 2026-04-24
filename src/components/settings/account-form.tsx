@@ -40,6 +40,7 @@ const accountTypes = Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) =>
 }))
 
 const currencies = [
+  { value: 'ARS', label: 'ARS ($)' },
   { value: 'USD', label: 'USD ($)' },
   { value: 'COP', label: 'COP ($)' },
   { value: 'EUR', label: 'EUR (\u20ac)' },
@@ -48,7 +49,7 @@ const currencies = [
 export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormProps) {
   const [name, setName] = useState('')
   const [type, setType] = useState('bank')
-  const [currency, setCurrency] = useState('COP')
+  const [currency, setCurrency] = useState('ARS')
   const [isSaving, setIsSaving] = useState(false)
 
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
@@ -68,7 +69,7 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
   const resetForm = () => {
     setName('')
     setType('bank')
-    setCurrency('COP')
+    setCurrency('ARS')
   }
 
   const handleClose = () => {
@@ -178,7 +179,7 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
               <Label htmlFor="accountCurrency">Moneda</Label>
               <Select
                 value={currency}
-                onValueChange={(v) => setCurrency(v ?? 'COP')}
+                onValueChange={(v) => setCurrency(v ?? 'ARS')}
                 disabled={isSaving}
               >
                 <SelectTrigger id="accountCurrency" className="w-full">

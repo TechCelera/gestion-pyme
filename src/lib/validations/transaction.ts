@@ -13,7 +13,7 @@ const baseTransactionSchemaObject = z.object({
   type: TransactionTypeEnum,
   date: z.coerce.date(),
   amount: z.number().positive('El monto debe ser mayor a 0'),
-  currency: z.string().default('USD'),
+  currency: z.string().default('ARS'),
   description: z.string()
     .min(3, 'La descripción debe tener al menos 3 caracteres')
     .max(500, 'La descripción no puede exceder 500 caracteres'),

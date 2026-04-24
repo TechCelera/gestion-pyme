@@ -37,7 +37,11 @@ import type { Category } from '@/lib/actions/categories'
 // Currency formatter
 function formatBalance(amount: number, currency: string): string {
   try {
-    const locale = currency === 'COP' ? 'es-CO' : currency === 'EUR' ? 'es-ES' : 'en-US'
+    const locale =
+      currency === 'ARS' ? 'es-AR' :
+      currency === 'COP' ? 'es-CO' :
+      currency === 'EUR' ? 'es-ES' :
+      'en-US'
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,

@@ -10,11 +10,11 @@ interface RealDashboardProps {
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-AR', {
     style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    currency: 'ARS',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value)
 }
 
