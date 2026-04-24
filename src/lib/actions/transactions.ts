@@ -323,25 +323,26 @@ export async function getTransactions(
   filters: TransactionFilters
 ): Promise<ActionResult<{ transactions: Transaction[]; total: number }>> {
   try {
+    console.log('getTransactions START, filters:', JSON.stringify(filters))
+
     // Validate input
     if (!filters || typeof filters !== 'object') {
       return { success: false, error: 'Filtros inválidos' }
     }
 
     const validated = transactionFiltersSchema.parse(filters)
+    console.log('getTransactions validated:', validated)
+
     const companyId = await getCurrentUserCompany()
+    console.log('getTransactions companyId:', companyId)
 
     if (!companyId) {
       return { success: false, error: 'Usuario no autenticado o sin empresa' }
     }
 
     const supabase = await createClient()
+    console.log('getTransactions supabase client created')
 
-    // Log for debugging
-    console.log('getTransactions: calling RPC with companyId:', companyId)
-
-    // RPC handles ILIKE escaping internally via REPLACE(), no need for client-side escaping
-    // Use RPC instead of direct PostgREST query to avoid broken joins
     const { data, error } = await supabase.rpc('get_transactions', {
       p_company_id: companyId,
       p_status: validated.status?.length ? validated.status : null,
@@ -360,14 +361,13 @@ export async function getTransactions(
       p_offset: (validated.page - 1) * validated.pageSize,
     })
 
-    console.log('getTransactions: RPC result:', { error, dataLength: data?.length })
+    console.log('getTransactions RPC result:', { error, dataLength: data?.length })
 
     if (error) {
       console.error('get_transactions RPC error:', error)
       return { success: false, error: `Error de base de datos: ${error.message}` }
     }
 
-    // RPC returns array of rows with total_count in each row
     const rows = (data || []) as Record<string, unknown>[]
     const total = rows.length > 0 
       ? Number(rows[0].total_count ?? 0) 
@@ -382,7 +382,7 @@ export async function getTransactions(
       } 
     }
   } catch (error) {
-    console.error('getTransactions uncaught error:', error)
+    console.error('getTransactions CATCH:', error)
     if (error instanceof Error) {
       return { success: false, error: error.message }
     }
