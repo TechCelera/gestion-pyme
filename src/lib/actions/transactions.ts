@@ -50,14 +50,27 @@ async function getCurrentUserCompany(): Promise<string | null> {
       return null
     }
 
+    // Use type assertion for metadata access
+    const userAny = user as unknown as Record<string, unknown>
+    const appMeta = userAny.app_metadata as Record<string, unknown> | undefined
+    const userMeta = userAny.user_metadata as Record<string, unknown> | undefined
+
     // Try app_metadata.company_id first (from JWT)
-    const companyIdFromMeta = (user as Record<string, unknown>).app_metadata?.company_id as string | undefined
+    const companyIdFromMeta = appMeta?.company_id as string | undefined
     if (companyIdFromMeta) {
       console.log('getCurrentUserCompany: from app_metadata:', companyIdFromMeta)
       return companyIdFromMeta
     }
 
-    // Fallback: query public.users table (RLS might block this)
+    // Also check user_metadata as fallback
+    const companyIdFromUserMeta = userMeta?.company_id as string | undefined
+    if (companyIdFromUserMeta) {
+      console.log('getCurrentUserCompany: from user_metadata:', companyIdFromUserMeta)
+      return companyIdFromUserMeta
+    }
+
+    // Last resort: query public.users table
+    console.log('getCurrentUserCompany: trying table query for user:', user.id)
     const { data, error: queryError } = await supabase
       .from('users')
       .select('company_id')
