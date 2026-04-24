@@ -88,35 +88,6 @@ async function getCurrentUserCompany(): Promise<string | null> {
   }
 }
 
-    // Try app_metadata.company_id first (from JWT)
-    // Cast to any to avoid TypeScript issues with Json type
-    const appMeta = user.app_metadata as any as { company_id?: string } | null
-    if (appMeta?.company_id) {
-      console.log('getCurrentUserCompany: from app_metadata:', appMeta.company_id)
-      return appMeta.company_id
-    }
-
-    // Fallback: query public.users table
-    console.log('getCurrentUserCompany: trying table query for user:', user.id)
-    const { data, error: queryError } = await supabase
-      .from('users')
-      .select('company_id')
-      .eq('id', user.id)
-      .single()
-
-    if (queryError) {
-      console.error('getCurrentUserCompany: query error:', queryError)
-      return null
-    }
-
-    console.log('getCurrentUserCompany: query result:', data)
-    return data?.company_id ?? null
-  } catch (error) {
-    console.error('getCurrentUserCompany error:', error)
-    return null
-  }
-}
-
 // Helper para obtener userId del usuario actual
 async function getCurrentUserId(): Promise<string | null> {
   try {
