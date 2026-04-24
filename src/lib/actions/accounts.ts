@@ -19,35 +19,42 @@ interface ActionResult<T = unknown> {
 
 // Helper: obtener companyId del usuario actual
 async function getCurrentUserCompany(): Promise<string | null> {
-  const supabase = await createClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
 
-  if (error || !user) {
-    console.log('accounts.getCurrentUserCompany: no authenticated user', error?.message)
+    if (error || !user) {
+      return null
+    }
+
+    // 1. Try app_metadata.company_id (from JWT, set by trigger)
+    const appMeta = user.app_metadata as Record<string, unknown>
+    if (appMeta?.company_id) {
+      return appMeta.company_id as string
+    }
+
+    // 2. Try user_metadata.company_id (set during signup, available client-side)
+    if (user.user_metadata?.company_id) {
+      return user.user_metadata.company_id as string
+    }
+
+    // 3. Fallback: query public.users table
+    const { data, error: queryError } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single()
+
+    if (queryError) {
+      console.error('accounts.getCurrentUserCompany: query error:', queryError.message)
+      return null
+    }
+
+    return data?.company_id ?? null
+  } catch (error) {
+    console.error('accounts.getCurrentUserCompany error:', error)
     return null
   }
-
-  // Try app_metadata.company_id first (from JWT)
-  const appMeta = user.app_metadata as any
-  if (appMeta?.company_id) {
-    console.log('accounts.getCurrentUserCompany: from app_metadata:', appMeta.company_id)
-    return appMeta.company_id
-  }
-
-  // Fallback: query public.users table (RLS may block this)
-  console.log('accounts.getCurrentUserCompany: trying table query for user:', user.id)
-  const { data, error: queryError } = await supabase
-    .from('users')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
-  if (queryError) {
-    console.error('accounts.getCurrentUserCompany: query error:', queryError)
-    return null
-  }
-
-  return data?.company_id ?? null
 }
 
 // ACCOUNT TYPE LABELS

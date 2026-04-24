@@ -11,18 +11,40 @@ interface ActionResult<T = unknown> {
 
 // Helper: obtener companyId del usuario actual
 async function getCurrentUserCompany(): Promise<string | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
 
-  if (!user) return null
+    if (error || !user) {
+      return null
+    }
 
-  const { data } = await supabase
-    .from('users')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
+    // 1. Try app_metadata.company_id (from JWT, set by trigger)
+    const appMeta = user.app_metadata as Record<string, unknown>
+    if (appMeta?.company_id) {
+      return appMeta.company_id as string
+    }
 
-  return data?.company_id ?? null
+    // 2. Try user_metadata.company_id (set during signup)
+    if (user.user_metadata?.company_id) {
+      return user.user_metadata.company_id as string
+    }
+
+    // 3. Fallback: query public.users table
+    const { data, error: queryError } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single()
+
+    if (queryError) {
+      return null
+    }
+
+    return data?.company_id ?? null
+  } catch {
+    return null
+  }
 }
 
 // Helper: obtener país de la empresa
