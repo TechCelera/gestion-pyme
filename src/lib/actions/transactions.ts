@@ -63,6 +63,22 @@ async function getCurrentUserCompany(): Promise<string | null> {
   }
 }
 
+// Helper para obtener userId del usuario actual
+async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
+    
+    if (error || !user) {
+      return null
+    }
+    
+    return user.id
+  } catch {
+    return null
+  }
+}
+
 // CREATE
 export async function createTransaction(
   input: CreateTransactionInput
@@ -108,34 +124,26 @@ export async function createTransaction(
       console.error('Error creating transaction:', error)
       return { success: false, error: error.message }
     }
-
-    // revalidateTag('transactions')
     
-    // Obtener la transacción creada
-    const { data: transaction } = await supabase
-      .from('transactions')
-      .select(`
-        id,
-        account_id,
-        accounts(name),
-        category_id,
-        categories(name),
-        type,
-        status,
-        amount,
-        currency,
-        date,
-        description,
-        created_at,
-        created_by,
-        users(full_name)
-      `)
-      .eq('id', data)
-      .single()
+    // Use RPC to get the full transaction instead of broken PostgREST join
+    const { data: transaction, error: fetchError } = await supabase.rpc(
+      'get_transaction_by_id',
+      { p_transaction_id: data }
+    )
+
+    if (fetchError) {
+      console.error('Error fetching created transaction:', fetchError)
+      // Return success anyway — the transaction was created
+      return { success: true }
+    }
+
+    const mapped = Array.isArray(transaction) 
+      ? transaction.map(mapTransaction)[0] 
+      : mapTransaction(transaction)
 
     return { 
       success: true, 
-      data: transaction ? mapTransaction(transaction) : undefined 
+      data: mapped 
     }
   } catch (error) {
     if (error instanceof Error) {
@@ -153,6 +161,7 @@ export async function updateTransaction(
   try {
     const validated = updateTransactionSchema.parse({ ...input, id })
     const companyId = await getCurrentUserCompany()
+    const userId = await getCurrentUserId()
     
     if (!companyId) {
       return { success: false, error: 'Usuario no autenticado o sin empresa' }
@@ -160,27 +169,34 @@ export async function updateTransaction(
 
     const supabase = await createClient()
 
+    const updatePayload: Record<string, unknown> = {
+      account_id: validated.accountId,
+      category_id: validated.categoryId,
+      type: validated.type,
+      amount: validated.amount,
+      date: validated.date?.toISOString().split('T')[0],
+      description: validated.description,
+      method: validated.method,
+      currency: validated.currency,
+      contact_id: validated.contactId,
+      contact_type: validated.contactType,
+      source_account_id: validated.sourceAccountId,
+      destination_account_id: validated.destinationAccountId,
+      adjustment_reason: validated.adjustmentReason,
+      document_type: validated.documentType,
+      document_number: validated.documentNumber,
+      attachment_url: validated.attachmentUrl,
+      updated_at: new Date().toISOString(),
+    }
+
+    // Include updated_by for audit trail (T10)
+    if (userId) {
+      updatePayload.updated_by = userId
+    }
+
     const { data, error } = await supabase
       .from('transactions')
-      .update({
-        account_id: validated.accountId,
-        category_id: validated.categoryId,
-        type: validated.type,
-        amount: validated.amount,
-        date: validated.date?.toISOString().split('T')[0],
-        description: validated.description,
-        method: validated.method,
-        currency: validated.currency,
-        contact_id: validated.contactId,
-        contact_type: validated.contactType,
-        source_account_id: validated.sourceAccountId,
-        destination_account_id: validated.destinationAccountId,
-        adjustment_reason: validated.adjustmentReason,
-        document_type: validated.documentType,
-        document_number: validated.documentNumber,
-        attachment_url: validated.attachmentUrl,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', id)
       .eq('status', 'draft') // Solo se puede editar si está en draft
       .select(`
@@ -249,16 +265,18 @@ export async function updateTransactionStatus(
 // DELETE
 export async function deleteTransaction(id: string): Promise<ActionResult> {
   try {
+    const companyId = await getCurrentUserCompany()
+    
+    if (!companyId) {
+      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    }
+
     const supabase = await createClient()
 
-    const { error } = await supabase
-      .from('transactions')
-      .update({
-        deleted_at: new Date().toISOString(),
-        deleted_by: (await supabase.auth.getUser()).data.user?.id,
-      })
-      .eq('id', id)
-      .eq('status', 'draft') // Solo se puede eliminar si está en draft
+    // Use RPC for soft delete (handles auth.uid() for deleted_by internally)
+    const { error } = await supabase.rpc('soft_delete_transaction', {
+      p_transaction_id: id,
+    })
 
     if (error) {
       console.error('Error deleting transaction:', error)
@@ -275,7 +293,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
   }
 }
 
-// GET TRANSACTIONS
+// GET TRANSACTIONS (using RPC)
 export async function getTransactions(
   filters: TransactionFilters
 ): Promise<ActionResult<{ transactions: Transaction[]; total: number }>> {
@@ -294,61 +312,42 @@ export async function getTransactions(
 
     const supabase = await createClient()
 
-    // Direct query instead of RPC to avoid 500 if RPC is missing
-    let query = supabase
-      .from('transactions')
-      .select(`
-        *,
-        accounts:account_id (name),
-        categories:category_id (name),
-        users:created_by (full_name)
-      `, { count: 'exact' })
-      .eq('company_id', companyId)
-      .is('deleted_at', null)
-
-    if (validated.status && validated.status.length > 0) {
-      query = query.in('status', validated.status)
-    }
-    if (validated.type && validated.type.length > 0) {
-      query = query.in('type', validated.type)
-    }
-    if (validated.dateFrom) {
-      query = query.gte('date', validated.dateFrom.toISOString().split('T')[0])
-    }
-    if (validated.dateTo) {
-      query = query.lte('date', validated.dateTo.toISOString().split('T')[0])
-    }
-    if (validated.accountId) {
-      query = query.eq('account_id', validated.accountId)
-    }
-    if (validated.categoryId) {
-      query = query.eq('category_id', validated.categoryId)
-    }
-    if (validated.search) {
-      query = query.ilike('description', `%${validated.search}%`)
-    }
-
-    query = query
-      .order('date', { ascending: false })
-      .range(
-        (validated.page - 1) * validated.pageSize,
-        validated.page * validated.pageSize - 1
-      )
-
-    const { data, error, count } = await query
+    // RPC handles ILIKE escaping internally via REPLACE(), no need for client-side escaping
+    // Use RPC instead of direct PostgREST query to avoid broken joins
+    const { data, error } = await supabase.rpc('get_transactions', {
+      p_company_id: companyId,
+      p_status: validated.status?.length ? validated.status : null,
+      p_type: validated.type?.length ? validated.type : null,
+      p_date_from: validated.dateFrom 
+        ? validated.dateFrom.toISOString().split('T')[0] 
+        : null,
+      p_date_to: validated.dateTo 
+        ? validated.dateTo.toISOString().split('T')[0] 
+        : null,
+      p_account_id: validated.accountId ?? null,
+      p_category_id: validated.categoryId ?? null,
+      p_search: validated.search ?? null,
+      p_limit: validated.pageSize,
+      p_offset: (validated.page - 1) * validated.pageSize,
+    })
 
     if (error) {
-      console.error('get_transactions query error:', error)
+      console.error('get_transactions RPC error:', error)
       return { success: false, error: `Error de base de datos: ${error.message}` }
     }
 
-    const transactions = (data || []).map(mapTransaction)
+    // RPC returns array of rows with total_count in each row
+    const rows = (data || []) as Record<string, unknown>[]
+    const total = rows.length > 0 
+      ? Number(rows[0].total_count ?? 0) 
+      : 0
+    const transactions = rows.map(mapTransaction)
 
     return { 
       success: true, 
       data: { 
         transactions, 
-        total: count ?? 0 
+        total 
       } 
     }
   } catch (error) {
@@ -372,7 +371,7 @@ function mapTransaction(raw: unknown): Transaction {
     type: t.type as 'income' | 'expense' | 'transfer' | 'adjustment',
     status: t.status as TransactionStatus,
     method: (t.method as string) || 'cash',
-    amount: t.amount as number,
+    amount: Number(t.amount),
     currency: t.currency as string,
     date: t.date as string,
     description: t.description as string,
