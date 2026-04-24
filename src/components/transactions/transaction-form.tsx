@@ -443,22 +443,42 @@ export function TransactionForm({
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Categoría</Label>
-                    <Select
-                      value={categoryId}
-                      onValueChange={(v) => setCategoryId(v ?? '')}
-                      disabled={isLoading || isLoadingData}
-                    >
-                      <SelectTrigger id="category" className="w-full">
-                        {categoryLabel || <span className="text-muted-foreground">{isLoadingData ? 'Cargando...' : 'Seleccione categoría'}</span>}
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredCategories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {(!isLoadingData && filteredCategories.length === 0) ? (
+                      <div className="flex flex-col items-center justify-center py-6 px-4 rounded-lg border border-dashed border-muted-foreground/20 bg-muted/30 text-center space-y-3">
+                        <Tag className="h-10 w-10 text-muted-foreground/40" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground">No hay categorías disponibles</p>
+                          <p className="text-xs text-muted-foreground">
+                            Crea categorías en Configuración para registrar {type === 'income' ? 'ingresos' : 'egresos'}.
+                          </p>
+                        </div>
+                        <Link
+                          href="/settings"
+                          onClick={handleClose}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#7B68EE] text-white hover:bg-[#7B68EE]/90 transition-colors"
+                        >
+                          Ir a Configuración
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      </div>
+                    ) : (
+                      <Select
+                        value={categoryId}
+                        onValueChange={(v) => setCategoryId(v ?? '')}
+                        disabled={isLoading || isLoadingData}
+                      >
+                        <SelectTrigger id="category" className="w-full">
+                          {categoryLabel || <span className="text-muted-foreground">{isLoadingData ? 'Cargando...' : 'Seleccione categoría'}</span>}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredCategories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </div>
               </>
