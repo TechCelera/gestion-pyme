@@ -45,10 +45,48 @@ async function getCurrentUserCompany(): Promise<string | null> {
     const supabase = await createClient()
     const { data: { user }, error } = await supabase.auth.getUser()
 
-    if (error || !user) {
-      console.log('getCurrentUserCompany: no authenticated user', error?.message)
+    if (error) {
+      console.error('getCurrentUserCompany: auth error:', error.message)
       return null
     }
+
+    if (!user) {
+      console.log('getCurrentUserCompany: no user found')
+      return null
+    }
+
+    console.log('getCurrentUserCompany: user found, id:', user.id)
+
+    // Try app_metadata.company_id first (from JWT)
+    const appMeta = user.app_metadata as any
+    console.log('getCurrentUserCompany: app_metadata keys:', Object.keys(appMeta || {}))
+    
+    if (appMeta?.company_id) {
+      console.log('getCurrentUserCompany: from app_metadata:', appMeta.company_id)
+      return appMeta.company_id
+    }
+
+    console.log('getCurrentUserCompany: no company_id in app_metadata, trying table query')
+
+    // Fallback: query public.users table
+    const { data, error: queryError } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single()
+
+    if (queryError) {
+      console.error('getCurrentUserCompany: query error:', queryError.message)
+      return null
+    }
+
+    console.log('getCurrentUserCompany: query result:', data)
+    return data?.company_id ?? null
+  } catch (error) {
+    console.error('getCurrentUserCompany error:', error)
+    return null
+  }
+}
 
     // Try app_metadata.company_id first (from JWT)
     // Cast to any to avoid TypeScript issues with Json type

@@ -36,7 +36,7 @@ async function getCurrentUserCompany(): Promise<string | null> {
 
   // Fallback: query public.users table (RLS may block this)
   console.log('accounts.getCurrentUserCompany: trying table query for user:', user.id)
-  const { data, queryError } = await supabase
+  const { data, error: queryError } = await supabase
     .from('users')
     .select('company_id')
     .eq('id', user.id)
