@@ -26,7 +26,7 @@ export function EmptyState() {
           <p className="text-sm text-muted-foreground max-w-sm mb-6">
             Aún no tienes transacciones registradas. Comienza agregando tu primera transacción para ver el resumen de tu empresa.
           </p>
-          <Link href="/transactions/new">
+          <Link href="/transactions">
             <Button className="bg-[#7B68EE] hover:bg-[#7B68EE]/90">
               <Plus className="mr-2 h-4 w-4" />
               Agregar transacción

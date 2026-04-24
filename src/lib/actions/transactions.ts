@@ -294,30 +294,53 @@ export async function getTransactions(
 
     const supabase = await createClient()
 
-    const { data, error } = await supabase.rpc('get_transactions', {
-      p_company_id: companyId,
-      p_status: validated.status ?? null,
-      p_type: validated.type ?? null,
-      p_date_from: validated.dateFrom?.toISOString().split('T')[0] ?? null,
-      p_date_to: validated.dateTo?.toISOString().split('T')[0] ?? null,
-      p_account_id: validated.accountId ?? null,
-      p_category_id: validated.categoryId ?? null,
-      p_search: validated.search ?? null,
-      p_limit: validated.pageSize,
-      p_offset: (validated.page - 1) * validated.pageSize,
-    })
-
-    if (error) {
-      console.error('get_transactions RPC error:', error)
-      return { success: false, error: `Error de base de datos: ${error.message}` }
-    }
-
-    // Obtener conteo total
-    const { count } = await supabase
+    // Direct query instead of RPC to avoid 500 if RPC is missing
+    let query = supabase
       .from('transactions')
-      .select('*', { count: 'exact', head: true })
+      .select(`
+        *,
+        accounts:account_id (name),
+        categories:category_id (name),
+        users:created_by (full_name)
+      `, { count: 'exact' })
       .eq('company_id', companyId)
       .is('deleted_at', null)
+
+    if (validated.status && validated.status.length > 0) {
+      query = query.in('status', validated.status)
+    }
+    if (validated.type && validated.type.length > 0) {
+      query = query.in('type', validated.type)
+    }
+    if (validated.dateFrom) {
+      query = query.gte('date', validated.dateFrom.toISOString().split('T')[0])
+    }
+    if (validated.dateTo) {
+      query = query.lte('date', validated.dateTo.toISOString().split('T')[0])
+    }
+    if (validated.accountId) {
+      query = query.eq('account_id', validated.accountId)
+    }
+    if (validated.categoryId) {
+      query = query.eq('category_id', validated.categoryId)
+    }
+    if (validated.search) {
+      query = query.ilike('description', `%${validated.search}%`)
+    }
+
+    query = query
+      .order('date', { ascending: false })
+      .range(
+        (validated.page - 1) * validated.pageSize,
+        validated.page * validated.pageSize - 1
+      )
+
+    const { data, error, count } = await query
+
+    if (error) {
+      console.error('get_transactions query error:', error)
+      return { success: false, error: `Error de base de datos: ${error.message}` }
+    }
 
     const transactions = (data || []).map(mapTransaction)
 

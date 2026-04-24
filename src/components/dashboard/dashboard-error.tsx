@@ -6,19 +6,17 @@ import { AlertCircle, RefreshCw } from 'lucide-react'
 
 interface DashboardErrorProps {
   message: string
-  onRetry?: () => void
 }
 
-export function DashboardError({ message, onRetry }: DashboardErrorProps) {
-  const handleRetry = onRetry || (() => {
+export function DashboardError({ message }: DashboardErrorProps) {
+  const handleRetry = () => {
     if (typeof window !== 'undefined') {
       window.location.reload()
     }
-  })
+  }
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="text-sm text-muted-foreground">Resumen de la situación de tu empresa</p>
