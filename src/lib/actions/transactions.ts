@@ -468,4 +468,4 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
     }
     return { success: false, error: 'Error desconocido' }
   }
-}
+}// redeploy trigger jue 23 abr 2026 23:18:05 -05
