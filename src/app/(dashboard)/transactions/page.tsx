@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TransactionTable } from '@/components/transactions/transaction-table'
 import { TransactionForm } from '@/components/transactions/transaction-form'
 import { useTransactionStore } from '@/stores/transaction-store'
+import { useAuthStore } from '@/stores/auth-store'
 import type { Transaction } from '@/lib/actions/transactions'
 import type { CreateTransactionInput } from '@/lib/validations/transaction'
 
@@ -122,20 +123,40 @@ export default function TransactionsPage() {
     setPagination({ page })
   }
 
-  // En modo demo, ignorar errores de autenticación
-  const isDemoError = error?.includes('no autenticado') || error?.includes('demo')
-  const showError = error && !isDemoError
+  const isDemoMode = useAuthStore((state) => state.isDemoMode)
+
+  // Solo ocultar errores de auth en modo demo
+  const isDemoError = isDemoMode && (error?.includes('no autenticado') || error?.includes('demo'))
+  const showError = !!error && !isDemoError
 
   return (
     <div className="space-y-6 p-6">
-      {/* Error Message (non-blocking) */}
+      {/* Error Message */}
       {showError && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="flex items-center justify-between py-4">
-            <p className="text-red-700">{error}</p>
-            <Button onClick={fetchTransactions} variant="outline" size="sm">
-              Reintentar
-            </Button>
+            <div>
+              <p className="font-medium text-red-700">
+                {error?.includes('no autenticado') || error?.includes('sin empresa')
+                  ? 'Sesión expirada'
+                  : 'Error al cargar datos'}
+              </p>
+              <p className="text-sm text-red-600">
+                {error?.includes('no autenticado') || error?.includes('sin empresa')
+                  ? 'Tu sesión ha expirado. Intenta recargar la página o iniciar sesión de nuevo.'
+                  : error}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {error?.includes('no autenticado') || error?.includes('sin empresa') ? (
+                <Button onClick={() => window.location.href = '/login'} variant="default" size="sm" className="bg-[#7B68EE] hover:bg-[#7B68EE]/90">
+                  Iniciar sesión
+                </Button>
+              ) : null}
+              <Button onClick={fetchTransactions} variant="outline" size="sm">
+                Reintentar
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

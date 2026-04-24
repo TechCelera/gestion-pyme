@@ -55,20 +55,18 @@ async function getCurrentUserCompany(): Promise<string | null> {
       return null
     }
 
-    console.log('getCurrentUserCompany: user found, id:', user.id)
-
-    // Try app_metadata.company_id first (from JWT)
-    const appMeta = user.app_metadata as any
-    console.log('getCurrentUserCompany: app_metadata keys:', Object.keys(appMeta || {}))
-    
+    // 1. Try app_metadata.company_id (from JWT, set by trigger)
+    const appMeta = user.app_metadata as Record<string, unknown>
     if (appMeta?.company_id) {
-      console.log('getCurrentUserCompany: from app_metadata:', appMeta.company_id)
-      return appMeta.company_id
+      return appMeta.company_id as string
     }
 
-    console.log('getCurrentUserCompany: no company_id in app_metadata, trying table query')
+    // 2. Try user_metadata.company_id (set during signup, available client-side)
+    if (user.user_metadata?.company_id) {
+      return user.user_metadata.company_id as string
+    }
 
-    // Fallback: query public.users table
+    // 3. Fallback: query public.users table
     const { data, error: queryError } = await supabase
       .from('users')
       .select('company_id')
@@ -80,7 +78,6 @@ async function getCurrentUserCompany(): Promise<string | null> {
       return null
     }
 
-    console.log('getCurrentUserCompany: query result:', data)
     return data?.company_id ?? null
   } catch (error) {
     console.error('getCurrentUserCompany error:', error)
@@ -323,25 +320,19 @@ export async function getTransactions(
   filters: TransactionFilters
 ): Promise<ActionResult<{ transactions: Transaction[]; total: number }>> {
   try {
-    console.log('getTransactions START, filters:', JSON.stringify(filters))
-
-    // Validate input
     if (!filters || typeof filters !== 'object') {
       return { success: false, error: 'Filtros inválidos' }
     }
 
     const validated = transactionFiltersSchema.parse(filters)
-    console.log('getTransactions validated:', validated)
 
     const companyId = await getCurrentUserCompany()
-    console.log('getTransactions companyId:', companyId)
 
     if (!companyId) {
       return { success: false, error: 'Usuario no autenticado o sin empresa' }
     }
 
     const supabase = await createClient()
-    console.log('getTransactions supabase client created')
 
     const { data, error } = await supabase.rpc('get_transactions', {
       p_company_id: companyId,
@@ -363,7 +354,7 @@ export async function getTransactions(
 
     console.log('getTransactions RPC result:', { error, dataLength: data?.length })
 
-    if (error) {
+if (error) {
       console.error('get_transactions RPC error:', error)
       return { success: false, error: `Error de base de datos: ${error.message}` }
     }
