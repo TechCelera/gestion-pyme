@@ -1,83 +1,43 @@
-'use client'
-
-import { useState, useEffect, useCallback } from 'react'
-import { useAuthStore } from '@/stores/auth-store'
-import { getDashboardStats, type DashboardStats } from '@/lib/actions/transactions'
-import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton'
+import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
+import { getDashboardStats } from '@/lib/actions/transactions'
+import { redirect } from 'next/navigation'
 import { DemoDashboard } from '@/components/dashboard/demo-dashboard'
 import { RealDashboard } from '@/components/dashboard/real-dashboard'
 import { EmptyState } from '@/components/dashboard/empty-state'
 import { DashboardError } from '@/components/dashboard/dashboard-error'
 
-export default function DashboardPage() {
-  // Hydration guard — must be the first conditional render
-  const [mounted, setMounted] = useState(false)
+export default async function DashboardPage() {
+  const cookieStore = await cookies()
+  const demoCookie = cookieStore.get('demo_mode')?.value === 'true'
 
-  // Auth store read is unconditional (hooks rule) but only USED after mounted
-  const isDemoMode = useAuthStore((state) => state.isDemoMode)
-
-  // Local state for real user branch
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Trigger mounted after hydration
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Fetch stats for real users
-  const fetchStats = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await getDashboardStats()
-      if (result.success && result.data) {
-        setStats(result.data)
-      } else {
-        setError(result.error || 'Error al cargar las estadísticas')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Only fetch stats after hydration and only for real users
-  useEffect(() => {
-    if (!mounted) return
-    if (isDemoMode) return
-    fetchStats()
-  }, [mounted, isDemoMode, fetchStats])
-
-  // BEFORE hydration: identical skeleton on server and client
-  if (!mounted) {
-    return <DashboardSkeleton />
-  }
-
-  // AFTER hydration: branch based on auth state
-  if (isDemoMode) {
+  // a. Modo demo via cookie
+  if (demoCookie) {
     return <DemoDashboard />
   }
 
-  // Real user states
-  if (loading && !stats && !error) {
-    return <DashboardSkeleton />
+  // b. Verificar sesión real
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    redirect('/login')
   }
 
-  if (error) {
-    return <DashboardError message={error} onRetry={fetchStats} />
+  // Cargar estadísticas
+  const result = await getDashboardStats()
+
+  if (!result.success || !result.data) {
+    return (
+      <DashboardError
+        message={result.error || 'Error al cargar las estadísticas'}
+      />
+    )
   }
 
-  if (!stats) {
-    // Should not happen, but show skeleton as safe fallback
-    return <DashboardSkeleton />
-  }
-
-  if (stats.totalTransactions === 0) {
+  if (result.data.totalTransactions === 0) {
     return <EmptyState />
   }
 
-  return <RealDashboard stats={stats} />
+  return <RealDashboard stats={result.data} />
 }

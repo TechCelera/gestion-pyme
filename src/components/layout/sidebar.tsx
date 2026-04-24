@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { useAuthStore } from '@/stores/auth-store'
+import { clearDemoCookie } from '@/lib/actions/demo-cookie'
 import { toast } from 'sonner'
 
 const navItems = [
@@ -36,7 +37,8 @@ export function Sidebar() {
   async function handleLogout() {
     try {
       if (isDemoMode) {
-        // En modo demo, solo limpiar el store local
+        // En modo demo, limpiar store local y cookie
+        await clearDemoCookie()
         clearUser()
         toast.success('Sesión demo cerrada')
         router.push('/login')

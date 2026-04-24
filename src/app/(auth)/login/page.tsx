@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { useAuthStore } from '@/stores/auth-store'
+import { setDemoCookie, clearDemoCookie } from '@/lib/actions/demo-cookie'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,6 +37,7 @@ export default function LoginPage() {
       }
 
       if (data.user) {
+        await clearDemoCookie()
         toast.success('Inicio de sesión exitoso')
         router.push('/dashboard')
         router.refresh()
@@ -56,6 +58,7 @@ export default function LoginPage() {
       // Modo demo local directo — sin llamar a Supabase
       // (el usuario demo no existe en Supabase y causaría error 400)
       setDemoUser()
+      await setDemoCookie()
       toast.success('Modo Demo activado — Explora con datos de prueba')
       router.push('/dashboard')
       router.refresh()

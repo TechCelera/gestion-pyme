@@ -6,10 +6,16 @@ import { AlertCircle, RefreshCw } from 'lucide-react'
 
 interface DashboardErrorProps {
   message: string
-  onRetry: () => void
+  onRetry?: () => void
 }
 
 export function DashboardError({ message, onRetry }: DashboardErrorProps) {
+  const handleRetry = onRetry || (() => {
+    if (typeof window !== 'undefined') {
+      window.location.reload()
+    }
+  })
+
   return (
     <div className="p-4 md:p-8 space-y-6">
       {/* Header */}
@@ -29,7 +35,7 @@ export function DashboardError({ message, onRetry }: DashboardErrorProps) {
           <p className="text-sm text-muted-foreground max-w-sm mb-6">
             {message || 'No se pudieron cargar las estadísticas. Intenta de nuevo.'}
           </p>
-          <Button variant="outline" onClick={onRetry}>
+          <Button variant="outline" onClick={handleRetry}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Reintentar
           </Button>
