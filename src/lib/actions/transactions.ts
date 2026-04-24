@@ -328,12 +328,15 @@ export async function getTransactions(
 
     const validated = transactionFiltersSchema.parse(filters)
     const companyId = await getCurrentUserCompany()
-    
+
     if (!companyId) {
       return { success: false, error: 'Usuario no autenticado o sin empresa' }
     }
 
     const supabase = await createClient()
+
+    // Log for debugging
+    console.log('getTransactions: calling RPC with companyId:', companyId)
 
     // RPC handles ILIKE escaping internally via REPLACE(), no need for client-side escaping
     // Use RPC instead of direct PostgREST query to avoid broken joins
@@ -341,18 +344,21 @@ export async function getTransactions(
       p_company_id: companyId,
       p_status: validated.status?.length ? validated.status : null,
       p_type: validated.type?.length ? validated.type : null,
-      p_date_from: validated.dateFrom 
-        ? validated.dateFrom.toISOString().split('T')[0] 
+      p_date_from: validated.dateFrom
+        ? validated.dateFrom.toISOString().split('T')[0]
         : null,
-      p_date_to: validated.dateTo 
-        ? validated.dateTo.toISOString().split('T')[0] 
+      p_date_to: validated.dateTo
+        ? validated.dateTo.toISOString().split('T')[0]
         : null,
       p_account_id: validated.accountId ?? null,
       p_category_id: validated.categoryId ?? null,
+      p_contact_id: null,
       p_search: validated.search ?? null,
       p_limit: validated.pageSize,
       p_offset: (validated.page - 1) * validated.pageSize,
     })
+
+    console.log('getTransactions: RPC result:', { error, dataLength: data?.length })
 
     if (error) {
       console.error('get_transactions RPC error:', error)
