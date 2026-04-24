@@ -13,4 +13,4 @@ tmp/
 
 # Sensitive setup files
 setup-database.sql
-SECURITY.md
+SECURITY.md.playwright-mcp/
