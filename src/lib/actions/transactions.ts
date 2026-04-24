@@ -44,18 +44,22 @@ async function getCurrentUserCompany(): Promise<string | null> {
   try {
     const supabase = await createClient()
     const { data: { user }, error } = await supabase.auth.getUser()
-    
+
     if (error || !user) {
       console.log('getCurrentUserCompany: no authenticated user', error?.message)
       return null
     }
-    
-    const { data } = await supabase
+
+    console.log('getCurrentUserCompany: user id:', user.id)
+
+    const { data, error: queryError } = await supabase
       .from('users')
       .select('company_id')
       .eq('id', user.id)
       .single()
-    
+
+    console.log('getCurrentUserCompany: query result:', { data, queryError })
+
     return data?.company_id ?? null
   } catch (error) {
     console.error('getCurrentUserCompany error:', error)
