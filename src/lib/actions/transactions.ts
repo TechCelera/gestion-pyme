@@ -50,26 +50,15 @@ async function getCurrentUserCompany(): Promise<string | null> {
       return null
     }
 
-    // Use type assertion for metadata access
-    const userAny = user as unknown as Record<string, unknown>
-    const appMeta = userAny.app_metadata as Record<string, unknown> | undefined
-    const userMeta = userAny.user_metadata as Record<string, unknown> | undefined
-
     // Try app_metadata.company_id first (from JWT)
-    const companyIdFromMeta = appMeta?.company_id as string | undefined
-    if (companyIdFromMeta) {
-      console.log('getCurrentUserCompany: from app_metadata:', companyIdFromMeta)
-      return companyIdFromMeta
+    // Cast to any to avoid TypeScript issues with Json type
+    const appMeta = user.app_metadata as any as { company_id?: string } | null
+    if (appMeta?.company_id) {
+      console.log('getCurrentUserCompany: from app_metadata:', appMeta.company_id)
+      return appMeta.company_id
     }
 
-    // Also check user_metadata as fallback
-    const companyIdFromUserMeta = userMeta?.company_id as string | undefined
-    if (companyIdFromUserMeta) {
-      console.log('getCurrentUserCompany: from user_metadata:', companyIdFromUserMeta)
-      return companyIdFromUserMeta
-    }
-
-    // Last resort: query public.users table
+    // Fallback: query public.users table
     console.log('getCurrentUserCompany: trying table query for user:', user.id)
     const { data, error: queryError } = await supabase
       .from('users')
@@ -77,8 +66,12 @@ async function getCurrentUserCompany(): Promise<string | null> {
       .eq('id', user.id)
       .single()
 
-    console.log('getCurrentUserCompany: query result:', { data, queryError })
+    if (queryError) {
+      console.error('getCurrentUserCompany: query error:', queryError)
+      return null
+    }
 
+    console.log('getCurrentUserCompany: query result:', data)
     return data?.company_id ?? null
   } catch (error) {
     console.error('getCurrentUserCompany error:', error)

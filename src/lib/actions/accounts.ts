@@ -20,15 +20,32 @@ interface ActionResult<T = unknown> {
 // Helper: obtener companyId del usuario actual
 async function getCurrentUserCompany(): Promise<string | null> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error } = await supabase.auth.getUser()
 
-  if (!user) return null
+  if (error || !user) {
+    console.log('accounts.getCurrentUserCompany: no authenticated user', error?.message)
+    return null
+  }
 
-  const { data } = await supabase
+  // Try app_metadata.company_id first (from JWT)
+  const appMeta = user.app_metadata as any
+  if (appMeta?.company_id) {
+    console.log('accounts.getCurrentUserCompany: from app_metadata:', appMeta.company_id)
+    return appMeta.company_id
+  }
+
+  // Fallback: query public.users table (RLS may block this)
+  console.log('accounts.getCurrentUserCompany: trying table query for user:', user.id)
+  const { data, queryError } = await supabase
     .from('users')
     .select('company_id')
     .eq('id', user.id)
     .single()
+
+  if (queryError) {
+    console.error('accounts.getCurrentUserCompany: query error:', queryError)
+    return null
+  }
 
   return data?.company_id ?? null
 }

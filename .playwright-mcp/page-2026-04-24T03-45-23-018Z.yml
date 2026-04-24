@@ -1,0 +1,75 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - heading "Gestion PYME" [level=1] [ref=e6]
+        - button "Colapsar sidebar" [ref=e7]:
+          - img [ref=e8]
+      - navigation [ref=e10]:
+        - link "Dashboard" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e12]
+          - generic [ref=e17]: Dashboard
+        - link "Transacciones" [ref=e18] [cursor=pointer]:
+          - /url: /transactions
+          - img [ref=e19]
+          - generic [ref=e22]: Transacciones
+        - link "Reportes" [ref=e23] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e24]
+          - generic [ref=e27]: Reportes
+        - link "Configuracion" [ref=e28] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e29]
+          - generic [ref=e32]: Configuracion
+      - button "Cerrar Sesión" [ref=e34]:
+        - img [ref=e35]
+        - generic [ref=e38]: Cerrar Sesión
+    - main [ref=e39]:
+      - generic [ref=e40]:
+        - img [ref=e41]
+        - generic [ref=e45]: Conectado
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - generic [ref=e48]:
+            - heading "Transacciones" [level=1] [ref=e49]
+            - paragraph [ref=e50]: Gestiona los ingresos, egresos y transferencias de tu empresa
+          - button "Nueva Transacción" [ref=e51]:
+            - img
+            - text: Nueva Transacción
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - generic [ref=e55]: Total Transacciones
+            - generic [ref=e57]: "0"
+          - generic [ref=e58]:
+            - generic [ref=e60]: Pendientes
+            - generic [ref=e62]: "0"
+          - generic [ref=e63]:
+            - generic [ref=e65]: Aprobadas
+            - generic [ref=e67]: "0"
+          - generic [ref=e68]:
+            - generic [ref=e70]: Contabilizadas
+            - generic [ref=e72]: "0"
+        - table [ref=e75]:
+          - rowgroup [ref=e76]:
+            - row "Fecha Tipo Método Descripción Monto Estado Acciones" [ref=e77]:
+              - columnheader "Fecha" [ref=e78]
+              - columnheader "Tipo" [ref=e79]
+              - columnheader "Método" [ref=e80]
+              - columnheader "Descripción" [ref=e81]
+              - columnheader "Monto" [ref=e82]
+              - columnheader "Estado" [ref=e83]
+              - columnheader "Acciones" [ref=e84]
+          - rowgroup [ref=e85]:
+            - row [ref=e86]:
+              - cell [ref=e87]
+            - row [ref=e89]:
+              - cell [ref=e90]
+            - row [ref=e92]:
+              - cell [ref=e93]
+            - row [ref=e95]:
+              - cell [ref=e96]
+            - row [ref=e98]:
+              - cell [ref=e99]
+  - region "Notifications alt+T"
+  - alert [ref=e101]

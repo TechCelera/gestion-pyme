@@ -1,0 +1,9 @@
+[     775ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gestion-pyme-web-five.vercel.app/transactions:0
+[  183847ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gestion-pyme-web-five.vercel.app/transactions:0
+[  183848ms] [ERROR] Error loading form data: Error: An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error. @ https://gestion-pyme-web-five.vercel.app/_next/static/chunks/0xj4hva0vg162.js:0
+[  184827ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gestion-pyme-web-five.vercel.app/transactions:0
+[  188099ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gestion-pyme-web-five.vercel.app/settings:0
+[  188101ms] [ERROR] Error fetching settings data: Error: An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error. @ https://gestion-pyme-web-five.vercel.app/_next/static/chunks/0riccw-iozuhf.js:0
+[  188411ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gestion-pyme-web-five.vercel.app/settings:0
+[  202846ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gestion-pyme-web-five.vercel.app/settings:0
+[  264861ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gestion-pyme-web-five.vercel.app/transactions:0

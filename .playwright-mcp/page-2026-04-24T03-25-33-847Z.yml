@@ -1,0 +1,32 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: Gestion PYME Pro
+      - generic [ref=e6]: Inicia sesión en tu cuenta
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]: Email
+          - textbox "Email" [ref=e11]:
+            - /placeholder: tu@email.com
+            - text: wilmanmc15@gmail.com
+        - generic [ref=e12]:
+          - generic [ref=e13]: Contraseña
+          - textbox "Contraseña" [ref=e14]:
+            - /placeholder: ••••••••
+            - text: Wjmc#201578
+        - button "Iniciar Sesión" [ref=e15]
+        - generic [ref=e20]: O prueba el demo
+        - button "Entrar como Invitado (Demo)" [ref=e21]:
+          - img
+          - text: Entrar como Invitado (Demo)
+      - generic [ref=e22]:
+        - text: ¿No tienes cuenta?
+        - link "Regístrate" [ref=e23] [cursor=pointer]:
+          - /url: /register
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e25]:
+        - img [ref=e27]
+        - generic [ref=e31]: Inicio de sesión exitoso
+  - alert [ref=e24]
