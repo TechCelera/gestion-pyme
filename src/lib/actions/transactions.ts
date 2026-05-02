@@ -459,4 +459,173 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
     }
     return { success: false, error: 'Error desconocido' }
   }
-}// redeploy trigger jue 23 abr 2026 23:18:05 -05
+}
+
+export interface IncomeStatementReport {
+  periodLabel: string
+  totalIncome: number
+  totalExpenses: number
+  netProfit: number
+  marginPercent: number
+  expenseBreakdown: Array<{
+    category: string
+    amount: number
+  }>
+}
+
+export interface CashFlowReport {
+  periodLabel: string
+  cashIn: number
+  cashOut: number
+  netCashFlow: number
+  monthlyTrend: Array<{
+    month: string
+    inflow: number
+    outflow: number
+    net: number
+  }>
+}
+
+export interface ReportsData {
+  incomeStatement: IncomeStatementReport
+  cashFlow: CashFlowReport
+}
+
+function getCurrentMonthDateRange() {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 1)
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return { start, end }
+}
+
+export async function getReportsData(): Promise<ActionResult<ReportsData>> {
+  try {
+    const companyId = await getCurrentUserCompany()
+    if (!companyId) {
+      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    }
+
+    const supabase = await createClient()
+    const { start, end } = getCurrentMonthDateRange()
+    const now = new Date()
+
+    const [periodResult, trendResult] = await Promise.all([
+      supabase
+        .from('transactions')
+        .select('type, amount, category_id, categories(name)')
+        .eq('company_id', companyId)
+        .eq('status', 'posted')
+        .is('deleted_at', null)
+        .gte('date', start.toISOString().split('T')[0])
+        .lte('date', end.toISOString().split('T')[0]),
+      supabase
+        .from('transactions')
+        .select('type, amount, date')
+        .eq('company_id', companyId)
+        .eq('status', 'posted')
+        .is('deleted_at', null)
+        .gte(
+          'date',
+          new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().split('T')[0]
+        )
+        .lte('date', end.toISOString().split('T')[0]),
+    ])
+
+    if (periodResult.error) {
+      return { success: false, error: periodResult.error.message }
+    }
+
+    if (trendResult.error) {
+      return { success: false, error: trendResult.error.message }
+    }
+
+    const periodRows = (periodResult.data ?? []) as Array<Record<string, unknown>>
+    const trendRows = (trendResult.data ?? []) as Array<Record<string, unknown>>
+
+    let totalIncome = 0
+    let totalExpenses = 0
+    const expenseByCategory = new Map<string, number>()
+
+    for (const row of periodRows) {
+      const type = row.type as string
+      const amount = Number(row.amount ?? 0)
+      if (type === 'income') {
+        totalIncome += amount
+      }
+      if (type === 'expense') {
+        totalExpenses += amount
+        const categoryName =
+          ((row.categories as Record<string, unknown> | null)?.name as string | undefined) ??
+          'Sin categoría'
+        expenseByCategory.set(categoryName, (expenseByCategory.get(categoryName) ?? 0) + amount)
+      }
+    }
+
+    const netProfit = totalIncome - totalExpenses
+    const marginPercent = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0
+
+    const expenseBreakdown = Array.from(expenseByCategory.entries())
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 8)
+
+    const monthMap = new Map<string, { inflow: number; outflow: number }>()
+    for (let i = 5; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      monthMap.set(key, { inflow: 0, outflow: 0 })
+    }
+
+    for (const row of trendRows) {
+      const date = row.date as string
+      const type = row.type as string
+      const amount = Number(row.amount ?? 0)
+      if (!date) continue
+      const monthKey = date.slice(0, 7)
+      const current = monthMap.get(monthKey)
+      if (!current) continue
+      if (type === 'income') current.inflow += amount
+      if (type === 'expense') current.outflow += amount
+    }
+
+    const monthlyTrend = Array.from(monthMap.entries()).map(([month, values]) => ({
+      month,
+      inflow: values.inflow,
+      outflow: values.outflow,
+      net: values.inflow - values.outflow,
+    }))
+
+    const currentMonthTrend = monthlyTrend[monthlyTrend.length - 1] ?? {
+      month: '',
+      inflow: 0,
+      outflow: 0,
+      net: 0,
+    }
+
+    return {
+      success: true,
+      data: {
+        incomeStatement: {
+          periodLabel: start.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }),
+          totalIncome,
+          totalExpenses,
+          netProfit,
+          marginPercent,
+          expenseBreakdown,
+        },
+        cashFlow: {
+          periodLabel: start.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }),
+          cashIn: currentMonthTrend.inflow,
+          cashOut: currentMonthTrend.outflow,
+          netCashFlow: currentMonthTrend.net,
+          monthlyTrend,
+        },
+      },
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'Error desconocido' }
+  }
+}

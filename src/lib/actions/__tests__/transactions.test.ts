@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getTransactions } from '../transactions'
+import { getTransactions, getReportsData } from '../transactions'
 
 // Mock the Supabase client
 vi.mock('@/lib/supabase/server', () => ({
@@ -219,6 +219,149 @@ describe('getTransactions server action', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error).toContain('base de datos')
+    }
+  })
+})
+
+describe('getReportsData server action', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should aggregate income statement and cash flow correctly', async () => {
+    const mockAuthGetUser = vi.fn().mockResolvedValue({
+      data: { user: { id: 'user-123' } },
+      error: null,
+    })
+
+    const usersQuery = {
+      eq: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { company_id: 'company-123' }, error: null }),
+      }),
+    }
+
+    const periodRows = [
+      { type: 'income', amount: 1000, categories: null },
+      { type: 'income', amount: 500, categories: null },
+      { type: 'expense', amount: 300, categories: { name: 'Operativos' } },
+      { type: 'expense', amount: 100, categories: { name: 'Marketing' } },
+      { type: 'expense', amount: 200, categories: { name: 'Operativos' } },
+    ]
+
+    const trendRows = [
+      { type: 'income', amount: 1000, date: '2026-01-10' },
+      { type: 'expense', amount: 300, date: '2026-01-20' },
+      { type: 'income', amount: 500, date: '2026-06-03' },
+      { type: 'expense', amount: 150, date: '2026-06-07' },
+    ]
+
+    const txQueryFirst = {
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockResolvedValue({ data: periodRows, error: null }),
+    }
+    const txQuerySecond = {
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockResolvedValue({ data: trendRows, error: null }),
+    }
+
+    let txSelectCall = 0
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'users') {
+        return {
+          select: vi.fn().mockReturnValue(usersQuery),
+        }
+      }
+      if (table === 'transactions') {
+        txSelectCall += 1
+        return {
+          select: vi
+            .fn()
+            .mockReturnValue(txSelectCall === 1 ? txQueryFirst : txQuerySecond),
+        }
+      }
+      return { select: vi.fn() }
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: mockAuthGetUser },
+      from: mockFrom,
+      rpc: vi.fn(),
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await getReportsData()
+
+    expect(result.success).toBe(true)
+    if (result.success && result.data) {
+      expect(result.data.incomeStatement.totalIncome).toBe(1500)
+      expect(result.data.incomeStatement.totalExpenses).toBe(600)
+      expect(result.data.incomeStatement.netProfit).toBe(900)
+      expect(result.data.incomeStatement.expenseBreakdown[0]).toEqual({
+        category: 'Operativos',
+        amount: 500,
+      })
+
+      expect(result.data.cashFlow.monthlyTrend.length).toBe(6)
+      const lastMonth = result.data.cashFlow.monthlyTrend[result.data.cashFlow.monthlyTrend.length - 1]
+      expect(lastMonth.net).toBe(lastMonth.inflow - lastMonth.outflow)
+    }
+  })
+
+  it('should return error when transactions query fails', async () => {
+    const mockAuthGetUser = vi.fn().mockResolvedValue({
+      data: { user: { id: 'user-123' } },
+      error: null,
+    })
+
+    const usersQuery = {
+      eq: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { company_id: 'company-123' }, error: null }),
+      }),
+    }
+
+    const failedQuery = {
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockResolvedValue({ data: null, error: { message: 'DB exploded' } }),
+    }
+    const okQuery = {
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockResolvedValue({ data: [], error: null }),
+    }
+
+    let txSelectCall = 0
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'users') {
+        return {
+          select: vi.fn().mockReturnValue(usersQuery),
+        }
+      }
+      if (table === 'transactions') {
+        txSelectCall += 1
+        return {
+          select: vi.fn().mockReturnValue(txSelectCall === 1 ? failedQuery : okQuery),
+        }
+      }
+      return { select: vi.fn() }
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: mockAuthGetUser },
+      from: mockFrom,
+      rpc: vi.fn(),
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await getReportsData()
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain('DB exploded')
     }
   })
 })
