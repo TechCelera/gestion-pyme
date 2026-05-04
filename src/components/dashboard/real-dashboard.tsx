@@ -1,12 +1,13 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { KpiCard } from './kpi-card'
-import { TrendingUp, ArrowDownRight, DollarSign, BarChart3, PieChart, Target, Activity, Wallet } from 'lucide-react'
-import type { DashboardStats } from '@/lib/actions/transactions'
+import { TrendingUp, ArrowDownRight, DollarSign, Wallet } from 'lucide-react'
+import { ReportsCharts } from '@/components/reports/reports-charts'
+import type { DashboardStats, ReportsData } from '@/lib/actions/transactions'
 
 interface RealDashboardProps {
   stats: DashboardStats
+  reportsData: ReportsData | null | undefined
 }
 
 function formatCurrency(value: number): string {
@@ -18,7 +19,7 @@ function formatCurrency(value: number): string {
   }).format(value)
 }
 
-export function RealDashboard({ stats }: RealDashboardProps) {
+export function RealDashboard({ stats, reportsData }: RealDashboardProps) {
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
@@ -54,68 +55,13 @@ export function RealDashboard({ stats }: RealDashboardProps) {
         />
       </div>
 
-      {/* Placeholder Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <PlaceholderChartCard
-          icon={BarChart3}
-          title="Estado de Resultados"
-          subtitle="Gráfico de ingresos y gastos mensuales"
-          gradient="from-[#7B68EE] to-[#00C9FF]"
-        />
-        <PlaceholderChartCard
-          icon={PieChart}
-          title="Distribución de Gastos"
-          subtitle="Desglose por categoría"
-          gradient="from-[#FF6B6B] to-[#FFE66D]"
-        />
-        <PlaceholderChartCard
-          icon={Target}
-          title="Performance Radar"
-          subtitle="Indicadores clave vs metas"
-          gradient="from-[#00C9FF] to-[#92FE9D]"
-        />
-        <PlaceholderChartCard
-          icon={Activity}
-          title="Flujo de Caja"
-          subtitle="Entradas vs salidas por día"
-          gradient="from-[#FF9F43] to-[#FF6B6B]"
-        />
-      </div>
+      {reportsData ? (
+        <ReportsCharts data={reportsData} />
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No se pudieron cargar los gráficos del dashboard en este momento.
+        </p>
+      )}
     </div>
-  )
-}
-
-function PlaceholderChartCard({
-  icon: Icon,
-  title,
-  subtitle,
-  gradient,
-}: {
-  icon: React.ElementType
-  title: string
-  subtitle: string
-  gradient: string
-}) {
-  return (
-    <Card className="border-primary/20 shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-3 text-lg">
-          <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
-            <Icon className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <div>{title}</div>
-            <div className="text-sm font-normal text-muted-foreground">{subtitle}</div>
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground">
-          <BarChart3 className="h-10 w-10 mb-3 opacity-30" />
-          <p className="text-sm font-medium">Gráficos disponibles próximamente</p>
-          <p className="text-xs mt-1">Estamos construyendo los reportes visuales</p>
-        </div>
-      </CardContent>
-    </Card>
   )
 }

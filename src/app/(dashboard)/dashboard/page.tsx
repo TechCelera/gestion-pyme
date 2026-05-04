@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { getDashboardStats } from '@/lib/actions/transactions'
+import { getDashboardStats, getReportsData } from '@/lib/actions/transactions'
 import { redirect } from 'next/navigation'
 import { DemoDashboard } from '@/components/dashboard/demo-dashboard'
 import { RealDashboard } from '@/components/dashboard/real-dashboard'
@@ -26,23 +26,34 @@ export default async function DashboardPage() {
   }
 
   // 3. Fetch stats (only data fetch inside try/catch)
-  let result: Awaited<ReturnType<typeof getDashboardStats>>
+  let statsResult: Awaited<ReturnType<typeof getDashboardStats>>
+  let reportsResult: Awaited<ReturnType<typeof getReportsData>>
   try {
-    result = await getDashboardStats()
+    const [stats, reports] = await Promise.all([
+      getDashboardStats(),
+      getReportsData(),
+    ])
+    statsResult = stats
+    reportsResult = reports
   } catch (error) {
     // CRITICAL: Never let the Server Component crash
     console.error('DashboardPage uncaught error:', error)
     return <DashboardError message="Error al cargar el dashboard. Intenta recargar la página." />
   }
 
-  if (!result.success || !result.data) {
-    return <DashboardError message={result.error || 'No se pudieron cargar las estadísticas'} />
+  if (!statsResult.success || !statsResult.data) {
+    return <DashboardError message={statsResult.error || 'No se pudieron cargar las estadísticas'} />
   }
 
   // 4. Branch based on data
-  if (result.data.totalTransactions === 0) {
+  if (statsResult.data.totalTransactions === 0) {
     return <EmptyState />
   }
 
-  return <RealDashboard stats={result.data} />
+  return (
+    <RealDashboard
+      stats={statsResult.data}
+      reportsData={reportsResult.success ? reportsResult.data : null}
+    />
+  )
 }

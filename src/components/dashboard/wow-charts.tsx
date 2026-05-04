@@ -370,14 +370,14 @@ function KPICard({ title, value, change, icon: Icon, color }: KPICardProps) {
     <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
       <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-5 group-hover:opacity-10 transition-opacity`} />
       <CardContent className="p-6 relative">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
             <p className="text-sm text-muted-foreground">{title}</p>
             <p className="text-2xl font-bold font-mono mt-1">{value}</p>
             <p className="text-xs text-success mt-1">{change}</p>
           </div>
-          <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg`}>
-            <Icon className="h-6 w-6 text-white" />
+          <div className={`h-14 w-14 shrink-0 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg ring-1 ring-white/20`}>
+            <Icon className="h-7 w-7 text-white" />
           </div>
         </div>
       </CardContent>
