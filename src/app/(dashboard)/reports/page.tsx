@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertCircle, BarChart3, TrendingUp } from 'lucide-react'
 import { getReportsData } from '@/lib/actions/transactions'
+import { ReportsCharts } from '@/components/reports/reports-charts'
+import { PageHeader } from '@/components/ui/page-header'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', {
@@ -23,12 +25,10 @@ export default async function ReportsPage() {
   if (!result.success || !result.data) {
     return (
       <div className="p-4 md:p-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Reportes</h1>
-          <p className="text-sm text-muted-foreground">
-            Genera y visualiza reportes financieros
-          </p>
-        </div>
+        <PageHeader
+          title="Reportes"
+          description="Genera y visualiza reportes financieros"
+        />
         <Card className="border-red-200 bg-red-50">
           <CardContent className="flex items-center gap-3 py-6">
             <AlertCircle className="h-5 w-5 text-red-600" />
@@ -46,12 +46,10 @@ export default async function ReportsPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Reportes</h1>
-        <p className="text-sm text-muted-foreground">
-          Estado de resultados y flujo de caja de {incomeStatement.periodLabel}
-        </p>
-      </div>
+      <PageHeader
+        title="Reportes"
+        description={`Estado de resultados y flujo de caja de ${incomeStatement.periodLabel}`}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -183,6 +181,8 @@ export default async function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ReportsCharts data={result.data} />
     </div>
   )
 }

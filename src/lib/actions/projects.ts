@@ -164,3 +164,63 @@ export async function createProject(input: {
     return { success: false, error: 'Error desconocido' }
   }
 }
+
+export async function updateProject(
+  id: string,
+  input: {
+    name: string
+    parentProjectId?: string | null
+    budgetAmount: number
+    startDate?: string | null
+    endDate?: string | null
+    status?: Project['status']
+  }
+): Promise<ActionResult> {
+  try {
+    const [companyId, userId] = await Promise.all([getCurrentUserCompany(), getCurrentUserId()])
+    if (!companyId || !userId) return { success: false, error: 'Usuario no autenticado o sin empresa' }
+
+    if (!input.name.trim()) {
+      return { success: false, error: 'El nombre del proyecto es requerido' }
+    }
+
+    if (input.parentProjectId && input.parentProjectId === id) {
+      return { success: false, error: 'Un proyecto no puede ser su propio padre' }
+    }
+
+    const supabase = await createClient()
+
+    const { data: current, error: currentError } = await supabase
+      .from('projects')
+      .select('id, parent_project_id')
+      .eq('id', id)
+      .eq('company_id', companyId)
+      .is('deleted_at', null)
+      .single()
+
+    if (currentError || !current) {
+      return { success: false, error: currentError?.message ?? 'Proyecto no encontrado' }
+    }
+
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        name: input.name.trim(),
+        parent_project_id: input.parentProjectId ?? null,
+        budget_amount: input.budgetAmount,
+        start_date: input.startDate ?? null,
+        end_date: input.endDate ?? null,
+        status: input.status ?? 'active',
+        updated_by: userId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('company_id', companyId)
+
+    if (error) return { success: false, error: error.message }
+    return { success: true }
+  } catch (error) {
+    if (error instanceof Error) return { success: false, error: error.message }
+    return { success: false, error: 'Error desconocido' }
+  }
+}

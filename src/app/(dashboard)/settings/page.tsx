@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Pencil, Trash2, Wallet, Tag, Info, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Tag, Info, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/ui/page-header'
 import {
   Table,
   TableBody,
@@ -15,54 +16,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { getAccounts, deleteAccount } from '@/lib/actions/accounts'
 import { getCategories, deleteCategory } from '@/lib/actions/categories'
-import { ACCOUNT_TYPE_LABELS, CATEGORY_TYPE_LABELS } from '@/lib/constants'
+import { CATEGORY_TYPE_LABELS } from '@/lib/constants'
 import { CATEGORY_TYPES } from '@/lib/constants'
-import { DEMO_ACCOUNTS, DEMO_CATEGORIES } from '@/lib/demo-data'
+import { DEMO_CATEGORIES } from '@/lib/demo-data'
 import { useAuthStore } from '@/stores/auth-store'
-import { AccountForm } from '@/components/settings/account-form'
 import { CategoryForm } from '@/components/settings/category-form'
 
-import type { Account } from '@/lib/actions/accounts'
 import type { Category } from '@/lib/actions/categories'
 
-// Currency formatter
-function formatBalance(amount: number, currency: string): string {
-  try {
-    const locale =
-      currency === 'ARS' ? 'es-AR' :
-      currency === 'COP' ? 'es-CO' :
-      currency === 'EUR' ? 'es-ES' :
-      'en-US'
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: currency === 'COP' ? 0 : 2,
-      maximumFractionDigits: currency === 'COP' ? 0 : 2,
-    }).format(amount)
-  } catch {
-    return `${currency} ${amount.toLocaleString()}`
-  }
-}
-
 export default function SettingsPage() {
-  // State
-  const [activeTab, setActiveTab] = useState<'accounts' | 'categories'>('accounts')
-  const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(false)
-
-  // Account form state
-  const [isAccountFormOpen, setIsAccountFormOpen] = useState(false)
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
 
   // Category form state
   const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false)
@@ -76,21 +47,13 @@ export default function SettingsPage() {
   // Fetch data
   const fetchData = useCallback(async () => {
     if (isDemoMode) {
-      setAccounts(DEMO_ACCOUNTS.map(a => ({ ...a })))
       setCategories(DEMO_CATEGORIES.map(c => ({ ...c })))
       return
     }
 
     setIsLoading(true)
     try {
-      const [accountsResult, categoriesResult] = await Promise.all([
-        getAccounts(),
-        getCategories(),
-      ])
-
-      if (accountsResult.success && accountsResult.data) {
-        setAccounts(accountsResult.data)
-      }
+      const categoriesResult = await getCategories()
       if (categoriesResult.success && categoriesResult.data) {
         setCategories(categoriesResult.data)
       }
@@ -105,37 +68,6 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
-
-  // Account handlers
-  const handleOpenAccountForm = (account?: Account) => {
-    setEditingAccount(account ?? null)
-    setIsAccountFormOpen(true)
-  }
-
-  const handleCloseAccountForm = () => {
-    setIsAccountFormOpen(false)
-    setEditingAccount(null)
-  }
-
-  const handleAccountSaved = () => {
-    fetchData()
-  }
-
-  const handleDeleteAccount = async (account: Account) => {
-    if (isDemoMode) {
-      setAccounts(prev => prev.filter(a => a.id !== account.id))
-      toast.success('Cuenta eliminada (demo)')
-      return
-    }
-
-    const result = await deleteAccount(account.id)
-    if (result.success) {
-      toast.success('Cuenta eliminada exitosamente')
-      fetchData()
-    } else {
-      toast.error(result.error || 'Error al eliminar la cuenta')
-    }
-  }
 
   // Category handlers
   const handleOpenCategoryForm = (category?: Category) => {
@@ -200,112 +132,11 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Configuración</h1>
-        <p className="text-sm text-muted-foreground">
-          Administra las cuentas y categorías de tu empresa
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'accounts' | 'categories')}>
-        <TabsList>
-          <TabsTrigger value="accounts">
-            <Wallet className="mr-2 h-4 w-4" />
-            Cuentas
-          </TabsTrigger>
-          <TabsTrigger value="categories">
-            <Tag className="mr-2 h-4 w-4" />
-            Categorías
-          </TabsTrigger>
-        </TabsList>
-
-        {/* ==================== ACCOUNTS TAB ==================== */}
-        <TabsContent value="accounts">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Cuentas</CardTitle>
-              <Button
-                onClick={() => handleOpenAccountForm()}
-                size="sm"
-                className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
-              >
-                <Plus className="mr-1 h-4 w-4" />
-                Nueva Cuenta
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : accounts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                  <Wallet className="h-12 w-12 mb-3 opacity-30" />
-                  <p className="text-sm">No hay cuentas registradas</p>
-                  <p className="text-xs mt-1">Crea tu primera cuenta para comenzar</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Moneda</TableHead>
-                      <TableHead className="text-right">Saldo</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {accounts.map((account) => (
-                      <TableRow key={account.id}>
-                        <TableCell className="font-medium">{account.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {ACCOUNT_TYPE_LABELS[account.type] || account.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{account.currency}</TableCell>
-                        <TableCell className="text-right font-mono text-sm">
-                          {formatBalance(account.balance, account.currency)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
-                                <Button variant="ghost" size="icon-sm" />
-                              }
-                            >
-                              ···
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleOpenAccountForm(account)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => handleDeleteAccount(account)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ==================== CATEGORIES TAB ==================== */}
-        <TabsContent value="categories">
-          <Card>
+      <PageHeader
+        title="Configuración"
+        description="Administra las categorías de tu empresa"
+      />
+      <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Categorías</CardTitle>
               <div className="flex items-center gap-2">
@@ -427,16 +258,6 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Account Form Sheet */}
-      <AccountForm
-        isOpen={isAccountFormOpen}
-        onClose={handleCloseAccountForm}
-        onSaved={handleAccountSaved}
-        account={editingAccount}
-      />
 
       {/* Category Form Sheet */}
       <CategoryForm
