@@ -1,5 +1,21 @@
 # SPEC-transactions-crud.md
 
+## Nota de Vigencia (2026-05-04)
+
+Este documento fue la especificacion base del CRUD de transacciones y sigue siendo referencia historica.
+Sin embargo, el contexto funcional vigente evoluciono a un modelo de operaciones con:
+
+- caja unica por empresa,
+- `fund_owner` para diferenciar fondos de empresa vs anticipo de cliente,
+- `project_id` para alcance general/proyecto/subproyecto,
+- control de presupuesto/plazo con `requires_budget_approval`,
+- aprobacion adicional antes de `posted` cuando hay sobrepresupuesto.
+
+Fuente de verdad actual:
+
+- `docs/DECISIONES.md`
+- `supabase/migrations/20260502113000_projects_budget_and_operation_scope.sql`
+
 ## Especificación Técnica: CRUD de Transacciones
 
 **Proyecto**: Gestion PYME Pro  

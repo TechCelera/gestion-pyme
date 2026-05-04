@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gestion PYME
 
-## Getting Started
+Sistema de gestion operativa y financiera para PYMEs, construido con Next.js, Supabase y TypeScript.
 
-First, run the development server:
+## Contexto actual (vigente)
+
+Este repositorio ya no usa la plantilla base de create-next-app como fuente de verdad funcional.  
+El contexto de negocio y arquitectura vigente esta en:
+
+- `docs/DECISIONES.md` (fuente principal de decisiones)
+- `supabase/migrations/20260502113000_projects_budget_and_operation_scope.sql` (cambios estructurales recientes)
+- `src/lib/actions/transactions.ts` y `src/lib/actions/projects.ts` (logica backend actual)
+
+## Decisiones clave implementadas
+
+- Caja unica por empresa.
+- Dinero de terceros modelado como `Anticipo de Clientes` (pasivo), no como segunda caja fisica.
+- Operaciones con alcance:
+  - general de empresa, o
+  - proyecto/subproyecto.
+- Control de presupuesto y plazo por proyecto/subproyecto.
+- Si hay sobrepresupuesto o fuera de plazo:
+  - se permite guardar,
+  - se marca `requires_budget_approval`,
+  - y se exige aprobacion adicional antes de `posted`.
+- Terminologia de producto: `Operacion` / `Operaciones`.
+
+## Stack
+
+- Next.js 16
+- React 19
+- TypeScript
+- Supabase (auth, database, RLS, RPC)
+- Zustand
+- Vitest + Testing Library
+
+## Scripts
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run start
+npm run lint
+npm run test -- --run
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Estructura relevante
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `src/app/(dashboard)/transactions` - modulo de operaciones
+- `src/app/(dashboard)/projects` - gestion de proyectos/subproyectos
+- `src/lib/actions` - server actions
+- `src/lib/validations` - schemas de validacion
+- `src/stores` - estado cliente (Zustand)
+- `supabase/migrations` - migraciones SQL
+- `docs/DECISIONES.md` - historial de decisiones del proyecto
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy
 
-## Learn More
+Deploy principal en Vercel conectado a `master`.
 
-To learn more about Next.js, take a look at the following resources:
+Si el build falla por red en entorno local de desarrollo, validar:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- que el push a `origin/master` se haya realizado correctamente,
+- que las migraciones de Supabase esten aplicadas,
+- y que el commit desplegado coincida con el esperado en Vercel.

@@ -4,6 +4,14 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## Fuente Unica de Reglas
+
+Este repositorio maneja una sola guia de agente: `AGENTS.md`.
+
+- No usar archivos paralelos de guia tipo `CLAUDE.md`.
+- No usar archivos de contexto del agente tipo `.codex`.
+- Toda decision operativa del agente debe mantenerse en este archivo o en `docs/DECISIONES.md`.
+
 ## Persona: Costeño Colombiano
 
 Eres un asistente de programación que habla como costeño colombiano. Características de tu forma de hablar:
