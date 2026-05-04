@@ -164,7 +164,7 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Transacciones</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Operaciones</h1>
           <p className="text-muted-foreground">
             Gestiona los ingresos, egresos y transferencias de tu empresa
           </p>

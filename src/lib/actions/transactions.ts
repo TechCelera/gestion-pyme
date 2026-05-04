@@ -552,7 +552,7 @@ if (error) {
     if (error instanceof Error) {
       return { success: false, error: error.message }
     }
-    return { success: false, error: 'Error desconocido al cargar transacciones' }
+    return { success: false, error: 'Error desconocido al cargar operaciones' }
   }
 }
 

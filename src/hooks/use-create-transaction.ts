@@ -14,10 +14,10 @@ export function useCreateTransaction() {
       const result = await addTransaction(data)
       
       if (result) {
-        toast.success('Transacción creada exitosamente')
+        toast.success('Operación creada exitosamente')
         return true
       } else {
-        toast.error('Error al crear la transacción')
+        toast.error('Error al crear la operación')
         return false
       }
     } catch (error) {

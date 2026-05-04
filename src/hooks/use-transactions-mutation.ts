@@ -14,10 +14,10 @@ export function useUpdateTransaction() {
       const result = await editTransaction(id, data)
       
       if (result) {
-        toast.success('Transacción actualizada exitosamente')
+        toast.success('Operación actualizada exitosamente')
         return true
       } else {
-        toast.error('Error al actualizar la transacción')
+        toast.error('Error al actualizar la operación')
         return false
       }
     } catch (error) {
@@ -45,10 +45,10 @@ export function useTransactionStatus() {
       const result = await changeStatus(id, 'approved')
       
       if (result) {
-        toast.success('Transacción aprobada')
+        toast.success('Operación aprobada')
         return true
       } else {
-        toast.error('Error al aprobar la transacción')
+        toast.error('Error al aprobar la operación')
         return false
       }
     } catch (error) {
@@ -66,10 +66,10 @@ export function useTransactionStatus() {
       const result = await changeStatus(id, 'rejected', reason)
       
       if (result) {
-        toast.success('Transacción rechazada')
+        toast.success('Operación rechazada')
         return true
       } else {
-        toast.error('Error al rechazar la transacción')
+        toast.error('Error al rechazar la operación')
         return false
       }
     } catch (error) {
@@ -87,10 +87,10 @@ export function useTransactionStatus() {
       const result = await changeStatus(id, 'posted')
       
       if (result) {
-        toast.success('Transacción contabilizada')
+        toast.success('Operación contabilizada')
         return true
       } else {
-        toast.error('Error al contabilizar la transacción')
+        toast.error('Error al contabilizar la operación')
         return false
       }
     } catch (error) {
@@ -108,7 +108,7 @@ export function useTransactionStatus() {
       const result = await changeStatus(id, 'pending')
       
       if (result) {
-        toast.success('Transacción enviada a aprobación')
+        toast.success('Operación enviada a aprobación')
         return true
       } else {
         toast.error('Error al enviar a aprobación')
@@ -142,10 +142,10 @@ export function useDeleteTransaction() {
       const result = await removeTransaction(id)
       
       if (result) {
-        toast.success('Transacción eliminada')
+        toast.success('Operación eliminada')
         return true
       } else {
-        toast.error('Error al eliminar la transacción')
+        toast.error('Error al eliminar la operación')
         return false
       }
     } catch (error) {

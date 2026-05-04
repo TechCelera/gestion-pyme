@@ -205,7 +205,7 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
       .is('deleted_at', null)
 
     if (count && count > 0) {
-      return { success: false, error: 'No se puede eliminar una categoría con transacciones asociadas' }
+      return { success: false, error: 'No se puede eliminar una categoría con operaciones asociadas' }
     }
 
     const { error } = await supabase

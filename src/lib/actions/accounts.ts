@@ -252,7 +252,7 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
       .is('deleted_at', null)
 
     if (count && count > 0) {
-      return { success: false, error: 'No se puede eliminar una cuenta con transacciones asociadas' }
+      return { success: false, error: 'No se puede eliminar una cuenta con operaciones asociadas' }
     }
 
     const { error } = await supabase

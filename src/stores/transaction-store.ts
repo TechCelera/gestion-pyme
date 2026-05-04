@@ -147,7 +147,7 @@ export const useTransactionStore = create<TransactionState>()(
             })
           } else {
             set({
-              error: result.error ?? 'Error al cargar transacciones',
+              error: result.error ?? 'Error al cargar operaciones',
               isLoading: false,
             })
           }
@@ -181,7 +181,7 @@ export const useTransactionStore = create<TransactionState>()(
             return true
           } else {
             set({
-              error: result.error ?? 'Error al crear transacción',
+              error: result.error ?? 'Error al crear operación',
               isLoading: false,
             })
             return false
@@ -217,7 +217,7 @@ export const useTransactionStore = create<TransactionState>()(
             return true
           } else {
             set({
-              error: result.error ?? 'Error al actualizar transacción',
+              error: result.error ?? 'Error al actualizar operación',
               isLoading: false,
             })
             return false
@@ -289,7 +289,7 @@ export const useTransactionStore = create<TransactionState>()(
             return true
           } else {
             set({
-              error: result.error ?? 'Error al eliminar transacción',
+              error: result.error ?? 'Error al eliminar operación',
               isLoading: false,
             })
             return false

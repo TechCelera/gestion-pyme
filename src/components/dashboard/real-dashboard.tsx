@@ -47,7 +47,7 @@ export function RealDashboard({ stats }: RealDashboardProps) {
           gradient="from-[#00C9FF] to-[#92FE9D]"
         />
         <KpiCard
-          title="Transacciones"
+          title="Operaciones"
           value={String(stats.totalTransactions)}
           icon={Wallet}
           gradient="from-[#FF9F43] to-[#FF6B6B]"

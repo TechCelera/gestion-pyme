@@ -90,7 +90,7 @@ export function TransactionTable({
   if (transactions.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center rounded-xl border bg-card">
-        <p className="text-muted-foreground">No hay transacciones para mostrar</p>
+        <p className="text-muted-foreground">No hay operaciones para mostrar</p>
       </div>
     )
   }
