@@ -76,7 +76,7 @@ export default function TransactionsPage() {
         toast.error('Error al actualizar la operación')
       }
     } else {
-      const success = await addTransaction(data)
+      const success = await addTransaction(data, asDraft)
       if (success) {
         toast.success(
           asDraft
@@ -107,6 +107,15 @@ export default function TransactionsPage() {
       toast.success('Operación aprobada')
     } else {
       toast.error('Error al aprobar la operación')
+    }
+  }
+
+  const handleSendToApproval = async (id: string) => {
+    const success = await changeStatus(id, 'pending')
+    if (success) {
+      toast.success('Operación enviada a aprobación')
+    } else {
+      toast.error('Error al enviar la operación a aprobación')
     }
   }
 
@@ -233,6 +242,7 @@ export default function TransactionsPage() {
         transactions={transactions}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onSendToApproval={handleSendToApproval}
         onApprove={handleApprove}
         onPost={handlePost}
         isLoading={isLoading}

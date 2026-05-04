@@ -11,7 +11,7 @@ export function useCreateTransaction() {
     setIsLoading(true)
     
     try {
-      const result = await addTransaction(data)
+      const result = await addTransaction(data, !sendToApproval)
       
       if (result) {
         toast.success('Operación creada exitosamente')

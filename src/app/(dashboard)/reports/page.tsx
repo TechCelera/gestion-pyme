@@ -109,28 +109,67 @@ export default async function ReportsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 text-sm rounded-lg border border-green-200/70 bg-green-50/60 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-green-700">
+                Real contabilizado (posted)
+              </p>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Entradas de efectivo</span>
-                <span className="font-medium text-green-600">{formatCurrency(cashFlow.cashIn)}</span>
+                <span className="font-medium text-green-600">{formatCurrency(cashFlow.cashInReal)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Salidas de efectivo</span>
-                <span className="font-medium text-red-600">{formatCurrency(cashFlow.cashOut)}</span>
+                <span className="font-medium text-red-600">{formatCurrency(cashFlow.cashOutReal)}</span>
               </div>
               <div className="flex items-center justify-between border-t pt-2">
                 <span className="font-medium">Flujo Neto</span>
-                <span className={`font-semibold ${cashFlow.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(cashFlow.netCashFlow)}
+                <span className={`font-semibold ${cashFlow.netCashFlowReal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(cashFlow.netCashFlowReal)}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm rounded-lg border border-blue-200/70 bg-blue-50/60 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                Proyectado (posted + approved + pending)
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Entradas de efectivo</span>
+                <span className="font-medium text-green-600">{formatCurrency(cashFlow.cashInProjected)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Salidas de efectivo</span>
+                <span className="font-medium text-red-600">{formatCurrency(cashFlow.cashOutProjected)}</span>
+              </div>
+              <div className="flex items-center justify-between border-t pt-2">
+                <span className="font-medium">Flujo Neto</span>
+                <span className={`font-semibold ${cashFlow.netCashFlowProjected >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(cashFlow.netCashFlowProjected)}
                 </span>
               </div>
             </div>
 
             <div className="pt-2">
-              <p className="text-sm font-medium mb-2">Tendencia últimos 6 meses</p>
+              <p className="text-sm font-medium mb-2">Tendencia real últimos 6 meses</p>
               <div className="space-y-1.5">
                 {cashFlow.monthlyTrend.map((item) => (
                   <div key={item.month} className="grid grid-cols-4 gap-2 text-xs">
+                    <span className="text-muted-foreground">{formatMonth(item.month)}</span>
+                    <span className="text-green-600 text-right">{formatCurrency(item.inflow)}</span>
+                    <span className="text-red-600 text-right">{formatCurrency(item.outflow)}</span>
+                    <span className={`text-right font-medium ${item.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(item.net)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <p className="text-sm font-medium mb-2">Tendencia proyectada últimos 6 meses</p>
+              <div className="space-y-1.5">
+                {cashFlow.monthlyTrendProjected.map((item) => (
+                  <div key={`projected-${item.month}`} className="grid grid-cols-4 gap-2 text-xs">
                     <span className="text-muted-foreground">{formatMonth(item.month)}</span>
                     <span className="text-green-600 text-right">{formatCurrency(item.inflow)}</span>
                     <span className="text-red-600 text-right">{formatCurrency(item.outflow)}</span>

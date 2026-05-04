@@ -343,32 +343,11 @@ export async function updateTransaction(
       updatePayload.updated_by = userId
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('transactions')
       .update(updatePayload)
       .eq('id', id)
       .eq('status', 'draft') // Solo se puede editar si está en draft
-      .select(`
-        id,
-        account_id,
-        accounts(name),
-        category_id,
-        categories(name),
-        type,
-        status,
-        amount,
-        currency,
-        date,
-        description,
-        created_at,
-        created_by,
-        users(full_name),
-        project_id,
-        projects(name),
-        fund_owner,
-        requires_budget_approval
-      `)
-      .single()
 
     if (error) {
       console.error('Error updating transaction:', error)
@@ -376,7 +355,7 @@ export async function updateTransaction(
     }
 
     // revalidateTag('transactions')
-    return { success: true, data: mapTransaction(data) }
+    return { success: true }
   } catch (error) {
     if (error instanceof Error) {
       return { success: false, error: error.message }
@@ -667,10 +646,19 @@ export interface IncomeStatementReport {
 
 export interface CashFlowReport {
   periodLabel: string
-  cashIn: number
-  cashOut: number
-  netCashFlow: number
+  cashInReal: number
+  cashOutReal: number
+  netCashFlowReal: number
+  cashInProjected: number
+  cashOutProjected: number
+  netCashFlowProjected: number
   monthlyTrend: Array<{
+    month: string
+    inflow: number
+    outflow: number
+    net: number
+  }>
+  monthlyTrendProjected: Array<{
     month: string
     inflow: number
     outflow: number
@@ -704,17 +692,15 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
     const [periodResult, trendResult] = await Promise.all([
       supabase
         .from('transactions')
-        .select('type, amount, category_id, categories(name)')
+        .select('type, amount, status, category_id, categories(name)')
         .eq('company_id', companyId)
-        .eq('status', 'posted')
         .is('deleted_at', null)
         .gte('date', start.toISOString().split('T')[0])
         .lte('date', end.toISOString().split('T')[0]),
       supabase
         .from('transactions')
-        .select('type, amount, date')
+        .select('type, amount, status, date')
         .eq('company_id', companyId)
-        .eq('status', 'posted')
         .is('deleted_at', null)
         .gte(
           'date',
@@ -741,6 +727,8 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
     for (const row of periodRows) {
       const type = row.type as string
       const amount = Number(row.amount ?? 0)
+      const status = row.status as string
+      if (status !== 'posted') continue
       if (type === 'income') {
         totalIncome += amount
       }
@@ -761,33 +749,61 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 8)
 
-    const monthMap = new Map<string, { inflow: number; outflow: number }>()
+    const monthMapReal = new Map<string, { inflow: number; outflow: number }>()
+    const monthMapProjected = new Map<string, { inflow: number; outflow: number }>()
     for (let i = 5; i >= 0; i -= 1) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      monthMap.set(key, { inflow: 0, outflow: 0 })
+      monthMapReal.set(key, { inflow: 0, outflow: 0 })
+      monthMapProjected.set(key, { inflow: 0, outflow: 0 })
     }
 
     for (const row of trendRows) {
       const date = row.date as string
       const type = row.type as string
+      const status = row.status as string
       const amount = Number(row.amount ?? 0)
       if (!date) continue
       const monthKey = date.slice(0, 7)
-      const current = monthMap.get(monthKey)
-      if (!current) continue
-      if (type === 'income') current.inflow += amount
-      if (type === 'expense') current.outflow += amount
+      const currentReal = monthMapReal.get(monthKey)
+      const currentProjected = monthMapProjected.get(monthKey)
+      if (!currentReal || !currentProjected) continue
+
+      const isIncome = type === 'income'
+      const isExpense = type === 'expense'
+      if (!isIncome && !isExpense) continue
+
+      if (status === 'posted') {
+        if (isIncome) currentReal.inflow += amount
+        if (isExpense) currentReal.outflow += amount
+      }
+
+      if (status === 'posted' || status === 'approved' || status === 'pending') {
+        if (isIncome) currentProjected.inflow += amount
+        if (isExpense) currentProjected.outflow += amount
+      }
     }
 
-    const monthlyTrend = Array.from(monthMap.entries()).map(([month, values]) => ({
+    const monthlyTrend = Array.from(monthMapReal.entries()).map(([month, values]) => ({
+      month,
+      inflow: values.inflow,
+      outflow: values.outflow,
+      net: values.inflow - values.outflow,
+    }))
+    const monthlyTrendProjected = Array.from(monthMapProjected.entries()).map(([month, values]) => ({
       month,
       inflow: values.inflow,
       outflow: values.outflow,
       net: values.inflow - values.outflow,
     }))
 
-    const currentMonthTrend = monthlyTrend[monthlyTrend.length - 1] ?? {
+    const currentMonthTrendReal = monthlyTrend[monthlyTrend.length - 1] ?? {
+      month: '',
+      inflow: 0,
+      outflow: 0,
+      net: 0,
+    }
+    const currentMonthTrendProjected = monthlyTrendProjected[monthlyTrendProjected.length - 1] ?? {
       month: '',
       inflow: 0,
       outflow: 0,
@@ -807,10 +823,14 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
         },
         cashFlow: {
           periodLabel: start.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }),
-          cashIn: currentMonthTrend.inflow,
-          cashOut: currentMonthTrend.outflow,
-          netCashFlow: currentMonthTrend.net,
+          cashInReal: currentMonthTrendReal.inflow,
+          cashOutReal: currentMonthTrendReal.outflow,
+          netCashFlowReal: currentMonthTrendReal.net,
+          cashInProjected: currentMonthTrendProjected.inflow,
+          cashOutProjected: currentMonthTrendProjected.outflow,
+          netCashFlowProjected: currentMonthTrendProjected.net,
           monthlyTrend,
+          monthlyTrendProjected,
         },
       },
     }

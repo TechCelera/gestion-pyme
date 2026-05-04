@@ -32,6 +32,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
@@ -271,7 +272,10 @@ export function TransactionForm({
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col">
+      <SheetContent
+        side="right"
+        className="data-[side=right]:w-full data-[side=right]:sm:max-w-md data-[side=right]:lg:max-w-lg p-0 flex flex-col"
+      >
         {/* Header */}
         <SheetHeader className="px-6 py-4 border-b space-y-3">
           <div className="flex items-center gap-3">
@@ -339,7 +343,7 @@ export function TransactionForm({
                 <span>Información General</span>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="date">Fecha</Label>
                   <Input
@@ -358,7 +362,11 @@ export function TransactionForm({
                     disabled={isLoading}
                   >
                     <SelectTrigger id="method" className="w-full">
-                      {methodLabel || <span className="text-muted-foreground">Seleccione método</span>}
+                      <SelectValue>
+                        <span className="block truncate" title={methodLabel}>
+                          {methodLabel || 'Seleccione método'}
+                        </span>
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {methods.map((m) => (
@@ -371,7 +379,7 @@ export function TransactionForm({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="scope">Ámbito</Label>
                   <Select
@@ -384,7 +392,11 @@ export function TransactionForm({
                     disabled={isLoading}
                   >
                     <SelectTrigger id="scope" className="w-full">
-                      {operationScope === 'general' ? 'General empresa' : 'Proyecto/Subproyecto'}
+                      <SelectValue>
+                        <span className="block truncate">
+                          {operationScope === 'general' ? 'General empresa' : 'Proyecto/Subproyecto'}
+                        </span>
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="general">General empresa</SelectItem>
@@ -400,7 +412,11 @@ export function TransactionForm({
                     disabled={isLoading}
                   >
                     <SelectTrigger id="fundOwner" className="w-full">
-                      {fundOwner === 'company' ? 'Fondos empresa' : 'Anticipo cliente'}
+                      <SelectValue>
+                        <span className="block truncate">
+                          {fundOwner === 'company' ? 'Fondos empresa' : 'Anticipo cliente'}
+                        </span>
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="company">Fondos empresa</SelectItem>
@@ -419,7 +435,11 @@ export function TransactionForm({
                     disabled={isLoading || isLoadingData}
                   >
                     <SelectTrigger id="project" className="w-full">
-                      {projectLabel || <span className="text-muted-foreground">Seleccione proyecto</span>}
+                      <SelectValue>
+                        <span className="block truncate" title={projectLabel}>
+                          {projectLabel || 'Seleccione proyecto'}
+                        </span>
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {flatProjects.map((project) => (
@@ -460,7 +480,7 @@ export function TransactionForm({
                   </Link>
                 </div>
               ) : type === 'transfer' ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="sourceAccount">Cuenta Origen</Label>
                     <Select
@@ -469,7 +489,11 @@ export function TransactionForm({
                       disabled={isLoading || isLoadingData}
                     >
                       <SelectTrigger id="sourceAccount" className="w-full">
-                        {sourceAccountLabel || <span className="text-muted-foreground">{isLoadingData ? 'Cargando...' : 'Seleccione cuenta'}</span>}
+                        <SelectValue>
+                          <span className="block truncate" title={sourceAccountLabel}>
+                            {sourceAccountLabel || (isLoadingData ? 'Cargando...' : 'Seleccione cuenta')}
+                          </span>
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {accounts.map((account) => (
@@ -488,7 +512,11 @@ export function TransactionForm({
                       disabled={isLoading || isLoadingData}
                     >
                       <SelectTrigger id="destAccount" className="w-full">
-                        {destAccountLabel || <span className="text-muted-foreground">{isLoadingData ? 'Cargando...' : 'Seleccione cuenta'}</span>}
+                        <SelectValue>
+                          <span className="block truncate" title={destAccountLabel}>
+                            {destAccountLabel || (isLoadingData ? 'Cargando...' : 'Seleccione cuenta')}
+                          </span>
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {accounts.map((account) => (
@@ -511,7 +539,11 @@ export function TransactionForm({
                     disabled={isLoading || isLoadingData}
                   >
                     <SelectTrigger id="account" className="w-full">
-                      {accountLabel || <span className="text-muted-foreground">{isLoadingData ? 'Cargando...' : 'Seleccione cuenta'}</span>}
+                      <SelectValue>
+                        <span className="block truncate" title={accountLabel}>
+                          {accountLabel || (isLoadingData ? 'Cargando...' : 'Seleccione cuenta')}
+                        </span>
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {accounts.map((account) => (
@@ -562,7 +594,11 @@ export function TransactionForm({
                         disabled={isLoading || isLoadingData}
                       >
                         <SelectTrigger id="category" className="w-full">
-                          {categoryLabel || <span className="text-muted-foreground">{isLoadingData ? 'Cargando...' : 'Seleccione categoría'}</span>}
+                          <SelectValue>
+                            <span className="block truncate" title={categoryLabel}>
+                              {categoryLabel || (isLoadingData ? 'Cargando...' : 'Seleccione categoría')}
+                            </span>
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {filteredCategories.map((cat) => (
@@ -594,7 +630,11 @@ export function TransactionForm({
                       disabled={isLoading}
                     >
                       <SelectTrigger className="w-full">
-                        {adjustmentReasonLabel || <span className="text-muted-foreground">Seleccione motivo</span>}
+                        <SelectValue>
+                          <span className="block truncate" title={adjustmentReasonLabel}>
+                            {adjustmentReasonLabel || 'Seleccione motivo'}
+                          </span>
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="reconciliation">Conciliación</SelectItem>
@@ -639,10 +679,16 @@ export function TransactionForm({
                     disabled={isLoading}
                   >
                     <SelectTrigger id="currency" className="w-full">
-                      {(() => {
-                        const c = currencies.find(cur => cur.value === currency)
-                        return c ? <>{c.flag} {c.value}</> : currency
-                      })()}
+                      <SelectValue>
+                        {(() => {
+                          const c = currencies.find(cur => cur.value === currency)
+                          return c ? (
+                            <span className="block truncate">{c.flag} {c.value}</span>
+                          ) : (
+                            <span className="block truncate">{currency}</span>
+                          )
+                        })()}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {currencies.map((c) => (
@@ -679,12 +725,12 @@ export function TransactionForm({
         </div>
 
         {/* Footer */}
-        <SheetFooter className="border-t bg-muted/50 px-6 py-4 flex-col-reverse sm:flex-row gap-2 shrink-0 flex-wrap">
+        <SheetFooter className="border-t bg-muted/50 px-6 py-4 shrink-0 flex-col-reverse gap-2 md:grid md:grid-cols-3 md:items-center md:gap-3">
           <Button 
             variant="outline" 
             onClick={handleClose} 
             disabled={isLoading}
-            className="w-full sm:w-auto"
+            className="w-full"
           >
             Cancelar
           </Button>
@@ -693,7 +739,7 @@ export function TransactionForm({
               variant="secondary"
               onClick={() => handleSubmit(true)}
               disabled={isLoading || (!isDemoMode && accounts.length === 0)}
-              className="w-full sm:w-auto"
+              className="w-full"
             >
               Guardar Borrador
             </Button>
@@ -701,7 +747,7 @@ export function TransactionForm({
           <Button
             onClick={() => handleSubmit(false)}
             disabled={isLoading || (!isDemoMode && accounts.length === 0)}
-            className="bg-[#7B68EE] hover:bg-[#7B68EE]/90 w-full sm:w-auto"
+            className="bg-[#7B68EE] hover:bg-[#7B68EE]/90 w-full"
           >
             {isLoading ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Enviar Aprobación'}
           </Button>

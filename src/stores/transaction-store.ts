@@ -37,7 +37,7 @@ interface TransactionState {
   
   // Async Actions
   fetchTransactions: () => Promise<void>
-  addTransaction: (data: CreateTransactionInput) => Promise<boolean>
+  addTransaction: (data: CreateTransactionInput, asDraft?: boolean) => Promise<boolean>
   editTransaction: (id: string, data: CreateTransactionInput) => Promise<boolean>
   changeStatus: (id: string, status: TransactionStatus, reason?: string) => Promise<boolean>
   removeTransaction: (id: string) => Promise<boolean>
@@ -159,7 +159,7 @@ export const useTransactionStore = create<TransactionState>()(
         }
       },
 
-      addTransaction: async (data) => {
+      addTransaction: async (data, asDraft = true) => {
         set({ isLoading: true, error: null })
 
         try {
@@ -176,6 +176,23 @@ export const useTransactionStore = create<TransactionState>()(
           const result = await createTransaction(data)
 
           if (result.success) {
+            // RPC create_transaction always creates DRAFT.
+            // If the user selected "Enviar aprobación", transition to PENDING immediately.
+            if (!asDraft && result.data?.id) {
+              const statusResult = await updateTransactionStatus({
+                id: result.data.id,
+                status: 'pending',
+              })
+
+              if (!statusResult.success) {
+                set({
+                  error: statusResult.error ?? 'Operación creada, pero no se pudo enviar a aprobación',
+                  isLoading: false,
+                })
+                return false
+              }
+            }
+
             await get().fetchTransactions()
             set({ isLoading: false })
             return true

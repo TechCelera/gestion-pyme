@@ -97,6 +97,77 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
   - `src/components/transactions/transaction-table.tsx`
   - `src/app/(dashboard)/projects/page.tsx`
 
+## 7) Flujo de caja: real vs proyectado
+
+### Contexto
+- Se detecto confusion de usuario: una operacion nueva no siempre se reflejaba en `Flujo de Caja`.
+- El motivo era funcional: el flujo oficial solo consideraba operaciones `posted`.
+
+### Decision
+- Mantener `Flujo de Caja Real` con criterio contable estricto:
+  - solo operaciones `posted`.
+- Exponer ademas `Flujo de Caja Proyectado` para visibilidad operativa:
+  - `posted + approved + pending`.
+
+### Implementacion
+- Ajuste en `getReportsData`:
+  - separacion de metricas:
+    - `cashInReal`, `cashOutReal`, `netCashFlowReal`
+    - `cashInProjected`, `cashOutProjected`, `netCashFlowProjected`
+  - separacion de tendencias:
+    - `monthlyTrend` (real)
+    - `monthlyTrendProjected` (proyectado)
+- UI de reportes actualizada para mostrar ambos bloques y ambas tendencias:
+  - `src/app/(dashboard)/reports/page.tsx`
+
+### Razon
+- Evitar mezclar caja contable cerrada con operaciones aun en tramite.
+- Mejorar toma de decisiones del usuario con doble lectura (real y proyeccion).
+
+## 8) Creacion de operacion y estado inicial del flujo
+
+### Contexto
+- El boton `Enviar Aprobacion` no estaba respetando la intencion del usuario.
+- La creacion via RPC quedaba en `draft` en todos los casos.
+
+### Decision
+- Mantener comportamiento de RPC (`draft` por defecto) y completar transicion en aplicacion cuando aplique.
+- Si el usuario elige `Enviar Aprobacion`, la operacion debe pasar de `draft` a `pending` inmediatamente.
+
+### Implementacion
+- `addTransaction` ahora acepta `asDraft` y, cuando es `false`, ejecuta cambio de estado a `pending`.
+- Llamadas ajustadas para propagar la intencion de UI:
+  - `src/app/(dashboard)/transactions/page.tsx`
+  - `src/hooks/use-create-transaction.ts`
+
+### Razon
+- Alinear UX con semantica real de botones.
+- Evitar diferencias entre lo que el usuario cree que hizo y el estado real guardado.
+
+## 9) Reparacion RLS en bitacora de auditoria
+
+### Contexto
+- Al editar/guardar operaciones aparecio el error:
+  - `new row violates row-level security policy for table "audit_log"`.
+- `fn_audit_log` inserta en `audit_log` en cada cambio de operaciones.
+- Una migracion previa elimino politicas legacy de `audit_log` y no quedaron politicas activas equivalentes.
+
+### Decision
+- Restaurar politicas RLS minimas y explicitas para `audit_log`:
+  - lectura por aislamiento de empresa,
+  - insercion solo para usuario autenticado de la misma empresa.
+
+### Implementacion
+- Nueva migracion:
+  - `supabase/migrations/20260504110500_fix_audit_log_rls.sql`
+- Politicas creadas:
+  - `audit_log_select_company`
+  - `audit_log_insert_company`
+
+### Razon
+- Evitar bloqueos en flujos de crear/editar operaciones por trigger de auditoria.
+- Mantener trazabilidad sin romper aislamiento multiempresa.
+
 ## Regla de mantenimiento
 
 Cuando se tome una decision nueva de negocio o arquitectura, agregar:
