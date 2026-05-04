@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   getTransactions,
   getReportsData,
-  evaluateBudgetStatus,
   updateTransactionStatus,
 } from '../transactions'
+import { evaluateBudgetStatus } from '@/lib/utils/budget'
 
 // Mock the Supabase client
 vi.mock('@/lib/supabase/server', () => ({
