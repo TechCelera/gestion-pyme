@@ -67,6 +67,7 @@ export function TransactionTable({
               <TableHead>Tipo</TableHead>
               <TableHead>Método</TableHead>
               <TableHead>Descripción</TableHead>
+              <TableHead>Ámbito</TableHead>
               <TableHead>Monto</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="w-[100px]">Acciones</TableHead>
@@ -75,7 +76,7 @@ export function TransactionTable({
           <TableBody>
             {[...Array(5)].map((_, i) => (
               <TableRow key={i}>
-                <TableCell colSpan={7}>
+                <TableCell colSpan={8}>
                   <div className="h-8 animate-pulse rounded bg-muted" />
                 </TableCell>
               </TableRow>
@@ -102,6 +103,7 @@ export function TransactionTable({
             <TableHead>Fecha</TableHead>
             <TableHead>Tipo</TableHead>
             <TableHead>Descripción</TableHead>
+            <TableHead>Ámbito</TableHead>
             <TableHead>Monto</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead className="w-[140px]">Acciones</TableHead>
@@ -125,6 +127,18 @@ export function TransactionTable({
               </TableCell>
               <TableCell className="max-w-[200px] truncate">
                 {transaction.description}
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">
+                    {transaction.projectName ?? 'General empresa'}
+                  </span>
+                  {transaction.requiresBudgetApproval ? (
+                    <span className="text-[11px] text-amber-700 bg-amber-100 rounded px-1.5 py-0.5 w-fit">
+                      Requiere aprobación presupuesto
+                    </span>
+                  ) : null}
+                </div>
               </TableCell>
               <TableCell className="font-medium">
                 {formatCurrency(transaction.amount, transaction.currency)}

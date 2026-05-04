@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   FileText,
+  FolderKanban,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -22,6 +23,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transacciones', icon: ArrowLeftRight },
   { href: '/reports', label: 'Reportes', icon: FileText },
+  { href: '/projects', label: 'Proyectos', icon: FolderKanban },
   { href: '/settings', label: 'Configuracion', icon: Settings },
 ]
 

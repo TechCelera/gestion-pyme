@@ -17,6 +17,20 @@ interface ActionResult<T = unknown> {
   error?: string
 }
 
+function normalizeAccountName(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isSemanticCashName(value: string): boolean {
+  const normalized = normalizeAccountName(value)
+  return ['caja', 'caja principal', 'caja ppal', 'caja general'].includes(normalized)
+}
+
 // Helper: obtener companyId del usuario actual
 async function getCurrentUserCompany(): Promise<string | null> {
   try {
@@ -110,6 +124,18 @@ export async function createAccount(input: {
       return { success: false, error: 'Usuario no autenticado' }
     }
 
+    if (isSemanticCashName(input.name)) {
+      const { data: cashAccounts } = await supabase
+        .from('accounts')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .is('deleted_at', null)
+      const hasCash = (cashAccounts ?? []).some((row) => isSemanticCashName((row.name as string) ?? ''))
+      if (hasCash) {
+        return { success: false, error: 'Ya existe una única cuenta de caja activa. Usa la cuenta Caja existente.' }
+      }
+    }
+
     const { data, error } = await supabase
       .from('accounts')
       .insert({
@@ -154,6 +180,22 @@ export async function updateAccount(
     }
 
     const supabase = await createClient()
+
+    if (input.name !== undefined && isSemanticCashName(input.name)) {
+      const { data: cashAccounts } = await supabase
+        .from('accounts')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .is('deleted_at', null)
+      const hasAnotherCash = (cashAccounts ?? []).some((row) => {
+        const rowId = (row.id as string) ?? ''
+        const rowName = (row.name as string) ?? ''
+        return rowId !== id && isSemanticCashName(rowName)
+      })
+      if (hasAnotherCash) {
+        return { success: false, error: 'Solo puede existir una cuenta de caja activa por empresa.' }
+      }
+    }
 
     const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),

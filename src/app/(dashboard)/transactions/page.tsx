@@ -70,52 +70,52 @@ export default function TransactionsPage() {
     if (editingTransaction) {
       const success = await editTransaction(editingTransaction.id, data)
       if (success) {
-        toast.success('Transacción actualizada exitosamente')
+        toast.success('Operación actualizada exitosamente')
         handleCloseModal()
       } else {
-        toast.error('Error al actualizar la transacción')
+        toast.error('Error al actualizar la operación')
       }
     } else {
       const success = await addTransaction(data)
       if (success) {
         toast.success(
           asDraft
-            ? 'Transacción guardada como borrador'
-            : 'Transacción enviada a aprobación'
+            ? 'Operación guardada como borrador'
+            : 'Operación enviada a aprobación'
         )
         handleCloseModal()
       } else {
-        toast.error('Error al crear la transacción')
+        toast.error('Error al crear la operación')
       }
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta transacción?')) return
+    if (!confirm('¿Estás seguro de eliminar esta operación?')) return
 
     const success = await removeTransaction(id)
     if (success) {
-      toast.success('Transacción eliminada')
+      toast.success('Operación eliminada')
     } else {
-      toast.error('Error al eliminar la transacción')
+      toast.error('Error al eliminar la operación')
     }
   }
 
   const handleApprove = async (id: string) => {
     const success = await changeStatus(id, 'approved')
     if (success) {
-      toast.success('Transacción aprobada')
+      toast.success('Operación aprobada')
     } else {
-      toast.error('Error al aprobar la transacción')
+      toast.error('Error al aprobar la operación')
     }
   }
 
   const handlePost = async (id: string) => {
     const success = await changeStatus(id, 'posted')
     if (success) {
-      toast.success('Transacción contabilizada')
+      toast.success('Operación contabilizada')
     } else {
-      toast.error('Error al contabilizar la transacción')
+      toast.error('Error al contabilizar la operación')
     }
   }
 
@@ -174,7 +174,7 @@ export default function TransactionsPage() {
           className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
         >
           <Plus className="mr-2 h-4 w-4" />
-          Nueva Transacción
+          Nueva Operación
         </Button>
       </div>
 
@@ -183,7 +183,7 @@ export default function TransactionsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Transacciones
+              Total Operaciones
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -242,7 +242,7 @@ export default function TransactionsPage() {
       {pagination.total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Mostrando {transactions.length} de {pagination.total} transacciones
+            Mostrando {transactions.length} de {pagination.total} operaciones
           </p>
           <div className="flex gap-2">
             <Button

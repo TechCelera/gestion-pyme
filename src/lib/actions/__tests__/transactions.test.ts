@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getTransactions, getReportsData } from '../transactions'
+import {
+  getTransactions,
+  getReportsData,
+  evaluateBudgetStatus,
+  updateTransactionStatus,
+} from '../transactions'
 
 // Mock the Supabase client
 vi.mock('@/lib/supabase/server', () => ({
@@ -363,5 +368,61 @@ describe('getReportsData server action', () => {
     if (!result.success) {
       expect(result.error).toContain('DB exploded')
     }
+  })
+})
+
+describe('budget flow rules', () => {
+  it('should require budget approval when expense exceeds budget', () => {
+    const result = evaluateBudgetStatus({
+      budgetAmount: 1000,
+      spentAmount: 900,
+      newExpenseAmount: 200,
+      endDate: null,
+      operationDate: new Date('2026-05-02'),
+    })
+
+    expect(result.requiresBudgetApproval).toBe(true)
+    expect(result.overBudgetBy).toBe(100)
+  })
+
+  it('should require budget approval when operation is out of term', () => {
+    const result = evaluateBudgetStatus({
+      budgetAmount: 5000,
+      spentAmount: 100,
+      newExpenseAmount: 100,
+      endDate: '2026-04-30',
+      operationDate: new Date('2026-05-02'),
+    })
+
+    expect(result.requiresBudgetApproval).toBe(true)
+    expect(result.outOfTerm).toBe(true)
+  })
+
+  it('should block posting when budget approval is missing', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: { requires_budget_approval: true, budget_approved_by: null },
+      error: null,
+    })
+    const mockSelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        single: mockSingle,
+      }),
+    })
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockRpc = vi.fn()
+
+    vi.mocked(createClient).mockResolvedValue({
+      from: mockFrom,
+      rpc: mockRpc,
+      auth: { getUser: vi.fn() },
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await updateTransactionStatus({ id: '11111111-1111-4111-8111-111111111111', status: 'posted' })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain('requiere aprobación adicional')
+    }
+    expect(mockRpc).not.toHaveBeenCalled()
   })
 })

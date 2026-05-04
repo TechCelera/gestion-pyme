@@ -12,6 +12,7 @@ import {
   type TransactionFilters,
   type UpdateTransactionStatusInput,
   type TransactionStatus,
+  type FundOwner,
 } from '@/lib/validations/transaction'
 
 // Types
@@ -31,12 +32,47 @@ export interface Transaction {
   createdAt: string
   createdBy: string
   creatorName: string | null
+  projectId?: string | null
+  projectName?: string | null
+  fundOwner?: FundOwner
+  requiresBudgetApproval?: boolean
 }
 
 interface ActionResult<T = unknown> {
   success: boolean
   data?: T
   error?: string
+}
+
+interface ProjectBudgetContext {
+  id: string
+  budgetAmount: number
+  endDate: string | null
+  spentAmount: number
+}
+
+type BudgetEvaluation = {
+  requiresBudgetApproval: boolean
+  overBudgetBy: number
+  outOfTerm: boolean
+}
+
+export function evaluateBudgetStatus(params: {
+  budgetAmount: number
+  spentAmount: number
+  newExpenseAmount: number
+  endDate: string | null
+  operationDate: Date
+}): BudgetEvaluation {
+  const { budgetAmount, spentAmount, newExpenseAmount, endDate, operationDate } = params
+  const projected = spentAmount + newExpenseAmount
+  const overBudgetBy = Math.max(0, projected - Math.max(0, budgetAmount))
+  const outOfTerm = !!endDate && operationDate > new Date(`${endDate}T23:59:59`)
+  return {
+    requiresBudgetApproval: overBudgetBy > 0 || outOfTerm,
+    overBudgetBy,
+    outOfTerm,
+  }
 }
 
 // Helper para obtener companyId del usuario actual
@@ -101,6 +137,49 @@ async function getCurrentUserId(): Promise<string | null> {
   }
 }
 
+async function getProjectBudgetContext(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  companyId: string,
+  projectId: string
+): Promise<ProjectBudgetContext | null> {
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .select('id, budget_amount, end_date')
+    .eq('id', projectId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .single()
+
+  if (projectError || !project) {
+    return null
+  }
+
+  const { data: txRows, error: txError } = await supabase
+    .from('transactions')
+    .select('amount')
+    .eq('company_id', companyId)
+    .eq('project_id', projectId)
+    .eq('type', 'expense')
+    .eq('status', 'posted')
+    .is('deleted_at', null)
+
+  if (txError) {
+    return null
+  }
+
+  const spentAmount = (txRows ?? []).reduce((acc, row) => {
+    const amount = Number((row as Record<string, unknown>).amount ?? 0)
+    return acc + amount
+  }, 0)
+
+  return {
+    id: project.id as string,
+    budgetAmount: Number(project.budget_amount ?? 0),
+    endDate: (project.end_date as string | null) ?? null,
+    spentAmount,
+  }
+}
+
 // CREATE
 export async function createTransaction(
   input: CreateTransactionInput
@@ -119,6 +198,21 @@ export async function createTransaction(
     let accountId = validated.accountId
     if (validated.type === 'transfer') {
       accountId = validated.sourceAccountId
+    }
+
+    let requiresBudgetApproval = false
+    if (validated.projectId && validated.type === 'expense') {
+      const budgetContext = await getProjectBudgetContext(supabase, companyId, validated.projectId)
+      if (budgetContext) {
+        const budgetState = evaluateBudgetStatus({
+          budgetAmount: budgetContext.budgetAmount,
+          spentAmount: budgetContext.spentAmount,
+          newExpenseAmount: validated.amount,
+          endDate: budgetContext.endDate,
+          operationDate: validated.date,
+        })
+        requiresBudgetApproval = budgetState.requiresBudgetApproval
+      }
     }
 
     const { data, error } = await supabase.rpc('create_transaction', {
@@ -148,20 +242,60 @@ export async function createTransaction(
     }
     
     // Use RPC to get the full transaction instead of broken PostgREST join
-    const { data: transaction, error: fetchError } = await supabase.rpc(
-      'get_transaction_by_id',
-      { p_transaction_id: data }
-    )
+    if (requiresBudgetApproval || validated.projectId || validated.fundOwner === 'client_advance') {
+      const updatePayload: Record<string, unknown> = {
+        project_id: validated.projectId ?? null,
+        fund_owner: validated.fundOwner ?? 'company',
+        requires_budget_approval: requiresBudgetApproval,
+        updated_at: new Date().toISOString(),
+      }
 
-    if (fetchError) {
+      const userId = await getCurrentUserId()
+      if (userId) updatePayload.updated_by = userId
+
+      const { error: patchError } = await supabase
+        .from('transactions')
+        .update(updatePayload)
+        .eq('id', data)
+        .eq('company_id', companyId)
+
+      if (patchError) {
+        console.error('Error patching operation extra fields:', patchError)
+      }
+    }
+
+    const { data: transaction, error: fetchError } = await supabase
+      .from('transactions')
+      .select(`
+        id,
+        account_id,
+        accounts(name),
+        category_id,
+        categories(name),
+        type,
+        status,
+        method,
+        amount,
+        currency,
+        date,
+        description,
+        created_at,
+        created_by,
+        users(full_name),
+        project_id,
+        projects(name),
+        fund_owner,
+        requires_budget_approval
+      `)
+      .eq('id', data)
+      .single()
+
+    if (fetchError || !transaction) {
       console.error('Error fetching created transaction:', fetchError)
-      // Return success anyway — the transaction was created
       return { success: true }
     }
 
-    const mapped = Array.isArray(transaction) 
-      ? transaction.map(mapTransaction)[0] 
-      : mapTransaction(transaction)
+    const mapped = mapTransaction(transaction)
 
     return { 
       success: true, 
@@ -208,7 +342,23 @@ export async function updateTransaction(
       document_type: validated.documentType,
       document_number: validated.documentNumber,
       attachment_url: validated.attachmentUrl,
+      project_id: validated.projectId ?? null,
+      fund_owner: validated.fundOwner ?? 'company',
       updated_at: new Date().toISOString(),
+    }
+
+    if (validated.projectId && validated.type === 'expense' && validated.amount !== undefined) {
+      const budgetContext = await getProjectBudgetContext(supabase, companyId, validated.projectId)
+      if (budgetContext) {
+        const budgetState = evaluateBudgetStatus({
+          budgetAmount: budgetContext.budgetAmount,
+          spentAmount: budgetContext.spentAmount,
+          newExpenseAmount: validated.amount,
+          endDate: budgetContext.endDate,
+          operationDate: validated.date ?? new Date(),
+        })
+        updatePayload.requires_budget_approval = budgetState.requiresBudgetApproval
+      }
     }
 
     // Include updated_by for audit trail (T10)
@@ -235,7 +385,11 @@ export async function updateTransaction(
         description,
         created_at,
         created_by,
-        users(full_name)
+        users(full_name),
+        project_id,
+        projects(name),
+        fund_owner,
+        requires_budget_approval
       `)
       .single()
 
@@ -262,6 +416,27 @@ export async function updateTransactionStatus(
     const validated = updateTransactionStatusSchema.parse(input)
     
     const supabase = await createClient()
+    if (validated.status === 'posted') {
+      const { data: operation, error: operationError } = await supabase
+        .from('transactions')
+        .select('requires_budget_approval, budget_approved_by')
+        .eq('id', validated.id)
+        .single()
+
+      if (operationError) {
+        return { success: false, error: operationError.message }
+      }
+
+      if (
+        operation?.requires_budget_approval === true &&
+        !operation?.budget_approved_by
+      ) {
+        return {
+          success: false,
+          error: 'Operación con sobrepresupuesto: requiere aprobación adicional antes de contabilizar',
+        }
+      }
+    }
 
     const { data, error } = await supabase.rpc('update_transaction_status', {
       p_transaction_id: validated.id,
@@ -400,6 +575,46 @@ function mapTransaction(raw: unknown): Transaction {
     createdAt: t.created_at as string,
     createdBy: t.created_by as string,
     creatorName: (t.users as Record<string, string>)?.full_name ?? (t.creator_name as string) ?? null,
+    projectId: (t.project_id as string) ?? null,
+    projectName: (t.projects as Record<string, string>)?.name ?? (t.project_name as string) ?? null,
+    fundOwner: ((t.fund_owner as FundOwner) ?? 'company'),
+    requiresBudgetApproval: Boolean(t.requires_budget_approval),
+  }
+}
+
+export async function approveBudgetException(
+  operationId: string,
+  note: string
+): Promise<ActionResult> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      return { success: false, error: 'Usuario no autenticado' }
+    }
+
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('transactions')
+      .update({
+        budget_approved_by: userId,
+        budget_approved_at: new Date().toISOString(),
+        budget_approval_note: note,
+        updated_by: userId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', operationId)
+      .eq('requires_budget_approval', true)
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error) {
+    if (error instanceof Error) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'Error desconocido' }
   }
 }
 

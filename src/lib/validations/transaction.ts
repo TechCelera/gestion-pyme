@@ -7,6 +7,7 @@ export const TransactionMethodEnum = z.enum(['cash', 'transfer', 'card', 'digita
 export const ContactTypeEnum = z.enum(['cliente', 'proveedor'])
 export const AdjustmentReasonEnum = z.enum(['reconciliation', 'correction', 'other'])
 export const DocumentTypeEnum = z.enum(['invoice', 'receipt', 'ticket', 'other'])
+export const FundOwnerEnum = z.enum(['company', 'client_advance'])
 
 // Base schema object (without superRefine)
 const baseTransactionSchemaObject = z.object({
@@ -28,6 +29,8 @@ const baseTransactionSchemaObject = z.object({
   documentType: DocumentTypeEnum.optional(),
   documentNumber: z.string().max(50).optional(),
   attachmentUrl: z.string().url().optional().or(z.literal('')),
+  projectId: z.string().uuid().optional(),
+  fundOwner: FundOwnerEnum.default('company'),
 })
 
 // Create Transaction Schema
@@ -125,3 +128,4 @@ export type UpdateTransactionStatusInput = z.infer<typeof updateTransactionStatu
 export type TransactionType = z.infer<typeof TransactionTypeEnum>
 export type TransactionStatus = z.infer<typeof TransactionStatusEnum>
 export type TransactionMethod = z.infer<typeof TransactionMethodEnum>
+export type FundOwner = z.infer<typeof FundOwnerEnum>

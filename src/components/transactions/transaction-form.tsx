@@ -38,8 +38,10 @@ import { Badge } from '@/components/ui/badge'
 import { TRANSACTION_METHOD_LABELS, CATEGORY_TYPES } from '@/lib/constants'
 import { getAccounts } from '@/lib/actions/accounts'
 import { getCategories } from '@/lib/actions/categories'
+import { getProjects } from '@/lib/actions/projects'
 import type { Account } from '@/lib/actions/accounts'
 import type { Category } from '@/lib/actions/categories'
+import type { Project } from '@/lib/actions/projects'
 import { DEMO_ACCOUNTS, DEMO_CATEGORIES } from '@/lib/demo-data'
 import { useAuthStore } from '@/stores/auth-store'
 import type { Transaction } from '@/lib/actions/transactions'
@@ -97,10 +99,14 @@ export function TransactionForm({
   const [sourceAccountId, setSourceAccountId] = useState('')
   const [destinationAccountId, setDestinationAccountId] = useState('')
   const [adjustmentReason, setAdjustmentReason] = useState('')
+  const [fundOwner, setFundOwner] = useState<'company' | 'client_advance'>('company')
+  const [operationScope, setOperationScope] = useState<'general' | 'project'>('general')
+  const [projectId, setProjectId] = useState('')
 
   // Data from server
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [isLoadingData, setIsLoadingData] = useState(false)
 
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
@@ -118,9 +124,10 @@ export function TransactionForm({
 
     setIsLoadingData(true)
     try {
-      const [accountsResult, categoriesResult] = await Promise.all([
+      const [accountsResult, categoriesResult, projectsResult] = await Promise.all([
         getAccounts(),
         getCategories(),
+        getProjects(),
       ])
 
       if (accountsResult.success && accountsResult.data) {
@@ -128,6 +135,9 @@ export function TransactionForm({
       }
       if (categoriesResult.success && categoriesResult.data) {
         setCategories(categoriesResult.data)
+      }
+      if (projectsResult.success && projectsResult.data) {
+        setProjects(projectsResult.data)
       }
     } catch (error) {
       console.error('Error loading form data:', error)
@@ -153,6 +163,9 @@ export function TransactionForm({
       setCurrency(transaction.currency)
       setDescription(transaction.description)
       setMethod('cash')
+      setFundOwner((transaction.fundOwner ?? 'company') as 'company' | 'client_advance')
+      setProjectId(transaction.projectId ?? '')
+      setOperationScope(transaction.projectId ? 'project' : 'general')
     } else {
       resetForm()
     }
@@ -170,6 +183,9 @@ export function TransactionForm({
     setSourceAccountId('')
     setDestinationAccountId('')
     setAdjustmentReason('')
+    setFundOwner('company')
+    setProjectId('')
+    setOperationScope('general')
   }
 
   const handleSubmit = (asDraft: boolean) => {
@@ -189,6 +205,8 @@ export function TransactionForm({
       ...(type === 'adjustment'
         ? { accountId, adjustmentReason: adjustmentReason as any }
         : {}),
+      fundOwner,
+      projectId: operationScope === 'project' ? projectId || undefined : undefined,
     }
 
     onSubmit(data, asDraft)
@@ -240,6 +258,16 @@ export function TransactionForm({
   const adjustmentReasonLabel = adjustmentReason ? adjustmentReasonLabels[adjustmentReason] ?? adjustmentReason : ''
 
   const TypeIcon = selectedType?.icon || Wallet
+  const flattenProjects = (items: Project[], depth = 0): Array<{ id: string; name: string }> => {
+    return items.flatMap((item) => {
+      const prefix = depth > 0 ? `${'— '.repeat(depth)}` : ''
+      const current = { id: item.id, name: `${prefix}${item.name}` }
+      const children = item.children ? flattenProjects(item.children, depth + 1) : []
+      return [current, ...children]
+    })
+  }
+  const flatProjects = flattenProjects(projects)
+  const projectLabel = projectId ? flatProjects.find((p) => p.id === projectId)?.name ?? '' : ''
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -252,20 +280,24 @@ export function TransactionForm({
             </div>
             <div>
               <SheetTitle className="text-lg">
-                {isEditing ? 'Editar Transacción' : 'Nueva Transacción'}
+                {isEditing ? 'Editar Operación' : 'Nueva Operación'}
               </SheetTitle>
               <SheetDescription>
                 {isEditing 
-                  ? 'Modifica los datos de la transacción' 
-                  : 'Completa los datos para registrar una nueva transacción'}
+                  ? 'Modifica los datos de la operación' 
+                  : 'Completa los datos para registrar una nueva operación'}
               </SheetDescription>
             </div>
           </div>
           
           {/* Type Selector - Pills */}
           {!isEditing && (
-            <div className="flex flex-wrap gap-2 pt-2">
-              {transactionTypes.map((t) => {
+            <div className="pt-2">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Tipo de operación
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {transactionTypes.map((t) => {
                 const Icon = t.icon
                 const isSelected = type === t.value
                 return (
@@ -283,7 +315,8 @@ export function TransactionForm({
                     {t.label}
                   </button>
                 )
-              })}
+                })}
+              </div>
             </div>
           )}
           
@@ -337,6 +370,67 @@ export function TransactionForm({
                   </Select>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="scope">Ámbito</Label>
+                  <Select
+                    value={operationScope}
+                    onValueChange={(value) => {
+                      const scope = (value as 'general' | 'project') ?? 'general'
+                      setOperationScope(scope)
+                      if (scope === 'general') setProjectId('')
+                    }}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="scope" className="w-full">
+                      {operationScope === 'general' ? 'General empresa' : 'Proyecto/Subproyecto'}
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">General empresa</SelectItem>
+                      <SelectItem value="project">Proyecto/Subproyecto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fundOwner">Origen de fondos</Label>
+                  <Select
+                    value={fundOwner}
+                    onValueChange={(value) => setFundOwner((value as 'company' | 'client_advance') ?? 'company')}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="fundOwner" className="w-full">
+                      {fundOwner === 'company' ? 'Fondos empresa' : 'Anticipo cliente'}
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="company">Fondos empresa</SelectItem>
+                      <SelectItem value="client_advance">Anticipo cliente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {operationScope === 'project' && (
+                <div className="space-y-2">
+                  <Label htmlFor="project">Proyecto / Subproyecto</Label>
+                  <Select
+                    value={projectId}
+                    onValueChange={(value) => setProjectId(value ?? '')}
+                    disabled={isLoading || isLoadingData}
+                  >
+                    <SelectTrigger id="project" className="w-full">
+                      {projectLabel || <span className="text-muted-foreground">Seleccione proyecto</span>}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {flatProjects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <Separator />
@@ -354,7 +448,7 @@ export function TransactionForm({
                   <Wallet className="h-10 w-10 text-muted-foreground/40" />
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">No tienes cuentas registradas</p>
-                    <p className="text-xs text-muted-foreground">Crea una cuenta en Configuración para poder registrar transacciones.</p>
+                    <p className="text-xs text-muted-foreground">Crea una cuenta en Configuración para poder registrar operaciones.</p>
                   </div>
                   <Link
                     href="/settings"
@@ -573,7 +667,7 @@ export function TransactionForm({
               </div>
               <div className="space-y-2">
                 <Input
-                  placeholder="Describe la transacción..."
+                  placeholder="Describe la operación..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={isLoading}
