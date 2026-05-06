@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
-  getTransactions,
+  listOperations,
   getReportsData,
-  updateTransactionStatus,
-  createTransaction,
-  updateTransaction,
+  updateOperationStatus,
+  createOperation,
+  updateOperation,
   getOperationComponents,
-} from '../transactions'
+} from '../operations'
 import { evaluateBudgetStatus } from '@/lib/utils/budget'
 
 // Mock the Supabase client
@@ -17,7 +17,7 @@ vi.mock('@/lib/supabase/server', () => ({
 // Import the mocked module
 import { createClient } from '@/lib/supabase/server'
 
-describe('getTransactions server action', () => {
+describe('listOperations', () => {
   let mockRpc: ReturnType<typeof vi.fn>
   let mockAuthGetUser: ReturnType<typeof vi.fn>
   let mockFrom: ReturnType<typeof vi.fn>
@@ -82,7 +82,7 @@ describe('getTransactions server action', () => {
       error: null,
     })
 
-    const result = await getTransactions({
+    const result = await listOperations({
       page: 1,
       pageSize: 50,
       search: '100%_complete',
@@ -115,7 +115,7 @@ describe('getTransactions server action', () => {
     })
     mockFrom.mockReturnValue({ select: mockSelectNoCompany })
 
-    const result = await getTransactions({
+    const result = await listOperations({
       page: 1,
       pageSize: 50,
     })
@@ -126,7 +126,7 @@ describe('getTransactions server action', () => {
     }
   })
 
-  it('should map RPC result to Transaction type correctly', async () => {
+  it('mapea fila RPC al tipo Operation', async () => {
     const rpcRow = {
       id: 'tx-456',
       company_id: 'company-123',
@@ -172,25 +172,25 @@ describe('getTransactions server action', () => {
       error: null,
     })
 
-    const result = await getTransactions({
+    const result = await listOperations({
       page: 1,
       pageSize: 50,
     })
 
     expect(result.success).toBe(true)
     if (result.success && result.data) {
-      const tx = result.data.transactions[0]
-      expect(tx.id).toBe('tx-456')
-      expect(tx.accountId).toBe('acc-1')
-      expect(tx.accountName).toBe('Caja')
-      expect(tx.categoryId).toBe('cat-2')
-      expect(tx.categoryName).toBe('Servicios')
-      expect(tx.type).toBe('expense')
-      expect(tx.status).toBe('draft')
-      expect(tx.method).toBe('transfer')
-      expect(tx.amount).toBe(5000)
-      expect(tx.currency).toBe('COP')
-      expect(tx.creatorName).toBe('Juan Pérez')
+      const op = result.data.operations[0]
+      expect(op.id).toBe('tx-456')
+      expect(op.accountId).toBe('acc-1')
+      expect(op.accountName).toBe('Caja')
+      expect(op.categoryId).toBe('cat-2')
+      expect(op.categoryName).toBe('Servicios')
+      expect(op.type).toBe('expense')
+      expect(op.status).toBe('draft')
+      expect(op.method).toBe('transfer')
+      expect(op.amount).toBe(5000)
+      expect(op.currency).toBe('COP')
+      expect(op.creatorName).toBe('Juan Pérez')
       expect(result.data.total).toBe(1)
     }
   })
@@ -201,14 +201,14 @@ describe('getTransactions server action', () => {
       error: null,
     })
 
-    const result = await getTransactions({
+    const result = await listOperations({
       page: 1,
       pageSize: 50,
     })
 
     expect(result.success).toBe(true)
     if (result.success && result.data) {
-      expect(result.data.transactions).toEqual([])
+      expect(result.data.operations).toEqual([])
       expect(result.data.total).toBe(0)
     }
   })
@@ -219,7 +219,7 @@ describe('getTransactions server action', () => {
       error: { message: 'Function get_transactions not found' },
     })
 
-    const result = await getTransactions({
+    const result = await listOperations({
       page: 1,
       pageSize: 50,
     })
@@ -470,7 +470,7 @@ describe('getReportsData server action', () => {
   })
 })
 
-describe('createTransaction con operationComponents', () => {
+describe('createOperation con operationComponents', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -541,7 +541,7 @@ describe('createTransaction con operationComponents', () => {
       rpc: mockRpc,
     } as unknown as Awaited<ReturnType<typeof createClient>>)
 
-    const result = await createTransaction({
+    const result = await createOperation({
       type: 'income',
       date: new Date('2026-05-01'),
       amount: 150,
@@ -570,7 +570,7 @@ describe('createTransaction con operationComponents', () => {
   })
 })
 
-describe('updateTransaction con operationComponents', () => {
+describe('updateOperation con operationComponents', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -622,7 +622,7 @@ describe('updateTransaction con operationComponents', () => {
       rpc: mockRpc,
     } as unknown as Awaited<ReturnType<typeof createClient>>)
 
-    const result = await updateTransaction(txId, {
+    const result = await updateOperation(txId, {
       accountId,
       categoryId,
       type: 'income',
@@ -764,7 +764,7 @@ describe('budget flow rules', () => {
       auth: { getUser: vi.fn() },
     } as unknown as Awaited<ReturnType<typeof createClient>>)
 
-    const result = await updateTransactionStatus({ id: '11111111-1111-4111-8111-111111111111', status: 'posted' })
+    const result = await updateOperationStatus({ id: '11111111-1111-4111-8111-111111111111', status: 'posted' })
 
     expect(result.success).toBe(false)
     if (!result.success) {

@@ -2,17 +2,18 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   DASHBOARD: '/dashboard',
-  OPERACIONES: '/operaciones',
+  /** Listado de movimientos (producto en ES: "operaciones") */
+  OPERATIONS: '/operaciones',
   REPORTS: '/reports',
   SETTINGS: '/settings',
 } as const
 
-export const TRANSACTION_TYPES = {
+export const OPERATION_TYPES = {
   INCOME: 'income',
   EXPENSE: 'expense',
 } as const
 
-export const TRANSACTION_METHODS = {
+export const OPERATION_METHODS = {
   CASH: 'cash',
   TRANSFER: 'transfer',
   CARD: 'card',
@@ -20,7 +21,7 @@ export const TRANSACTION_METHODS = {
   OTHER: 'other',
 } as const
 
-export const TRANSACTION_METHOD_LABELS: Record<string, string> = {
+export const OPERATION_METHODS_LABELS: Record<string, string> = {
   cash: 'Efectivo',
   transfer: 'Transferencia',
   card: 'Tarjeta',

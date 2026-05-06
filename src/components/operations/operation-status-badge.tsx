@@ -1,13 +1,13 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import type { TransactionStatus } from '@/lib/validations/transaction'
+import type { OperationStatus } from '@/lib/validations/operation'
 
-interface TransactionStatusBadgeProps {
-  status: TransactionStatus
+interface OperationStatusBadgeProps {
+  status: OperationStatus
 }
 
-const statusConfig: Record<TransactionStatus, { label: string; className: string }> = {
+const statusConfig: Record<OperationStatus, { label: string; className: string }> = {
   draft: {
     label: 'Borrador',
     className: 'bg-gray-100 text-gray-700 border-gray-200',
@@ -30,7 +30,7 @@ const statusConfig: Record<TransactionStatus, { label: string; className: string
   },
 }
 
-export function TransactionStatusBadge({ status }: TransactionStatusBadgeProps) {
+export function OperationStatusBadge({ status }: OperationStatusBadgeProps) {
   const config = statusConfig[status]
   
   return (

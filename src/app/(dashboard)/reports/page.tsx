@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertCircle, BarChart3, TrendingUp, Scale } from 'lucide-react'
-import { getReportsData } from '@/lib/actions/transactions'
+import { getReportsData } from '@/lib/actions/operations'
 import { ReportsCharts } from '@/components/reports/reports-charts'
 import { PageHeader } from '@/components/ui/page-header'
 

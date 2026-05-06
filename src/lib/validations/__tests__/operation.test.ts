@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import {
-  createTransactionSchema,
-  updateTransactionSchema,
-  transactionFiltersSchema,
-  updateTransactionStatusSchema,
-  TransactionTypeEnum,
-  TransactionStatusEnum,
-} from '../transaction'
+  createOperationSchema,
+  updateOperationSchema,
+  operationFiltersSchema,
+  updateOperationStatusSchema,
+  OperationTypeEnum,
+  OperationStatusEnum,
+} from '../operation'
 
-describe('Transaction Validations', () => {
-  describe('createTransactionSchema', () => {
+describe('Validaciones de operación', () => {
+  describe('createOperationSchema', () => {
     const validIncome = {
       type: 'income',
       date: new Date(),
@@ -20,31 +20,31 @@ describe('Transaction Validations', () => {
     }
 
     it('should validate a valid income transaction', () => {
-      const result = createTransactionSchema.safeParse(validIncome)
+      const result = createOperationSchema.safeParse(validIncome)
       expect(result.success).toBe(true)
     })
 
     it('should require accountId for income', () => {
       const invalid = { ...validIncome, accountId: undefined }
-      const result = createTransactionSchema.safeParse(invalid)
+      const result = createOperationSchema.safeParse(invalid)
       expect(result.success).toBe(false)
     })
 
     it('should require categoryId for income', () => {
       const invalid = { ...validIncome, categoryId: undefined }
-      const result = createTransactionSchema.safeParse(invalid)
+      const result = createOperationSchema.safeParse(invalid)
       expect(result.success).toBe(false)
     })
 
     it('should require positive amount', () => {
       const invalid = { ...validIncome, amount: -100 }
-      const result = createTransactionSchema.safeParse(invalid)
+      const result = createOperationSchema.safeParse(invalid)
       expect(result.success).toBe(false)
     })
 
     it('should require description with at least 3 characters', () => {
       const invalid = { ...validIncome, description: 'AB' }
-      const result = createTransactionSchema.safeParse(invalid)
+      const result = createOperationSchema.safeParse(invalid)
       expect(result.success).toBe(false)
     })
   })
@@ -60,19 +60,19 @@ describe('Transaction Validations', () => {
     }
 
     it('should validate a valid transfer', () => {
-      const result = createTransactionSchema.safeParse(validTransfer)
+      const result = createOperationSchema.safeParse(validTransfer)
       expect(result.success).toBe(true)
     })
 
     it('should require sourceAccountId for transfer', () => {
       const invalid = { ...validTransfer, sourceAccountId: undefined }
-      const result = createTransactionSchema.safeParse(invalid)
+      const result = createOperationSchema.safeParse(invalid)
       expect(result.success).toBe(false)
     })
 
     it('should require destinationAccountId for transfer', () => {
       const invalid = { ...validTransfer, destinationAccountId: undefined }
-      const result = createTransactionSchema.safeParse(invalid)
+      const result = createOperationSchema.safeParse(invalid)
       expect(result.success).toBe(false)
     })
 
@@ -82,7 +82,7 @@ describe('Transaction Validations', () => {
         sourceAccountId: '550e8400-e29b-41d4-a716-446655440000',
         destinationAccountId: '550e8400-e29b-41d4-a716-446655440000',
       }
-      const result = createTransactionSchema.safeParse(invalid)
+      const result = createOperationSchema.safeParse(invalid)
       expect(result.success).toBe(false)
     })
   })
@@ -98,37 +98,37 @@ describe('Transaction Validations', () => {
     }
 
     it('should validate a valid adjustment', () => {
-      const result = createTransactionSchema.safeParse(validAdjustment)
+      const result = createOperationSchema.safeParse(validAdjustment)
       expect(result.success).toBe(true)
     })
 
     it('should require adjustmentReason for adjustment', () => {
       const invalid = { ...validAdjustment, adjustmentReason: undefined }
-      const result = createTransactionSchema.safeParse(invalid)
+      const result = createOperationSchema.safeParse(invalid)
       expect(result.success).toBe(false)
     })
   })
 
-  describe('updateTransactionSchema', () => {
+  describe('updateOperationSchema', () => {
     it('should allow partial updates', () => {
       const update = {
         id: '550e8400-e29b-41d4-a716-446655440000',
         amount: 200,
       }
-      const result = updateTransactionSchema.safeParse(update)
+      const result = updateOperationSchema.safeParse(update)
       expect(result.success).toBe(true)
     })
 
     it('should require id for update', () => {
       const update = { amount: 200 }
-      const result = updateTransactionSchema.safeParse(update)
+      const result = updateOperationSchema.safeParse(update)
       expect(result.success).toBe(false)
     })
   })
 
-  describe('transactionFiltersSchema', () => {
+  describe('operationFiltersSchema', () => {
     it('should validate empty filters', () => {
-      const result = transactionFiltersSchema.safeParse({})
+      const result = operationFiltersSchema.safeParse({})
       expect(result.success).toBe(true)
     })
 
@@ -138,24 +138,24 @@ describe('Transaction Validations', () => {
         page: 1,
         pageSize: 50,
       }
-      const result = transactionFiltersSchema.safeParse(filters)
+      const result = operationFiltersSchema.safeParse(filters)
       expect(result.success).toBe(true)
     })
 
     it('should use default pagination values', () => {
-      const result = transactionFiltersSchema.parse({})
+      const result = operationFiltersSchema.parse({})
       expect(result.page).toBe(1)
       expect(result.pageSize).toBe(50)
     })
   })
 
-  describe('updateTransactionStatusSchema', () => {
+  describe('updateOperationStatusSchema', () => {
     it('should validate status update', () => {
       const update = {
         id: '550e8400-e29b-41d4-a716-446655440000',
         status: 'approved',
       }
-      const result = updateTransactionStatusSchema.safeParse(update)
+      const result = updateOperationStatusSchema.safeParse(update)
       expect(result.success).toBe(true)
     })
 
@@ -165,7 +165,7 @@ describe('Transaction Validations', () => {
         status: 'rejected',
         reason: 'Datos incorrectos',
       }
-      const result = updateTransactionStatusSchema.safeParse(update)
+      const result = updateOperationStatusSchema.safeParse(update)
       expect(result.success).toBe(true)
     })
   })

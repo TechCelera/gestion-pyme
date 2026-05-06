@@ -15,7 +15,7 @@ import {
   Line,
   Legend,
 } from 'recharts'
-import type { ReportsData } from '@/lib/actions/transactions'
+import type { ReportsData } from '@/lib/actions/operations'
 
 interface ReportsChartsProps {
   data: ReportsData

@@ -1,4 +1,4 @@
-import type { Transaction } from '@/lib/actions/transactions'
+import type { Operation } from '@/lib/actions/operations'
 
 // Tipos compartidos para demo data
 export interface DemoAccount {
@@ -98,7 +98,7 @@ export const DEMO_CATEGORIES: DemoCategory[] = [
 // ============================================================================
 // TRANSACCIONES DEMO
 // ============================================================================
-export const DEMO_TRANSACTIONS: Transaction[] = [
+export const DEMO_OPERATIONS: Operacion[] = [
   {
     id: 'demo-1',
     accountId: 'demo-acc-1',
@@ -190,14 +190,14 @@ export const DEMO_TRANSACTIONS: Transaction[] = [
 // ESTADÍSTICAS DEMO
 // ============================================================================
 export const DEMO_STATS = {
-  totalTransactions: DEMO_TRANSACTIONS.length,
-  pendingCount: DEMO_TRANSACTIONS.filter(t => t.status === 'pending').length,
-  approvedCount: DEMO_TRANSACTIONS.filter(t => t.status === 'approved').length,
-  postedCount: DEMO_TRANSACTIONS.filter(t => t.status === 'posted').length,
-  totalIncome: DEMO_TRANSACTIONS
+  totalOperations: DEMO_OPERATIONS.length,
+  pendingCount: DEMO_OPERATIONS.filter(t => t.status === 'pending').length,
+  approvedCount: DEMO_OPERATIONS.filter(t => t.status === 'approved').length,
+  postedCount: DEMO_OPERATIONS.filter(t => t.status === 'posted').length,
+  totalIncome: DEMO_OPERATIONS
     .filter(t => t.type === 'income' && t.status === 'posted')
     .reduce((sum, t) => sum + t.amount, 0),
-  totalExpenses: DEMO_TRANSACTIONS
+  totalExpenses: DEMO_OPERATIONS
     .filter(t => t.type === 'expense' && t.status === 'posted')
     .reduce((sum, t) => sum + t.amount, 0),
 }

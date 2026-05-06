@@ -47,24 +47,24 @@ import type { Category } from '@/lib/actions/categories'
 import type { Project } from '@/lib/actions/projects'
 import { DEMO_ACCOUNTS, DEMO_CATEGORIES } from '@/lib/demo-data'
 import { useAuthStore } from '@/stores/auth-store'
-import type { Transaction } from '@/lib/actions/transactions'
-import { getOperationComponents } from '@/lib/actions/transactions'
+import type { Operation } from '@/lib/actions/operations'
+import { getOperationComponents } from '@/lib/actions/operations'
 import { getContacts } from '@/lib/actions/contacts'
 import type {
-  CreateTransactionInput,
-  TransactionType,
-  TransactionMethod,
+  CreateOperationInput,
+  OperationType,
+  OperationMethod,
   OperationComponentType,
   OperationComponentRow,
   AdjustmentReason,
-} from '@/lib/validations/transaction'
+} from '@/lib/validations/operation'
 import { toast } from 'sonner'
 
-interface TransactionFormProps {
+interface OperationFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: CreateTransactionInput, asDraft: boolean) => void
-  transaction?: Transaction | null
+  onSubmit: (data: CreateOperationInput, asDraft: boolean) => void
+  operation?: Operation | null
   isLoading?: boolean
 }
 
@@ -86,14 +86,14 @@ function newComponentLine(partial?: Partial<ComponentLineDraft>): ComponentLineD
   }
 }
 
-const transactionTypes: { value: TransactionType; label: string; icon: React.ElementType; color: string }[] = [
+const operationTypeOptions: { value: OperationType; label: string; icon: React.ElementType; color: string }[] = [
   { value: 'income', label: 'Ingreso', icon: Wallet, color: 'bg-green-100 text-green-700 border-green-200' },
   { value: 'expense', label: 'Egreso', icon: CreditCard, color: 'bg-red-100 text-red-700 border-red-200' },
   { value: 'transfer', label: 'Transferencia', icon: ArrowRightLeft, color: 'bg-blue-100 text-blue-700 border-blue-200' },
   { value: 'adjustment', label: 'Ajuste', icon: Settings, color: 'bg-orange-100 text-orange-700 border-orange-200' },
 ]
 
-const methods: { value: TransactionMethod; label: string }[] = [
+const methods: { value: OperationMethod; label: string }[] = [
   { value: 'cash', label: 'Efectivo' },
   { value: 'transfer', label: 'Transferencia' },
   { value: 'card', label: 'Tarjeta' },
@@ -108,21 +108,21 @@ const currencies = [
   { value: 'EUR', label: 'EUR (€)', flag: '🇪🇺' },
 ]
 
-export function TransactionForm({
+export function OperationForm({
   isOpen,
   onClose,
   onSubmit,
-  transaction,
+  operation,
   isLoading,
-}: TransactionFormProps) {
-  const [type, setType] = useState<TransactionType>('income')
+}: OperationFormProps) {
+  const [type, setType] = useState<OperationType>('income')
   const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
   const [accountId, setAccountId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState('ARS')
   const [description, setDescription] = useState('')
-  const [method, setMethod] = useState<TransactionMethod>('cash')
+  const [method, setMethod] = useState<OperationMethod>('cash')
   const [sourceAccountId, setSourceAccountId] = useState('')
   const [destinationAccountId, setDestinationAccountId] = useState('')
   const [adjustmentReason, setAdjustmentReason] = useState('')
@@ -139,8 +139,8 @@ export function TransactionForm({
   const [isLoadingData, setIsLoadingData] = useState(false)
 
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
-  const isEditing = !!transaction
-  const selectedType = transactionTypes.find(t => t.value === type)
+  const isEditing = !!operation
+  const selectedType = operationTypeOptions.find((t) => t.value === type)
 
   const resetForm = useCallback(() => {
     setType('income')
@@ -205,33 +205,33 @@ export function TransactionForm({
     })
   }, [isOpen, loadFormData])
 
-  // Reset form when transaction changes
+  // Sincronizar formulario cuando cambia la operación en edición
   useEffect(() => {
     if (!isOpen) return
     queueMicrotask(() => {
-      if (transaction) {
-        setType(transaction.type)
-        setDate(format(new Date(transaction.date), 'yyyy-MM-dd'))
-        setAccountId(transaction.accountId)
-        setCategoryId(transaction.categoryId || '')
-        setAmount(transaction.amount.toString())
-        setCurrency(transaction.currency)
-        setDescription(transaction.description)
+      if (operation) {
+        setType(operation.type)
+        setDate(format(new Date(operation.date), 'yyyy-MM-dd'))
+        setAccountId(operation.accountId)
+        setCategoryId(operation.categoryId || '')
+        setAmount(operation.amount.toString())
+        setCurrency(operation.currency)
+        setDescription(operation.description)
         setMethod('cash')
-        setFundOwner((transaction.fundOwner ?? 'company') as 'company' | 'client_advance')
-        setProjectId(transaction.projectId ?? '')
-        setOperationScope(transaction.projectId ? 'project' : 'general')
+        setFundOwner((operation.fundOwner ?? 'company') as 'company' | 'client_advance')
+        setProjectId(operation.projectId ?? '')
+        setOperationScope(operation.projectId ? 'project' : 'general')
       } else {
         resetForm()
       }
     })
-  }, [transaction, isOpen, resetForm])
+  }, [operation, isOpen, resetForm])
 
   useEffect(() => {
-    if (!isOpen || !transaction || isDemoMode) return
+    if (!isOpen || !operation || isDemoMode) return
     let cancelled = false
     ;(async () => {
-      const res = await getOperationComponents(transaction.id)
+      const res = await getOperationComponents(operation.id)
       if (cancelled || !res.success || !res.data?.length) return
       setComponentLines(
         res.data.map((c) =>
@@ -248,7 +248,7 @@ export function TransactionForm({
     return () => {
       cancelled = true
     }
-  }, [isOpen, transaction, isDemoMode])
+  }, [isOpen, operation, isDemoMode])
 
   const buildOperationComponents = (): OperationComponentRow[] => {
     const total = parseFloat(amount)
@@ -298,7 +298,7 @@ export function TransactionForm({
       }
     }
 
-    const data: CreateTransactionInput = {
+    const data: CreateOperationInput = {
       type,
       date: new Date(date),
       amount: parsedAmount,
@@ -329,7 +329,7 @@ export function TransactionForm({
     onClose()
   }
 
-  // Filter categories by transaction type
+  // Filtrar categorías según tipo de operación
   const filteredCategories = categories.filter((c) => {
     if (type === 'income') return c.type === CATEGORY_TYPES.INCOME
     if (type === 'expense') return ([
@@ -436,7 +436,7 @@ export function TransactionForm({
                 Tipo de operación
               </p>
               <div className="flex flex-wrap gap-2">
-                {transactionTypes.map((t) => {
+                {operationTypeOptions.map((t) => {
                 const Icon = t.icon
                 const isSelected = type === t.value
                 return (
@@ -493,7 +493,7 @@ export function TransactionForm({
                   <Label htmlFor="method">Método de Pago</Label>
                   <Select 
                     value={method} 
-                    onValueChange={(v) => setMethod(v as TransactionMethod)}
+                    onValueChange={(v) => setMethod(v as OperationMethod)}
                     disabled={isLoading}
                   >
                     <SelectTrigger id="method" className="w-full">
@@ -603,7 +603,7 @@ export function TransactionForm({
                   <Wallet className="h-10 w-10 text-muted-foreground/40" />
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">No tienes cuentas registradas</p>
-                    <p className="text-xs text-muted-foreground">Crea una cuenta en Configuración para poder registrar operaciones.</p>
+                    <p className="text-xs text-muted-foreground">Crea una cuenta en Configuración para poder registrar operations.</p>
                   </div>
                   <Link
                     href="/settings"

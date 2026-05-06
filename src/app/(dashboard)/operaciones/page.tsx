@@ -6,41 +6,40 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { TransactionTable } from '@/components/transactions/transaction-table'
-import { TransactionForm } from '@/components/transactions/transaction-form'
-import { useTransactionStore } from '@/stores/transaction-store'
+import { OperationTable } from '@/components/operations/operation-table'
+import { OperationForm } from '@/components/operations/operation-form'
+import { useOperationStore } from '@/stores/operation-store'
 import { useAuthStore } from '@/stores/auth-store'
-import type { Transaction } from '@/lib/actions/transactions'
-import type { CreateTransactionInput } from '@/lib/validations/transaction'
+import type { Operation } from '@/lib/actions/operations'
+import type { CreateOperationInput } from '@/lib/validations/operation'
 
 export default function OperacionesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [editingOperation, setEditingOperation] = useState<Operation | null>(null)
 
   const {
-    transactions,
+    operations,
     pagination,
     isLoading,
     error,
-    fetchTransactions,
-    addTransaction,
-    editTransaction,
+    fetchOperations,
+    addOperation,
+    editOperation,
     changeStatus,
-    removeTransaction,
+    removeOperation,
     setPagination,
-  } = useTransactionStore()
+  } = useOperationStore()
 
   const handleOpenModal = useCallback(() => {
-    setEditingTransaction(null)
+    setEditingOperation(null)
     setIsModalOpen(true)
   }, [])
 
-  // Cargar transacciones al montar
   useEffect(() => {
     queueMicrotask(() => {
-      void fetchTransactions()
+      void fetchOperations()
     })
-  }, [fetchTransactions])
+  }, [fetchOperations])
 
   // Atajo de teclado Ctrl+N
   useEffect(() => {
@@ -58,19 +57,19 @@ export default function OperacionesPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleOpenModal])
 
-  const handleEdit = (transaction: Transaction) => {
-    setEditingTransaction(transaction)
+  const handleEdit = (operation: Operation) => {
+    setEditingOperation(operation)
     setIsModalOpen(true)
   }
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
-    setEditingTransaction(null)
+    setEditingOperation(null)
   }
 
-  const handleSubmit = async (data: CreateTransactionInput, asDraft: boolean) => {
-    if (editingTransaction) {
-      const success = await editTransaction(editingTransaction.id, data)
+  const handleSubmit = async (data: CreateOperationInput, asDraft: boolean) => {
+    if (editingOperation) {
+      const success = await editOperation(editingOperation.id, data)
       if (success) {
         toast.success('Operación actualizada exitosamente')
         handleCloseModal()
@@ -78,7 +77,7 @@ export default function OperacionesPage() {
         toast.error('Error al actualizar la operación')
       }
     } else {
-      const success = await addTransaction(data, asDraft)
+      const success = await addOperation(data, asDraft)
       if (success) {
         toast.success(
           asDraft
@@ -95,7 +94,7 @@ export default function OperacionesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('¿Estás seguro de eliminar esta operación?')) return
 
-    const success = await removeTransaction(id)
+    const success = await removeOperation(id)
     if (success) {
       toast.success('Operación eliminada')
     } else {
@@ -164,7 +163,7 @@ export default function OperacionesPage() {
                   Iniciar sesión
                 </Button>
               ) : null}
-              <Button onClick={fetchTransactions} variant="outline" size="sm">
+              <Button onClick={() => void fetchOperations()} variant="outline" size="sm">
                 Reintentar
               </Button>
             </div>
@@ -209,7 +208,7 @@ export default function OperacionesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {transactions.filter((t) => t.status === 'pending').length}
+              {operations.filter((o) => o.status === 'pending').length}
             </div>
           </CardContent>
         </Card>
@@ -221,7 +220,7 @@ export default function OperacionesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[#7B68EE]">
-              {transactions.filter((t) => t.status === 'approved').length}
+              {operations.filter((o) => o.status === 'approved').length}
             </div>
           </CardContent>
         </Card>
@@ -233,15 +232,15 @@ export default function OperacionesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {transactions.filter((t) => t.status === 'posted').length}
+              {operations.filter((o) => o.status === 'posted').length}
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Table */}
-      <TransactionTable
-        transactions={transactions}
+      <OperationTable
+        operations={operations}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onSendToApproval={handleSendToApproval}
@@ -254,7 +253,7 @@ export default function OperacionesPage() {
       {pagination.total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Mostrando {transactions.length} de {pagination.total} operaciones
+            Mostrando {operations.length} de {pagination.total} operaciones
           </p>
           <div className="flex gap-2">
             <Button
@@ -284,11 +283,11 @@ export default function OperacionesPage() {
       )}
 
       {/* Modal */}
-      <TransactionForm
+      <OperationForm
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
-        transaction={editingTransaction}
+        operation={editingOperation}
         isLoading={isLoading}
       />
     </div>

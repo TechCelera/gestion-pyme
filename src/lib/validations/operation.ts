@@ -1,16 +1,16 @@
 import { z } from 'zod'
 
-// Enums
-export const TransactionTypeEnum = z.enum(['income', 'expense', 'transfer', 'adjustment'])
-export const TransactionStatusEnum = z.enum(['draft', 'pending', 'approved', 'posted', 'rejected'])
-export const TransactionMethodEnum = z.enum(['cash', 'transfer', 'card', 'digital', 'other'])
+/** Enums: valores alineados a columnas / RPC; nombres en inglés (código). */
+export const OperationTypeEnum = z.enum(['income', 'expense', 'transfer', 'adjustment'])
+export const OperationStatusEnum = z.enum(['draft', 'pending', 'approved', 'posted', 'rejected'])
+export const OperationMethodEnum = z.enum(['cash', 'transfer', 'card', 'digital', 'other'])
 export const ContactTypeEnum = z.enum(['cliente', 'proveedor'])
 export const AdjustmentReasonEnum = z.enum(['reconciliation', 'correction', 'other'])
 export type AdjustmentReason = z.infer<typeof AdjustmentReasonEnum>
 export const DocumentTypeEnum = z.enum(['invoice', 'receipt', 'ticket', 'other'])
 export const FundOwnerEnum = z.enum(['company', 'client_advance'])
 
-/** Medios de cobro/pago alineados al motor SQL operation_components */
+/** Medios de cobro/pago — motor SQL `operation_components` */
 export const OperationComponentTypeEnum = z.enum([
   'operative_cash',
   'operative_bank',
@@ -46,7 +46,7 @@ export const operationComponentSchema = z
 
 export type OperationComponentRow = z.infer<typeof operationComponentSchema>
 
-/** Payload snake_case para RPC set_operation_components */
+/** Payload snake_case para RPC `set_operation_components` */
 export function mapOperationComponentsToRpcJson(
   rows: OperationComponentRow[],
   defaultCurrency: string
@@ -60,16 +60,15 @@ export function mapOperationComponentsToRpcJson(
   }))
 }
 
-// Base schema object (without superRefine)
-const baseTransactionSchemaObject = z.object({
-  type: TransactionTypeEnum,
+const baseOperationSchemaObject = z.object({
+  type: OperationTypeEnum,
   date: z.coerce.date(),
   amount: z.number().positive('El monto debe ser mayor a 0'),
   currency: z.string().default('ARS'),
   description: z.string()
     .min(3, 'La descripción debe tener al menos 3 caracteres')
     .max(500, 'La descripción no puede exceder 500 caracteres'),
-  method: TransactionMethodEnum.default('cash'),
+  method: OperationMethodEnum.default('cash'),
   accountId: z.string().uuid().optional(),
   categoryId: z.string().uuid().optional(),
   contactId: z.string().uuid().optional(),
@@ -85,9 +84,7 @@ const baseTransactionSchemaObject = z.object({
   operationComponents: z.array(operationComponentSchema).optional(),
 })
 
-// Create Transaction Schema
-export const createTransactionSchema = baseTransactionSchemaObject.superRefine((data, ctx) => {
-  // Validar campos requeridos según el tipo
+export const createOperationSchema = baseOperationSchemaObject.superRefine((data, ctx) => {
   if (data.type === 'income' || data.type === 'expense') {
     if (!data.accountId) {
       ctx.addIssue({
@@ -175,8 +172,7 @@ export const createTransactionSchema = baseTransactionSchemaObject.superRefine((
   })
 })
 
-// Update Transaction Schema - use base object to allow partial()
-export const updateTransactionSchema = baseTransactionSchemaObject
+export const updateOperationSchema = baseOperationSchemaObject
   .partial()
   .extend({
     id: z.string().uuid(),
@@ -195,10 +191,9 @@ export const updateTransactionSchema = baseTransactionSchemaObject
     }
   })
 
-// Transaction Filters Schema
-export const transactionFiltersSchema = z.object({
-  status: z.array(TransactionStatusEnum).optional(),
-  type: z.array(TransactionTypeEnum).optional(),
+export const operationFiltersSchema = z.object({
+  status: z.array(OperationStatusEnum).optional(),
+  type: z.array(OperationTypeEnum).optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   accountId: z.string().uuid().optional(),
@@ -208,20 +203,18 @@ export const transactionFiltersSchema = z.object({
   pageSize: z.number().default(50),
 })
 
-// Update Status Schema
-export const updateTransactionStatusSchema = z.object({
+export const updateOperationStatusSchema = z.object({
   id: z.string().uuid(),
-  status: TransactionStatusEnum,
+  status: OperationStatusEnum,
   reason: z.string().optional(),
 })
 
-// Types
-export type CreateTransactionInput = z.infer<typeof createTransactionSchema>
-export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>
-export type TransactionFilters = z.infer<typeof transactionFiltersSchema>
-export type UpdateTransactionStatusInput = z.infer<typeof updateTransactionStatusSchema>
-export type TransactionType = z.infer<typeof TransactionTypeEnum>
-export type TransactionStatus = z.infer<typeof TransactionStatusEnum>
-export type TransactionMethod = z.infer<typeof TransactionMethodEnum>
+export type CreateOperationInput = z.infer<typeof createOperationSchema>
+export type UpdateOperationInput = z.infer<typeof updateOperationSchema>
+export type OperationFilters = z.infer<typeof operationFiltersSchema>
+export type UpdateOperationStatusInput = z.infer<typeof updateOperationStatusSchema>
+export type OperationType = z.infer<typeof OperationTypeEnum>
+export type OperationStatus = z.infer<typeof OperationStatusEnum>
+export type OperationMethod = z.infer<typeof OperationMethodEnum>
 export type FundOwner = z.infer<typeof FundOwnerEnum>
 export type OperationComponentType = z.infer<typeof OperationComponentTypeEnum>

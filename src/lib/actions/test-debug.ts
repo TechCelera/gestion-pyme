@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { transactionFiltersSchema } from '@/lib/validations/transaction'
 
 export async function testGetTransactions() {
   try {

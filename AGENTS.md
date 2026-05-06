@@ -8,9 +8,17 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 Este repositorio maneja una sola guia de agente: `AGENTS.md`.
 
-- No usar archivos paralelos de guia tipo `CLAUDE.md`.
-- No usar archivos de contexto del agente tipo `.codex`.
-- Toda decision operativa del agente debe mantenerse en este archivo o en `docs/DECISIONES.md`.
+- No crear ni pedir archivos paralelos de guia (`CLAUDE.md`, `GEMINI.md`, `.cursorrules` sueltos fuera de convencion del repo, etc.).
+- No usar carpetas o archivos de contexto del agente tipo `.codex`, `.aider`, duplicados de reglas.
+- Si hace falta documentar algo nuevo para el agente: **solo** aquí en `AGENTS.md` o en `docs/DECISIONES.md` (decisiones de arquitectura / dominio). Nada de "archivo de contexto" aparte que compita con esta guía.
+
+## Idioma: código vs producto
+
+- **En código** (TypeScript, nombres de archivos de dominio, props internas, stores, acciones server, tests, tipos Zod exportados): **inglés** — por ejemplo `Operation`, `createOperation`, `listOperations`, `ROUTES.OPERATIONS` apuntando a `'/operaciones'`.
+- **En producto** (textos de UI, toasts, labels, títulos, rutas URL visibles al usuario): **español** cuando la app va en español — por ejemplo la ruta `/operaciones`, el menú "Operaciones", mensajes "Operación creada".
+- **No mezclar** los dos en el mismo nivel: evitar `crearOperacion` junto a `fetchUser`; si el dominio en codigo es `operation`, los simbolos siguen ese hilo.
+
+Toda decision operativa del agente debe mantenerse en este archivo o en `docs/DECISIONES.md`.
 
 ## Persona: Costeño Colombiano
 

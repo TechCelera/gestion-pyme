@@ -14,14 +14,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { TransactionStatusBadge } from './transaction-status-badge'
-import type { Transaction } from '@/lib/actions/transactions'
-import type { TransactionStatus } from '@/lib/validations/transaction'
-import { TRANSACTION_METHOD_LABELS } from '@/lib/constants'
+import { OperationStatusBadge } from './operation-status-badge'
+import type { Operation } from '@/lib/actions/operations'
+import type { OperationStatus } from '@/lib/validations/operation'
+import { OPERATION_METHODS_LABELS } from '@/lib/constants'
 
-interface TransactionTableProps {
-  transactions: Transaction[]
-  onEdit: (transaction: Transaction) => void
+interface OperationTableProps {
+  operations: Operation[]
+  onEdit: (operation: Operation) => void
   onDelete: (id: string) => void
   onSendToApproval: (id: string) => void
   onApprove: (id: string) => void
@@ -39,15 +39,15 @@ const typeLabels: Record<string, string> = {
 /** Fuera del JSX para evitar ambiguedad del parser con `- { locale }` dentro de `{format(...)}` */
 const dateRowFormatOpts = { locale: es }
 
-export function TransactionTable({
-  transactions,
+export function OperationTable({
+  operations,
   onEdit,
   onDelete,
   onSendToApproval,
   onApprove,
   onPost,
   isLoading,
-}: TransactionTableProps) {
+}: OperationTableProps) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -57,11 +57,11 @@ export function TransactionTable({
     }).format(amount)
   }
 
-  const canEdit = (status: TransactionStatus) => status === 'draft'
-  const canSendToApproval = (status: TransactionStatus) => status === 'draft'
-  const canApprove = (status: TransactionStatus) => status === 'pending'
-  const canPost = (status: TransactionStatus) => status === 'approved'
-  const canDelete = (status: TransactionStatus) => status === 'draft'
+  const canEdit = (status: OperationStatus) => status === 'draft'
+  const canSendToApproval = (status: OperationStatus) => status === 'draft'
+  const canApprove = (status: OperationStatus) => status === 'pending'
+  const canPost = (status: OperationStatus) => status === 'approved'
+  const canDelete = (status: OperationStatus) => status === 'draft'
 
   if (isLoading) {
     return (
@@ -93,7 +93,7 @@ export function TransactionTable({
     )
   }
 
-  if (transactions.length === 0) {
+  if (operations.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center rounded-xl border bg-card">
         <p className="text-muted-foreground">No hay operaciones para mostrar</p>
@@ -117,30 +117,30 @@ export function TransactionTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions.map((transaction) => (
+          {operations.map((operation) => (
             <TableRow
-              key={transaction.id}
-              onMouseEnter={() => setHoveredRow(transaction.id)}
+              key={operation.id}
+              onMouseEnter={() => setHoveredRow(operation.id)}
               onMouseLeave={() => setHoveredRow(null)}
             >
               <TableCell className="text-center">
-                {format(new Date(transaction.date), 'dd/MM/yyyy', dateRowFormatOpts)}
+                {format(new Date(operation.date), 'dd/MM/yyyy', dateRowFormatOpts)}
               </TableCell>
-              <TableCell className="text-center">{typeLabels[transaction.type] || transaction.type}</TableCell>
+              <TableCell className="text-center">{typeLabels[operation.type] || operation.type}</TableCell>
               <TableCell className="text-center">
                 <span className="inline-flex text-xs px-1.5 py-0.5 rounded bg-muted">
-                  {TRANSACTION_METHOD_LABELS[transaction.method] || transaction.method}
+                  {OPERATION_METHODS_LABELS[operation.method] || operation.method}
                 </span>
               </TableCell>
               <TableCell className="max-w-[200px] truncate text-center">
-                {transaction.description}
+                {operation.description}
               </TableCell>
               <TableCell className="text-center">
                 <div className="flex flex-col gap-1 items-center">
                   <span className="text-xs text-muted-foreground text-center">
-                    {transaction.projectName ?? 'General empresa'}
+                    {operation.projectName ?? 'General empresa'}
                   </span>
-                  {transaction.requiresBudgetApproval ? (
+                  {operation.requiresBudgetApproval ? (
                     <span className="text-[11px] text-amber-700 bg-amber-100 rounded px-1.5 py-0.5 w-fit">
                       Requiere aprobación presupuesto
                     </span>
@@ -148,61 +148,61 @@ export function TransactionTable({
                 </div>
               </TableCell>
               <TableCell className="font-medium text-center">
-                {formatCurrency(transaction.amount, transaction.currency)}
+                {formatCurrency(operation.amount, operation.currency)}
               </TableCell>
               <TableCell className="text-center">
-                <TransactionStatusBadge status={transaction.status} />
+                <OperationStatusBadge status={operation.status} />
               </TableCell>
               <TableCell>
                 <div className="flex items-center justify-center gap-1">
-                  {canEdit(transaction.status) && (
+                  {canEdit(operation.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      onClick={() => onEdit(transaction)}
+                      onClick={() => onEdit(operation)}
                       title="Editar"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                  {canSendToApproval(transaction.status) && (
+                  {canSendToApproval(operation.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      onClick={() => onSendToApproval(transaction.id)}
+                      onClick={() => onSendToApproval(operation.id)}
                       title="Enviar a aprobación"
                       className="text-amber-700"
                     >
                       <CircleArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                  {canApprove(transaction.status) && (
+                  {canApprove(operation.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      onClick={() => onApprove(transaction.id)}
+                      onClick={() => onApprove(operation.id)}
                       title="Aprobar"
                       className="text-[#7B68EE]"
                     >
                       <CheckCircle className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                  {canPost(transaction.status) && (
+                  {canPost(operation.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      onClick={() => onPost(transaction.id)}
+                      onClick={() => onPost(operation.id)}
                       title="Postear"
                       className="text-green-600"
                     >
                       <Send className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                  {canDelete(transaction.status) && (
+                  {canDelete(operation.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      onClick={() => onDelete(transaction.id)}
+                      onClick={() => onDelete(operation.id)}
                       title="Eliminar"
                       className="text-red-600"
                     >

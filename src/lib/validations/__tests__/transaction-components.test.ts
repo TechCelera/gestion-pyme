@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
-  createTransactionSchema,
+  createOperationSchema,
   operationComponentSchema,
   mapOperationComponentsToRpcJson,
-  updateTransactionSchema,
-} from '../transaction'
+  updateOperationSchema,
+} from '../operation'
 
 describe('operationComponentSchema', () => {
   it('exige cuenta para medios operativos', () => {
@@ -33,7 +33,7 @@ describe('operationComponentSchema', () => {
   })
 })
 
-describe('createTransactionSchema + operationComponents', () => {
+describe('createOperationSchema + operationComponents', () => {
   const base = {
     type: 'income' as const,
     date: new Date('2026-05-01'),
@@ -45,7 +45,7 @@ describe('createTransactionSchema + operationComponents', () => {
   }
 
   it('rechaza suma distinta al total', () => {
-    const r = createTransactionSchema.safeParse({
+    const r = createOperationSchema.safeParse({
       ...base,
       operationComponents: [
         {
@@ -64,7 +64,7 @@ describe('createTransactionSchema + operationComponents', () => {
   })
 
   it('acepta desglose que suma al total en ingreso', () => {
-    const r = createTransactionSchema.safeParse({
+    const r = createOperationSchema.safeParse({
       ...base,
       operationComponents: [
         {
@@ -83,7 +83,7 @@ describe('createTransactionSchema + operationComponents', () => {
   })
 
   it('rechaza proveedor en ingreso', () => {
-    const r = createTransactionSchema.safeParse({
+    const r = createOperationSchema.safeParse({
       ...base,
       operationComponents: [
         {
@@ -97,11 +97,11 @@ describe('createTransactionSchema + operationComponents', () => {
   })
 })
 
-describe('updateTransactionSchema + operationComponents', () => {
+describe('updateOperationSchema + operationComponents', () => {
   const id = '550e8400-e29b-41d4-a716-446655440099'
 
   it('rechaza suma distinta al monto cuando ambos vienen', () => {
-    const r = updateTransactionSchema.safeParse({
+    const r = updateOperationSchema.safeParse({
       id,
       amount: 100,
       operationComponents: [
