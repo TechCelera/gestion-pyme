@@ -7,6 +7,7 @@ import {
   updateOperation,
   getOperationComponents,
 } from '../operations'
+import { DEFAULT_TRANSFER_DESCRIPTION } from '@/lib/validations/operation'
 import { evaluateBudgetStatus } from '@/lib/utils/budget'
 
 // Mock the Supabase client
@@ -565,6 +566,91 @@ describe('createOperation con operationComponents', () => {
           expect.objectContaining({ component_type: 'operative_cash', amount: 100 }),
           expect.objectContaining({ component_type: 'client_receivable', amount: 50 }),
         ]),
+      })
+    )
+  })
+
+  it('transferencia: descripción vacía llega al RPC como texto por defecto', async () => {
+    const companyId = 'company-123'
+    const txId = '33333333-3333-4333-8333-333333333333'
+    const sourceId = '550e8400-e29b-41d4-a716-446655440010'
+    const destId = '550e8400-e29b-41d4-a716-446655440011'
+
+    const mockAuthGetUser = vi.fn().mockResolvedValue({
+      data: { user: { id: 'user-123', app_metadata: { company_id: companyId } } },
+      error: null,
+    })
+
+    const mockRpc = vi.fn((name: string) => {
+      if (name === 'create_transaction') {
+        return Promise.resolve({ data: txId, error: null })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: {
+        id: txId,
+        account_id: sourceId,
+        accounts: { name: 'Banco A' },
+        category_id: null,
+        categories: null,
+        type: 'transfer',
+        status: 'draft',
+        method: 'transfer',
+        amount: 200,
+        currency: 'ARS',
+        date: '2026-05-03',
+        description: DEFAULT_TRANSFER_DESCRIPTION,
+        created_at: '2026-05-03T00:00:00Z',
+        created_by: 'user-123',
+        users: { full_name: 'Tester' },
+        project_id: null,
+        projects: null,
+        fund_owner: 'company',
+        requires_budget_approval: false,
+      },
+      error: null,
+    })
+
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'transactions') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: mockSingle,
+            }),
+          }),
+        }
+      }
+      return { select: vi.fn() }
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: mockAuthGetUser },
+      from: mockFrom,
+      rpc: mockRpc,
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await createOperation({
+      type: 'transfer',
+      date: new Date('2026-05-03'),
+      amount: 200,
+      currency: 'ARS',
+      description: '',
+      method: 'transfer',
+      sourceAccountId: sourceId,
+      destinationAccountId: destId,
+    })
+
+    expect(result.success).toBe(true)
+    expect(mockRpc).toHaveBeenCalledWith(
+      'create_transaction',
+      expect.objectContaining({
+        p_type: 'transfer',
+        p_description: DEFAULT_TRANSFER_DESCRIPTION,
+        p_source_account_id: sourceId,
+        p_destination_account_id: destId,
       })
     )
   })

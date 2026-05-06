@@ -17,6 +17,7 @@ import {
   type OperationComponentRow,
 } from '@/lib/validations/operation'
 import { evaluateBudgetStatus } from '@/lib/utils/budget'
+import { errorMessageForUser } from '@/lib/utils/errors'
 
 // Types
 export interface Operation {
@@ -93,7 +94,7 @@ export async function getOperationComponents(
 
     return { success: true, data: mapped }
   } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Error desconocido' }
+    return { success: false, error: errorMessageForUser(e) }
   }
 }
 
@@ -396,10 +397,7 @@ export async function createOperation(
       data: mapped 
     }
   } catch (error) {
-    if (error instanceof Error) {
-      return { success: false, error: error.message }
-    }
-    return { success: false, error: 'Error desconocido' }
+    return { success: false, error: errorMessageForUser(error, 'Error al crear operación') }
   }
 }
 
@@ -514,10 +512,7 @@ export async function updateOperation(
     // revalidateTag('transactions')
     return { success: true }
   } catch (error) {
-    if (error instanceof Error) {
-      return { success: false, error: error.message }
-    }
-    return { success: false, error: 'Error desconocido' }
+    return { success: false, error: errorMessageForUser(error, 'Error al actualizar operación') }
   }
 }
 
@@ -565,10 +560,7 @@ export async function updateOperationStatus(
     // revalidateTag('transactions')
     return { success: true }
   } catch (error) {
-    if (error instanceof Error) {
-      return { success: false, error: error.message }
-    }
-    return { success: false, error: 'Error desconocido' }
+    return { success: false, error: errorMessageForUser(error, 'Error al actualizar estado') }
   }
 }
 
@@ -596,10 +588,7 @@ export async function deleteOperation(id: string): Promise<ActionResult> {
     // revalidateTag('transactions')
     return { success: true }
   } catch (error) {
-    if (error instanceof Error) {
-      return { success: false, error: error.message }
-    }
-    return { success: false, error: 'Error desconocido' }
+    return { success: false, error: errorMessageForUser(error, 'Error al eliminar operación') }
   }
 }
 
@@ -662,10 +651,10 @@ export async function listOperations(
     }
   } catch (error) {
     console.error('listOperations CATCH:', error)
-    if (error instanceof Error) {
-      return { success: false, error: error.message }
+    return {
+      success: false,
+      error: errorMessageForUser(error, 'Error desconocido al cargar operaciones'),
     }
-    return { success: false, error: 'Error desconocido al cargar operaciones' }
   }
 }
 
@@ -724,10 +713,7 @@ export async function approveBudgetException(
 
     return { success: true }
   } catch (error) {
-    if (error instanceof Error) {
-      return { success: false, error: error.message }
-    }
-    return { success: false, error: 'Error desconocido' }
+    return { success: false, error: errorMessageForUser(error) }
   }
 }
 
@@ -781,10 +767,7 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
 
     return { success: true, data: stats }
   } catch (error) {
-    if (error instanceof Error) {
-      return { success: false, error: error.message }
-    }
-    return { success: false, error: 'Error desconocido' }
+    return { success: false, error: errorMessageForUser(error) }
   }
 }
 
@@ -1022,9 +1005,6 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
       },
     }
   } catch (error) {
-    if (error instanceof Error) {
-      return { success: false, error: error.message }
-    }
-    return { success: false, error: 'Error desconocido' }
+    return { success: false, error: errorMessageForUser(error) }
   }
 }

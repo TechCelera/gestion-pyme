@@ -1,6 +1,24 @@
 import { ZodError } from 'zod'
 
 /**
+ * Primer mensaje legible para UI y `ActionResult.error`.
+ * Evita mostrar el JSON que en algunas versiones de Zod va en `ZodError.message`.
+ */
+export function errorMessageForUser(
+  error: unknown,
+  fallback = 'Error desconocido'
+): string {
+  if (error instanceof ZodError) {
+    const first = error.issues[0]
+    return first?.message ?? fallback
+  }
+  if (error instanceof Error) {
+    return error.message || fallback
+  }
+  return fallback
+}
+
+/**
  * Error categories for user-facing error messages.
  */
 export type ErrorCategory = 'auth' | 'database' | 'validation' | 'network' | 'unknown'

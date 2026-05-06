@@ -60,13 +60,16 @@ export function mapOperationComponentsToRpcJson(
   }))
 }
 
+/** Texto guardado cuando en transferencia no hay memo o es más corto que el mínimo general. */
+export const DEFAULT_TRANSFER_DESCRIPTION = 'Transferencia entre cuentas'
+
 const baseOperationSchemaObject = z.object({
   type: OperationTypeEnum,
   date: z.coerce.date(),
   amount: z.number().positive('El monto debe ser mayor a 0'),
   currency: z.string().default('ARS'),
-  description: z.string()
-    .min(3, 'La descripción debe tener al menos 3 caracteres')
+  description: z
+    .string()
     .max(500, 'La descripción no puede exceder 500 caracteres'),
   method: OperationMethodEnum.default('cash'),
   accountId: z.string().uuid().optional(),
@@ -84,7 +87,20 @@ const baseOperationSchemaObject = z.object({
   operationComponents: z.array(operationComponentSchema).optional(),
 })
 
-export const createOperationSchema = baseOperationSchemaObject.superRefine((data, ctx) => {
+export const createOperationSchema = baseOperationSchemaObject
+  .superRefine((data, ctx) => {
+  const descTrim = (data.description ?? '').trim()
+  if (data.type !== 'transfer' && descTrim.length < 3) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.too_small,
+      minimum: 3,
+      inclusive: true,
+      type: 'string',
+      message: 'La descripción debe tener al menos 3 caracteres',
+      path: ['description'],
+    })
+  }
+
   if (data.type === 'income' || data.type === 'expense') {
     if (!data.accountId) {
       ctx.addIssue({
@@ -171,11 +187,41 @@ export const createOperationSchema = baseOperationSchemaObject.superRefine((data
     }
   })
 })
+  .transform((data) => {
+    if (data.type === 'transfer') {
+      const t = data.description.trim()
+      if (t.length < 3) {
+        return { ...data, description: DEFAULT_TRANSFER_DESCRIPTION }
+      }
+      return { ...data, description: t }
+    }
+    return { ...data, description: data.description.trim() }
+  })
 
 export const updateOperationSchema = baseOperationSchemaObject
   .partial()
   .extend({
     id: z.string().uuid(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.description !== undefined) {
+      const d = data.description.trim()
+      const kind = data.type
+      const needsMemo =
+        kind === undefined
+          ? d.length < 3
+          : kind !== 'transfer' && d.length < 3
+      if (needsMemo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.too_small,
+          minimum: 3,
+          inclusive: true,
+          type: 'string',
+          message: 'La descripción debe tener al menos 3 caracteres',
+          path: ['description'],
+        })
+      }
+    }
   })
   .superRefine((data, ctx) => {
     if (!data.operationComponents?.length) return
@@ -189,6 +235,19 @@ export const updateOperationSchema = baseOperationSchemaObject
         path: ['operationComponents'],
       })
     }
+  })
+  .transform((data) => {
+    if (data.type === 'transfer' && data.description !== undefined) {
+      const t = data.description.trim()
+      return {
+        ...data,
+        description: t.length < 3 ? DEFAULT_TRANSFER_DESCRIPTION : t,
+      }
+    }
+    if (data.description !== undefined) {
+      return { ...data, description: data.description.trim() }
+    }
+    return data
   })
 
 export const operationFiltersSchema = z.object({

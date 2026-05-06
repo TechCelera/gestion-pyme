@@ -6,6 +6,7 @@ import {
   updateOperationStatusSchema,
   OperationTypeEnum,
   OperationStatusEnum,
+  DEFAULT_TRANSFER_DESCRIPTION,
 } from '../operation'
 
 describe('Validaciones de operación', () => {
@@ -84,6 +85,20 @@ describe('Validaciones de operación', () => {
       }
       const result = createOperationSchema.safeParse(invalid)
       expect(result.success).toBe(false)
+    })
+
+    it('should default short or empty description on transfer', () => {
+      const sparse = { ...validTransfer, description: '' }
+      const r1 = createOperationSchema.safeParse(sparse)
+      expect(r1.success).toBe(true)
+      if (r1.success) {
+        expect(r1.data.description).toBe(DEFAULT_TRANSFER_DESCRIPTION)
+      }
+      const r2 = createOperationSchema.safeParse({ ...validTransfer, description: 'AB' })
+      expect(r2.success).toBe(true)
+      if (r2.success) {
+        expect(r2.data.description).toBe(DEFAULT_TRANSFER_DESCRIPTION)
+      }
     })
   })
 
