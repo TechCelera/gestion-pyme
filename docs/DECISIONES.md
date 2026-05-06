@@ -5,7 +5,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## Estado
 
 - Activo
-- Ultima actualizacion: 2026-05-05
+- Ultima actualizacion: 2026-05-06
 
 ## 1) Caja unica por empresa
 
@@ -197,3 +197,27 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 - decision,
 - impacto tecnico,
 - fecha.
+
+## 11) Despliegue a produccion: variables y fuente unica de reglas
+
+### Contexto
+- En despliegues por CLI a Vercel hubo confusion por variables de entorno faltantes y por el uso de "archivos de contexto" fuera de la guia oficial.
+
+### Decision
+- Variables de entorno de produccion se administran en Vercel Project Settings o via `vercel env`, nunca hardcodeadas en repo.
+- Variables publicas minimas requeridas para Supabase:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- La unica fuente de reglas operativas del agente es `AGENTS.md`; para decisiones funcionales/arquitectura se usa este `docs/DECISIONES.md`.
+- No se crean archivos paralelos de contexto (`.codex`, `.aider`, `CLAUDE.md`, etc.) para "recordar" reglas.
+
+### Implementacion
+- Se agrega `.vercelignore` para excluir archivos pesados de upload CLI (`tmp`, `node_modules`, `.next`, etc.).
+- `vercel.json` se mantiene minimo (`framework: nextjs`) para evitar overrides innecesarios.
+- Verificacion operativa recomendada antes de publicar:
+  - `vercel env ls` (confirmar variables en Production).
+  - `vercel deploy --prod --yes`.
+
+### Razon
+- Evitar fallos de build/deploy por configuracion incompleta.
+- Reducir friccion operativa y preguntas repetidas con una regla unica, visible y mantenible.
