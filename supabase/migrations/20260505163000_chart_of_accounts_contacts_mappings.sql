@@ -170,6 +170,19 @@ UPDATE accounts a SET chart_account_id = (
   LIMIT 1
 )
 WHERE a.chart_account_id IS NULL AND a.deleted_at IS NULL;
+-- Incluye también cuentas soft-deleted para poder imponer NOT NULL sin fallar por históricos
+UPDATE accounts a SET chart_account_id = (
+  SELECT coa.id FROM chart_of_accounts coa
+  WHERE coa.company_id = a.company_id
+    AND coa.code = CASE
+      WHEN UPPER(COALESCE(a.currency, 'ARS')) = 'USD' AND a.type = 'cash' THEN '1.1.2'
+      WHEN a.type = 'cash' THEN '1.1.1'
+      WHEN a.type = 'bank' THEN '1.1.3'
+      ELSE '1.1.3'
+    END
+  LIMIT 1
+)
+WHERE a.chart_account_id IS NULL;
 
 -- Todas las categorías operativas hacia naturaleza económica
 UPDATE categories c SET chart_account_id = (
@@ -179,6 +192,14 @@ UPDATE categories c SET chart_account_id = (
   LIMIT 1
 )
 WHERE c.chart_account_id IS NULL AND c.deleted_at IS NULL;
+-- Incluye también categorías soft-deleted para poder imponer NOT NULL sin fallar por históricos
+UPDATE categories c SET chart_account_id = (
+  SELECT coa.id FROM chart_of_accounts coa
+  WHERE coa.company_id = c.company_id
+    AND coa.code = CASE WHEN c.type = 'income' THEN '4.1' ELSE '5.1' END
+  LIMIT 1
+)
+WHERE c.chart_account_id IS NULL;
 
 -- INSERT futuros pueden omitir chart_account_id: derivamos desde el plan sembrado
 CREATE OR REPLACE FUNCTION fn_categories_default_chart_account()

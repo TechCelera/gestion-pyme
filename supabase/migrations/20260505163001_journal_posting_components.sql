@@ -485,7 +485,7 @@ BEGIN
   END LOOP;
 
   IF ROUND(v_sum::numeric, 2) <> ROUND(txn.amount::numeric, 2) THEN
-    RAISE EXCEPTION 'COMPONENTS_SUM_MISMATCH: suma %% vs total %% ', v_sum, txn.amount;
+    RAISE EXCEPTION 'COMPONENTS_SUM_MISMATCH: suma % vs total %', v_sum, txn.amount;
   END IF;
 
 END;
