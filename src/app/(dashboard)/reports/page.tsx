@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertCircle, BarChart3, TrendingUp } from 'lucide-react'
+import { AlertCircle, BarChart3, TrendingUp, Scale } from 'lucide-react'
 import { getReportsData } from '@/lib/actions/transactions'
 import { ReportsCharts } from '@/components/reports/reports-charts'
 import { PageHeader } from '@/components/ui/page-header'
@@ -42,16 +42,16 @@ export default async function ReportsPage() {
     )
   }
 
-  const { incomeStatement, cashFlow } = result.data
+  const { incomeStatement, cashFlow, balanceSheet } = result.data
 
   return (
     <div className="p-4 md:p-8 space-y-6">
       <PageHeader
         title="Reportes"
-        description={`Estado de resultados y flujo de caja de ${incomeStatement.periodLabel}`}
+        description={`Estado de resultados, balance y flujo de caja · ${incomeStatement.periodLabel}`}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export default async function ReportsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2 text-sm rounded-lg border border-green-200/70 bg-green-50/60 p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-green-700">
-                Real contabilizado (posted)
+                Real desde diario (caja/banco · posted)
               </p>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Entradas de efectivo</span>
@@ -176,6 +176,34 @@ export default async function ReportsPage() {
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Scale className="h-5 w-5 text-primary" />
+              Balance (diario)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Posición acumulada hasta el {balanceSheet.asOf} desde partidas contabilizadas.
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Activos</span>
+                <span className="font-medium">{formatCurrency(balanceSheet.totalAssets)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Pasivos</span>
+                <span className="font-medium">{formatCurrency(balanceSheet.totalLiabilities)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Patrimonio</span>
+                <span className="font-medium">{formatCurrency(balanceSheet.totalEquity)}</span>
               </div>
             </div>
           </CardContent>

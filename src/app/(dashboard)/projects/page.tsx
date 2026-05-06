@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Pencil, Plus } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,7 +23,7 @@ export default function ProjectsPage() {
   const [isProjectFormOpen, setIsProjectFormOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     setIsLoading(true)
     const result = await getProjects()
     if (result.success && result.data) {
@@ -32,11 +32,13 @@ export default function ProjectsPage() {
       toast.error(result.error ?? 'No se pudieron cargar los proyectos')
     }
     setIsLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
-    loadProjects()
-  }, [])
+    queueMicrotask(() => {
+      void loadProjects()
+    })
+  }, [loadProjects])
 
   const handleOpenCreate = () => {
     setEditingProject(null)

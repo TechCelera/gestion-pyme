@@ -75,7 +75,9 @@ export default function AccountsPage() {
   }, [isDemoMode])
 
   useEffect(() => {
-    fetchAccounts()
+    queueMicrotask(() => {
+      void fetchAccounts()
+    })
   }, [fetchAccounts])
 
   const handleOpenAccountForm = (account?: Account) => {

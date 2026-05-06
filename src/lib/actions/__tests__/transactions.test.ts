@@ -3,6 +3,9 @@ import {
   getTransactions,
   getReportsData,
   updateTransactionStatus,
+  createTransaction,
+  updateTransaction,
+  getOperationComponents,
 } from '../transactions'
 import { evaluateBudgetStatus } from '@/lib/utils/budget'
 
@@ -233,7 +236,7 @@ describe('getReportsData server action', () => {
     vi.clearAllMocks()
   })
 
-  it('should aggregate income statement and cash flow correctly', async () => {
+  it('combina RPC del diario con tendencia proyectada desde transacciones', async () => {
     const mockAuthGetUser = vi.fn().mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -245,14 +248,6 @@ describe('getReportsData server action', () => {
       }),
     }
 
-    const periodRows = [
-      { type: 'income', amount: 1000, categories: null },
-      { type: 'income', amount: 500, categories: null },
-      { type: 'expense', amount: 300, categories: { name: 'Operativos' } },
-      { type: 'expense', amount: 100, categories: { name: 'Marketing' } },
-      { type: 'expense', amount: 200, categories: { name: 'Operativos' } },
-    ]
-
     const trendRows = [
       { type: 'income', amount: 1000, date: '2026-01-10' },
       { type: 'expense', amount: 300, date: '2026-01-20' },
@@ -260,20 +255,13 @@ describe('getReportsData server action', () => {
       { type: 'expense', amount: 150, date: '2026-06-07' },
     ]
 
-    const txQueryFirst = {
-      eq: vi.fn().mockReturnThis(),
-      is: vi.fn().mockReturnThis(),
-      gte: vi.fn().mockReturnThis(),
-      lte: vi.fn().mockResolvedValue({ data: periodRows, error: null }),
-    }
-    const txQuerySecond = {
+    const txQuery = {
       eq: vi.fn().mockReturnThis(),
       is: vi.fn().mockReturnThis(),
       gte: vi.fn().mockReturnThis(),
       lte: vi.fn().mockResolvedValue({ data: trendRows, error: null }),
     }
 
-    let txSelectCall = 0
     const mockFrom = vi.fn((table: string) => {
       if (table === 'users') {
         return {
@@ -281,20 +269,51 @@ describe('getReportsData server action', () => {
         }
       }
       if (table === 'transactions') {
-        txSelectCall += 1
         return {
-          select: vi
-            .fn()
-            .mockReturnValue(txSelectCall === 1 ? txQueryFirst : txQuerySecond),
+          select: vi.fn().mockReturnValue(txQuery),
         }
       }
       return { select: vi.fn() }
     })
 
+    const mockRpc = vi.fn((name: string) => {
+      if (name === 'rpc_reports_income_statement_period') {
+        return Promise.resolve({
+          data: {
+            totalIncome: 1500,
+            totalExpenses: 600,
+            expenseBreakdown: [
+              { category: 'Operativos', amount: 500 },
+              { category: 'Marketing', amount: 100 },
+            ],
+          },
+          error: null,
+        })
+      }
+      if (name === 'rpc_reports_cash_flow_real_monthly') {
+        return Promise.resolve({
+          data: [],
+          error: null,
+        })
+      }
+      if (name === 'rpc_reports_balance_sheet') {
+        return Promise.resolve({
+          data: {
+            totalAssets: 12000,
+            totalLiabilities: 5000,
+            totalEquity: 7000,
+            asOf: '2026-05-31',
+          },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
+
     vi.mocked(createClient).mockResolvedValue({
       auth: { getUser: mockAuthGetUser },
       from: mockFrom,
-      rpc: vi.fn(),
+      rpc: mockRpc,
     } as unknown as Awaited<ReturnType<typeof createClient>>)
 
     const result = await getReportsData()
@@ -309,13 +328,24 @@ describe('getReportsData server action', () => {
         amount: 500,
       })
 
+      expect(result.data.balanceSheet.totalAssets).toBe(12000)
+      expect(result.data.balanceSheet.totalLiabilities).toBe(5000)
+      expect(result.data.balanceSheet.totalEquity).toBe(7000)
+
       expect(result.data.cashFlow.monthlyTrend.length).toBe(6)
       const lastMonth = result.data.cashFlow.monthlyTrend[result.data.cashFlow.monthlyTrend.length - 1]
       expect(lastMonth.net).toBe(lastMonth.inflow - lastMonth.outflow)
+
+      expect(mockRpc).toHaveBeenCalledWith(
+        'rpc_reports_income_statement_period',
+        expect.objectContaining({
+          p_company_id: 'company-123',
+        })
+      )
     }
   })
 
-  it('should return error when transactions query fails', async () => {
+  it('propaga error si falla la consulta de transacciones (proyectado)', async () => {
     const mockAuthGetUser = vi.fn().mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -333,14 +363,7 @@ describe('getReportsData server action', () => {
       gte: vi.fn().mockReturnThis(),
       lte: vi.fn().mockResolvedValue({ data: null, error: { message: 'DB exploded' } }),
     }
-    const okQuery = {
-      eq: vi.fn().mockReturnThis(),
-      is: vi.fn().mockReturnThis(),
-      gte: vi.fn().mockReturnThis(),
-      lte: vi.fn().mockResolvedValue({ data: [], error: null }),
-    }
 
-    let txSelectCall = 0
     const mockFrom = vi.fn((table: string) => {
       if (table === 'users') {
         return {
@@ -348,9 +371,332 @@ describe('getReportsData server action', () => {
         }
       }
       if (table === 'transactions') {
-        txSelectCall += 1
         return {
-          select: vi.fn().mockReturnValue(txSelectCall === 1 ? failedQuery : okQuery),
+          select: vi.fn().mockReturnValue(failedQuery),
+        }
+      }
+      return { select: vi.fn() }
+    })
+
+    const mockRpc = vi.fn((name: string) => {
+      if (name === 'rpc_reports_income_statement_period') {
+        return Promise.resolve({
+          data: { totalIncome: 0, totalExpenses: 0, expenseBreakdown: [] },
+          error: null,
+        })
+      }
+      if (name === 'rpc_reports_cash_flow_real_monthly') {
+        return Promise.resolve({ data: [], error: null })
+      }
+      if (name === 'rpc_reports_balance_sheet') {
+        return Promise.resolve({
+          data: { totalAssets: 0, totalLiabilities: 0, totalEquity: 0, asOf: '2026-05-31' },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: mockAuthGetUser },
+      from: mockFrom,
+      rpc: mockRpc,
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await getReportsData()
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain('DB exploded')
+    }
+  })
+
+  it('propaga error si falla el RPC de estado de resultados', async () => {
+    const mockAuthGetUser = vi.fn().mockResolvedValue({
+      data: { user: { id: 'user-123' } },
+      error: null,
+    })
+
+    const usersQuery = {
+      eq: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { company_id: 'company-123' }, error: null }),
+      }),
+    }
+
+    const okTrend = {
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockResolvedValue({ data: [], error: null }),
+    }
+
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'users') {
+        return { select: vi.fn().mockReturnValue(usersQuery) }
+      }
+      if (table === 'transactions') {
+        return { select: vi.fn().mockReturnValue(okTrend) }
+      }
+      return { select: vi.fn() }
+    })
+
+    const mockRpc = vi.fn((name: string) => {
+      if (name === 'rpc_reports_income_statement_period') {
+        return Promise.resolve({ data: null, error: { message: 'rpc caído' } })
+      }
+      if (name === 'rpc_reports_cash_flow_real_monthly') {
+        return Promise.resolve({ data: [], error: null })
+      }
+      if (name === 'rpc_reports_balance_sheet') {
+        return Promise.resolve({
+          data: { totalAssets: 0, totalLiabilities: 0, totalEquity: 0, asOf: '2026-05-31' },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: mockAuthGetUser },
+      from: mockFrom,
+      rpc: mockRpc,
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await getReportsData()
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain('rpc caído')
+    }
+  })
+})
+
+describe('createTransaction con operationComponents', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('llama set_operation_components tras create_transaction', async () => {
+    const companyId = 'company-123'
+    const txId = '11111111-1111-4111-8111-111111111111'
+    const accountId = '550e8400-e29b-41d4-a716-446655440001'
+    const categoryId = '550e8400-e29b-41d4-a716-446655440002'
+    const contactId = '550e8400-e29b-41d4-a716-446655440003'
+
+    const mockAuthGetUser = vi.fn().mockResolvedValue({
+      data: { user: { id: 'user-123', app_metadata: { company_id: companyId } } },
+      error: null,
+    })
+
+    const mockRpc = vi.fn((name: string) => {
+      if (name === 'create_transaction') {
+        return Promise.resolve({ data: txId, error: null })
+      }
+      if (name === 'set_operation_components') {
+        return Promise.resolve({ data: null, error: null })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: {
+        id: txId,
+        account_id: accountId,
+        accounts: { name: 'Caja' },
+        category_id: categoryId,
+        categories: { name: 'Ventas' },
+        type: 'income',
+        status: 'draft',
+        method: 'cash',
+        amount: 150,
+        currency: 'ARS',
+        date: '2026-05-01',
+        description: 'Mix',
+        created_at: '2026-05-01T00:00:00Z',
+        created_by: 'user-123',
+        users: { full_name: 'Tester' },
+        project_id: null,
+        projects: null,
+        fund_owner: 'company',
+        requires_budget_approval: false,
+      },
+      error: null,
+    })
+
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'transactions') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: mockSingle,
+            }),
+          }),
+        }
+      }
+      return { select: vi.fn() }
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: mockAuthGetUser },
+      from: mockFrom,
+      rpc: mockRpc,
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await createTransaction({
+      type: 'income',
+      date: new Date('2026-05-01'),
+      amount: 150,
+      currency: 'ARS',
+      description: 'Mix de medios',
+      method: 'cash',
+      accountId,
+      categoryId,
+      operationComponents: [
+        { componentType: 'operative_cash', accountId, amount: 100 },
+        { componentType: 'client_receivable', contactId, amount: 50 },
+      ],
+    })
+
+    expect(result.success).toBe(true)
+    expect(mockRpc).toHaveBeenCalledWith(
+      'set_operation_components',
+      expect.objectContaining({
+        p_transaction_id: txId,
+        p_components: expect.arrayContaining([
+          expect.objectContaining({ component_type: 'operative_cash', amount: 100 }),
+          expect.objectContaining({ component_type: 'client_receivable', amount: 50 }),
+        ]),
+      })
+    )
+  })
+})
+
+describe('updateTransaction con operationComponents', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('llama set_operation_components cuando hay desglose', async () => {
+    const companyId = 'company-123'
+    const txId = '22222222-2222-4222-8222-222222222222'
+    const accountId = '550e8400-e29b-41d4-a716-446655440001'
+    const categoryId = '550e8400-e29b-41d4-a716-446655440002'
+
+    const mockAuthGetUser = vi.fn().mockResolvedValue({
+      data: { user: { id: 'user-123', app_metadata: { company_id: companyId } } },
+      error: null,
+    })
+
+    const mockRpc = vi.fn((name: string) => {
+      if (name === 'set_operation_components') {
+        return Promise.resolve({ data: null, error: null })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    const rowAfterChain = {
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { type: 'income', account_id: accountId, amount: 200, currency: 'ARS' },
+        error: null,
+      }),
+    }
+    rowAfterChain.eq.mockReturnValue(rowAfterChain)
+
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'transactions') {
+        return {
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: null }),
+            }),
+          }),
+          select: vi.fn().mockReturnValue(rowAfterChain),
+        }
+      }
+      return { select: vi.fn() }
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: mockAuthGetUser },
+      from: mockFrom,
+      rpc: mockRpc,
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await updateTransaction(txId, {
+      accountId,
+      categoryId,
+      type: 'income',
+      amount: 200,
+      date: new Date('2026-05-02'),
+      description: 'Actualizado',
+      method: 'cash',
+      currency: 'ARS',
+      operationComponents: [{ componentType: 'operative_bank', accountId, amount: 200 }],
+    })
+
+    expect(result.success).toBe(true)
+    expect(mockRpc).toHaveBeenCalledWith(
+      'set_operation_components',
+      expect.objectContaining({
+        p_transaction_id: txId,
+        p_components: [
+          expect.objectContaining({
+            component_type: 'operative_bank',
+            account_id: accountId,
+            amount: 200,
+            currency: 'ARS',
+          }),
+        ],
+      })
+    )
+  })
+})
+
+describe('getOperationComponents', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('mapea filas de operation_components', async () => {
+    const companyId = 'company-123'
+    const txId = '33333333-3333-4333-8333-333333333333'
+
+    const mockAuthGetUser = vi.fn().mockResolvedValue({
+      data: { user: { id: 'user-123', app_metadata: { company_id: companyId } } },
+      error: null,
+    })
+
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'transactions') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { id: txId }, error: null }),
+              }),
+            }),
+          }),
+        }
+      }
+      if (table === 'operation_components') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    id: 'oc1',
+                    component_type: 'operative_cash',
+                    account_id: '550e8400-e29b-41d4-a716-446655440001',
+                    contact_id: null,
+                    amount: 40,
+                    currency: 'ARS',
+                  },
+                ],
+                error: null,
+              }),
+            }),
+          }),
         }
       }
       return { select: vi.fn() }
@@ -362,11 +708,12 @@ describe('getReportsData server action', () => {
       rpc: vi.fn(),
     } as unknown as Awaited<ReturnType<typeof createClient>>)
 
-    const result = await getReportsData()
-
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error).toContain('DB exploded')
+    const result = await getOperationComponents(txId)
+    expect(result.success).toBe(true)
+    if (result.success && result.data) {
+      expect(result.data).toHaveLength(1)
+      expect(result.data[0].componentType).toBe('operative_cash')
+      expect(result.data[0].amount).toBe(40)
     }
   })
 })

@@ -3,6 +3,16 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: '/transactions',
+        destination: '/operaciones',
+        permanent: true,
+      },
+    ]
+  },
+
   // Allow dev access from network IP for mobile testing
   allowedDevOrigins: ['192.168.1.11'],
   

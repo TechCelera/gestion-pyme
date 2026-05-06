@@ -6,8 +6,59 @@ export const TransactionStatusEnum = z.enum(['draft', 'pending', 'approved', 'po
 export const TransactionMethodEnum = z.enum(['cash', 'transfer', 'card', 'digital', 'other'])
 export const ContactTypeEnum = z.enum(['cliente', 'proveedor'])
 export const AdjustmentReasonEnum = z.enum(['reconciliation', 'correction', 'other'])
+export type AdjustmentReason = z.infer<typeof AdjustmentReasonEnum>
 export const DocumentTypeEnum = z.enum(['invoice', 'receipt', 'ticket', 'other'])
 export const FundOwnerEnum = z.enum(['company', 'client_advance'])
+
+/** Medios de cobro/pago alineados al motor SQL operation_components */
+export const OperationComponentTypeEnum = z.enum([
+  'operative_cash',
+  'operative_bank',
+  'client_receivable',
+  'supplier_payable',
+])
+
+export const operationComponentSchema = z
+  .object({
+    componentType: OperationComponentTypeEnum,
+    accountId: z.string().uuid().optional(),
+    contactId: z.string().uuid().optional(),
+    amount: z.number().positive(),
+    currency: z.string().min(3).max(3).optional(),
+  })
+  .superRefine((row, ctx) => {
+    if (row.componentType === 'operative_cash' || row.componentType === 'operative_bank') {
+      if (!row.accountId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Selecciona la cuenta para efectivo o banco',
+          path: ['accountId'],
+        })
+      }
+    } else if (!row.contactId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Selecciona el contacto para cuenta corriente',
+        path: ['contactId'],
+      })
+    }
+  })
+
+export type OperationComponentRow = z.infer<typeof operationComponentSchema>
+
+/** Payload snake_case para RPC set_operation_components */
+export function mapOperationComponentsToRpcJson(
+  rows: OperationComponentRow[],
+  defaultCurrency: string
+): Record<string, unknown>[] {
+  return rows.map((c) => ({
+    component_type: c.componentType,
+    account_id: c.accountId ?? null,
+    contact_id: c.contactId ?? null,
+    amount: c.amount,
+    currency: c.currency ?? defaultCurrency,
+  }))
+}
 
 // Base schema object (without superRefine)
 const baseTransactionSchemaObject = z.object({
@@ -31,6 +82,7 @@ const baseTransactionSchemaObject = z.object({
   attachmentUrl: z.string().url().optional().or(z.literal('')),
   projectId: z.string().uuid().optional(),
   fundOwner: FundOwnerEnum.default('company'),
+  operationComponents: z.array(operationComponentSchema).optional(),
 })
 
 // Create Transaction Schema
@@ -93,12 +145,55 @@ export const createTransactionSchema = baseTransactionSchemaObject.superRefine((
       })
     }
   }
+}).superRefine((data, ctx) => {
+  if (!data.operationComponents?.length) return
+
+  const sum = data.operationComponents.reduce((acc, c) => acc + c.amount, 0)
+  if (Math.round(sum * 100) !== Math.round(data.amount * 100)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'La suma de medios de pago debe ser igual al monto total de la operación',
+      path: ['operationComponents'],
+    })
+  }
+
+  data.operationComponents.forEach((c, i) => {
+    if (data.type === 'income' && c.componentType === 'supplier_payable') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'En ingresos no se usa cuenta corriente de proveedor',
+        path: ['operationComponents', i, 'componentType'],
+      })
+    }
+    if (data.type === 'expense' && c.componentType === 'client_receivable') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'En egresos no se usa cuenta corriente de cliente',
+        path: ['operationComponents', i, 'componentType'],
+      })
+    }
+  })
 })
 
 // Update Transaction Schema - use base object to allow partial()
-export const updateTransactionSchema = baseTransactionSchemaObject.partial().extend({
-  id: z.string().uuid(),
-})
+export const updateTransactionSchema = baseTransactionSchemaObject
+  .partial()
+  .extend({
+    id: z.string().uuid(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.operationComponents?.length) return
+    const amt = data.amount
+    if (amt === undefined) return
+    const sum = data.operationComponents.reduce((acc, c) => acc + c.amount, 0)
+    if (Math.round(sum * 100) !== Math.round(amt * 100)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La suma de medios de pago debe ser igual al monto total',
+        path: ['operationComponents'],
+      })
+    }
+  })
 
 // Transaction Filters Schema
 export const transactionFiltersSchema = z.object({
@@ -129,3 +224,4 @@ export type TransactionType = z.infer<typeof TransactionTypeEnum>
 export type TransactionStatus = z.infer<typeof TransactionStatusEnum>
 export type TransactionMethod = z.infer<typeof TransactionMethodEnum>
 export type FundOwner = z.infer<typeof FundOwnerEnum>
+export type OperationComponentType = z.infer<typeof OperationComponentTypeEnum>

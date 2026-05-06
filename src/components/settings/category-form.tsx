@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -46,20 +46,22 @@ export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFor
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const isEditing = !!category
 
-  // Pre-fill form when editing
-  useEffect(() => {
-    if (category) {
-      setName(category.name)
-      setType(category.type)
-    } else if (isOpen) {
-      resetForm()
-    }
-  }, [category, isOpen])
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setName('')
     setType('income')
-  }
+  }, [])
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    queueMicrotask(() => {
+      if (category) {
+        setName(category.name)
+        setType(category.type)
+      } else if (isOpen) {
+        resetForm()
+      }
+    })
+  }, [category, isOpen, resetForm])
 
   const handleClose = () => {
     resetForm()

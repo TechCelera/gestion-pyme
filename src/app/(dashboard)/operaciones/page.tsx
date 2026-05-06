@@ -13,7 +13,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import type { Transaction } from '@/lib/actions/transactions'
 import type { CreateTransactionInput } from '@/lib/validations/transaction'
 
-export default function TransactionsPage() {
+export default function OperacionesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
 
@@ -30,9 +30,16 @@ export default function TransactionsPage() {
     setPagination,
   } = useTransactionStore()
 
+  const handleOpenModal = useCallback(() => {
+    setEditingTransaction(null)
+    setIsModalOpen(true)
+  }, [])
+
   // Cargar transacciones al montar
   useEffect(() => {
-    fetchTransactions()
+    queueMicrotask(() => {
+      void fetchTransactions()
+    })
   }, [fetchTransactions])
 
   // Atajo de teclado Ctrl+N
@@ -49,12 +56,7 @@ export default function TransactionsPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  const handleOpenModal = () => {
-    setEditingTransaction(null)
-    setIsModalOpen(true)
-  }
+  }, [handleOpenModal])
 
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction)

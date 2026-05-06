@@ -14,6 +14,8 @@ import {
   Tag,
   Loader2,
   ArrowRight,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 
 import {
@@ -36,7 +38,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { TRANSACTION_METHOD_LABELS, CATEGORY_TYPES } from '@/lib/constants'
+import { CATEGORY_TYPES } from '@/lib/constants'
 import { getAccounts } from '@/lib/actions/accounts'
 import { getCategories } from '@/lib/actions/categories'
 import { getProjects } from '@/lib/actions/projects'
@@ -46,11 +48,17 @@ import type { Project } from '@/lib/actions/projects'
 import { DEMO_ACCOUNTS, DEMO_CATEGORIES } from '@/lib/demo-data'
 import { useAuthStore } from '@/stores/auth-store'
 import type { Transaction } from '@/lib/actions/transactions'
+import { getOperationComponents } from '@/lib/actions/transactions'
+import { getContacts } from '@/lib/actions/contacts'
 import type {
   CreateTransactionInput,
   TransactionType,
   TransactionMethod,
+  OperationComponentType,
+  OperationComponentRow,
+  AdjustmentReason,
 } from '@/lib/validations/transaction'
+import { toast } from 'sonner'
 
 interface TransactionFormProps {
   isOpen: boolean
@@ -58,6 +66,24 @@ interface TransactionFormProps {
   onSubmit: (data: CreateTransactionInput, asDraft: boolean) => void
   transaction?: Transaction | null
   isLoading?: boolean
+}
+
+type ComponentLineDraft = {
+  localId: string
+  componentType: OperationComponentType
+  accountId: string
+  contactId: string
+  amount: string
+}
+
+function newComponentLine(partial?: Partial<ComponentLineDraft>): ComponentLineDraft {
+  return {
+    localId: partial?.localId ?? crypto.randomUUID(),
+    componentType: partial?.componentType ?? 'operative_cash',
+    accountId: partial?.accountId ?? '',
+    contactId: partial?.contactId ?? '',
+    amount: partial?.amount ?? '',
+  }
 }
 
 const transactionTypes: { value: TransactionType; label: string; icon: React.ElementType; color: string }[] = [
@@ -108,71 +134,15 @@ export function TransactionForm({
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [projects, setProjects] = useState<Project[]>([])
+  const [contacts, setContacts] = useState<Array<{ id: string; name: string; kind: string }>>([])
+  const [componentLines, setComponentLines] = useState<ComponentLineDraft[]>([newComponentLine()])
   const [isLoadingData, setIsLoadingData] = useState(false)
 
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const isEditing = !!transaction
   const selectedType = transactionTypes.find(t => t.value === type)
 
-  // Fetch accounts and categories on open
-  const loadFormData = useCallback(async () => {
-    if (isDemoMode) {
-      // Modo demo: usar datos locales
-      setAccounts(DEMO_ACCOUNTS.map(a => ({ ...a })))
-      setCategories(DEMO_CATEGORIES.map(c => ({ ...c })))
-      return
-    }
-
-    setIsLoadingData(true)
-    try {
-      const [accountsResult, categoriesResult, projectsResult] = await Promise.all([
-        getAccounts(),
-        getCategories(),
-        getProjects(),
-      ])
-
-      if (accountsResult.success && accountsResult.data) {
-        setAccounts(accountsResult.data)
-      }
-      if (categoriesResult.success && categoriesResult.data) {
-        setCategories(categoriesResult.data)
-      }
-      if (projectsResult.success && projectsResult.data) {
-        setProjects(projectsResult.data)
-      }
-    } catch (error) {
-      console.error('Error loading form data:', error)
-    } finally {
-      setIsLoadingData(false)
-    }
-  }, [isDemoMode])
-
-  useEffect(() => {
-    if (isOpen) {
-      loadFormData()
-    }
-  }, [isOpen, loadFormData])
-
-  // Reset form when transaction changes
-  useEffect(() => {
-    if (transaction) {
-      setType(transaction.type)
-      setDate(format(new Date(transaction.date), 'yyyy-MM-dd'))
-      setAccountId(transaction.accountId)
-      setCategoryId(transaction.categoryId || '')
-      setAmount(transaction.amount.toString())
-      setCurrency(transaction.currency)
-      setDescription(transaction.description)
-      setMethod('cash')
-      setFundOwner((transaction.fundOwner ?? 'company') as 'company' | 'client_advance')
-      setProjectId(transaction.projectId ?? '')
-      setOperationScope(transaction.projectId ? 'project' : 'general')
-    } else {
-      resetForm()
-    }
-  }, [transaction, isOpen])
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setType('income')
     setDate(format(new Date(), 'yyyy-MM-dd'))
     setAccountId('')
@@ -187,24 +157,162 @@ export function TransactionForm({
     setFundOwner('company')
     setProjectId('')
     setOperationScope('general')
+    setComponentLines([newComponentLine()])
+  }, [])
+
+  // Fetch accounts and categories on open
+  const loadFormData = useCallback(async () => {
+    if (isDemoMode) {
+      // Modo demo: usar datos locales
+      setAccounts(DEMO_ACCOUNTS.map(a => ({ ...a })))
+      setCategories(DEMO_CATEGORIES.map(c => ({ ...c })))
+      setContacts([])
+      return
+    }
+
+    setIsLoadingData(true)
+    try {
+      const [accountsResult, categoriesResult, projectsResult, contactsResult] = await Promise.all([
+        getAccounts(),
+        getCategories(),
+        getProjects(),
+        getContacts(),
+      ])
+
+      if (accountsResult.success && accountsResult.data) {
+        setAccounts(accountsResult.data)
+      }
+      if (categoriesResult.success && categoriesResult.data) {
+        setCategories(categoriesResult.data)
+      }
+      if (projectsResult.success && projectsResult.data) {
+        setProjects(projectsResult.data)
+      }
+      if (contactsResult.success && contactsResult.data) {
+        setContacts(contactsResult.data)
+      }
+    } catch (error) {
+      console.error('Error loading form data:', error)
+    } finally {
+      setIsLoadingData(false)
+    }
+  }, [isDemoMode])
+
+  useEffect(() => {
+    if (!isOpen) return
+    queueMicrotask(() => {
+      void loadFormData()
+    })
+  }, [isOpen, loadFormData])
+
+  // Reset form when transaction changes
+  useEffect(() => {
+    if (!isOpen) return
+    queueMicrotask(() => {
+      if (transaction) {
+        setType(transaction.type)
+        setDate(format(new Date(transaction.date), 'yyyy-MM-dd'))
+        setAccountId(transaction.accountId)
+        setCategoryId(transaction.categoryId || '')
+        setAmount(transaction.amount.toString())
+        setCurrency(transaction.currency)
+        setDescription(transaction.description)
+        setMethod('cash')
+        setFundOwner((transaction.fundOwner ?? 'company') as 'company' | 'client_advance')
+        setProjectId(transaction.projectId ?? '')
+        setOperationScope(transaction.projectId ? 'project' : 'general')
+      } else {
+        resetForm()
+      }
+    })
+  }, [transaction, isOpen, resetForm])
+
+  useEffect(() => {
+    if (!isOpen || !transaction || isDemoMode) return
+    let cancelled = false
+    ;(async () => {
+      const res = await getOperationComponents(transaction.id)
+      if (cancelled || !res.success || !res.data?.length) return
+      setComponentLines(
+        res.data.map((c) =>
+          newComponentLine({
+            localId: (c.id as string | undefined) ?? crypto.randomUUID(),
+            componentType: c.componentType,
+            accountId: c.accountId ?? '',
+            contactId: c.contactId ?? '',
+            amount: String(c.amount),
+          })
+        )
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, transaction, isDemoMode])
+
+  const buildOperationComponents = (): OperationComponentRow[] => {
+    const total = parseFloat(amount)
+    const rows: OperationComponentRow[] = []
+    for (const line of componentLines) {
+      const amt = parseFloat(line.amount)
+      if (!line.amount.trim() || Number.isNaN(amt) || amt <= 0) continue
+      rows.push({
+        componentType: line.componentType,
+        accountId:
+          line.componentType === 'operative_cash' || line.componentType === 'operative_bank'
+            ? line.accountId
+            : undefined,
+        contactId:
+          line.componentType === 'client_receivable' || line.componentType === 'supplier_payable'
+            ? line.contactId
+            : undefined,
+        amount: amt,
+        currency,
+      })
+    }
+    const sum = rows.reduce((a, r) => a + r.amount, 0)
+    if (rows.length === 0 || Math.round(sum * 100) !== Math.round(total * 100)) {
+      return []
+    }
+    return rows
   }
 
   const handleSubmit = (asDraft: boolean) => {
+    const parsedAmount = parseFloat(amount)
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      toast.error('Indica un monto válido')
+      return
+    }
+
+    let operationComponents: OperationComponentRow[] | undefined
+    if (type === 'income' || type === 'expense') {
+      const built = buildOperationComponents()
+      if (!asDraft) {
+        if (!built.length) {
+          toast.error('El desglose de medios de pago debe sumar exactamente el monto total')
+          return
+        }
+        operationComponents = built
+      } else if (built.length > 0) {
+        operationComponents = built
+      }
+    }
+
     const data: CreateTransactionInput = {
       type,
       date: new Date(date),
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       currency,
       description,
       method,
       ...(type === 'income' || type === 'expense'
-        ? { accountId, categoryId: categoryId || undefined }
+        ? { accountId, categoryId: categoryId || undefined, operationComponents }
         : {}),
       ...(type === 'transfer'
         ? { sourceAccountId, destinationAccountId }
         : {}),
       ...(type === 'adjustment'
-        ? { accountId, adjustmentReason: adjustmentReason as any }
+        ? { accountId, adjustmentReason: adjustmentReason as AdjustmentReason }
         : {}),
       fundOwner,
       projectId: operationScope === 'project' ? projectId || undefined : undefined,
@@ -269,6 +377,33 @@ export function TransactionForm({
   }
   const flatProjects = flattenProjects(projects)
   const projectLabel = projectId ? flatProjects.find((p) => p.id === projectId)?.name ?? '' : ''
+
+  const incomeCompTypes: { value: OperationComponentType; label: string }[] = [
+    { value: 'operative_cash', label: 'Efectivo (caja)' },
+    { value: 'operative_bank', label: 'Banco / cuenta' },
+    { value: 'client_receivable', label: 'Cliente (cuenta corriente)' },
+  ]
+  const expenseCompTypes: { value: OperationComponentType; label: string }[] = [
+    { value: 'operative_cash', label: 'Efectivo (caja)' },
+    { value: 'operative_bank', label: 'Banco / cuenta' },
+    { value: 'supplier_payable', label: 'Proveedor (cuenta corriente)' },
+  ]
+  const activeCompTypes = type === 'income' ? incomeCompTypes : expenseCompTypes
+  const filteredContacts =
+    type === 'income'
+      ? contacts.filter((c) => c.kind === 'client' || c.kind === 'both')
+      : contacts.filter((c) => c.kind === 'provider' || c.kind === 'both')
+
+  const componentsSum = componentLines.reduce((acc, line) => {
+    const v = parseFloat(line.amount)
+    return acc + (Number.isNaN(v) ? 0 : v)
+  }, 0)
+  const parsedTotalAmt = parseFloat(amount)
+  const sumMatchesComponents =
+    type !== 'income' && type !== 'expense'
+      ? true
+      : !Number.isNaN(parsedTotalAmt) &&
+        Math.round(componentsSum * 100) === Math.round(parsedTotalAmt * 100)
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -703,6 +838,193 @@ export function TransactionForm({
               </div>
             </div>
 
+            {(type === 'income' || type === 'expense') && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <Wallet className="h-4 w-4" />
+                      <span>Medios de pago</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() =>
+                        setComponentLines((prev) => [...prev, newComponentLine()])
+                      }
+                      disabled={isLoading}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Agregar línea
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    La suma debe coincidir con el monto total ({currency}). Obligatorio al enviar a aprobación.
+                  </p>
+                  <div
+                    className={`rounded-md border px-3 py-2 text-xs font-medium ${
+                      sumMatchesComponents
+                        ? 'border-green-200 bg-green-50 text-green-800'
+                        : 'border-amber-200 bg-amber-50 text-amber-900'
+                    }`}
+                  >
+                    Suma medios:{' '}
+                    {Number.isNaN(componentsSum) ? '—' : componentsSum.toFixed(2)} {currency} · Total:{' '}
+                    {Number.isNaN(parsedTotalAmt) ? '—' : parsedTotalAmt.toFixed(2)} {currency}
+                  </div>
+
+                  <div className="space-y-4">
+                    {componentLines.map((line, idx) => (
+                      <div
+                        key={line.localId}
+                        className="rounded-lg border border-muted p-3 space-y-3 bg-muted/20"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Línea {idx + 1}
+                          </span>
+                          {componentLines.length > 1 ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-destructive"
+                              onClick={() =>
+                                setComponentLines((prev) =>
+                                  prev.filter((l) => l.localId !== line.localId)
+                                )
+                              }
+                              disabled={isLoading}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Tipo</Label>
+                          <Select
+                            value={line.componentType}
+                            onValueChange={(v) =>
+                              setComponentLines((prev) =>
+                                prev.map((l) =>
+                                  l.localId === line.localId
+                                    ? {
+                                        ...l,
+                                        componentType: v as OperationComponentType,
+                                        accountId:
+                                          v === 'client_receivable' || v === 'supplier_payable'
+                                            ? ''
+                                            : l.accountId,
+                                        contactId:
+                                          v === 'operative_cash' || v === 'operative_bank'
+                                            ? ''
+                                            : l.contactId,
+                                      }
+                                    : l
+                                )
+                              )
+                            }
+                            disabled={isLoading}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {activeCompTypes.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {line.componentType === 'operative_cash' ||
+                        line.componentType === 'operative_bank' ? (
+                          <div className="space-y-2">
+                            <Label>Cuenta</Label>
+                            <Select
+                              value={line.accountId}
+                              onValueChange={(v) =>
+                                setComponentLines((prev) =>
+                                  prev.map((l) =>
+                                    l.localId === line.localId ? { ...l, accountId: v ?? '' } : l
+                                  )
+                                )
+                              }
+                              disabled={isLoading || isLoadingData}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Seleccione cuenta" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {accounts.map((account) => (
+                                  <SelectItem key={account.id} value={account.id}>
+                                    {account.name} ({account.currency})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Label>Contacto</Label>
+                            <Select
+                              value={line.contactId}
+                              onValueChange={(v) =>
+                                setComponentLines((prev) =>
+                                  prev.map((l) =>
+                                    l.localId === line.localId ? { ...l, contactId: v ?? '' } : l
+                                  )
+                                )
+                              }
+                              disabled={isLoading || isLoadingData}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder={
+                                  filteredContacts.length
+                                    ? 'Seleccione contacto'
+                                    : 'Sin contactos — créalos en Configuración'
+                                } />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {filteredContacts.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          <Label>Monto línea</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={line.amount}
+                            onChange={(e) =>
+                              setComponentLines((prev) =>
+                                prev.map((l) =>
+                                  l.localId === line.localId
+                                    ? { ...l, amount: e.target.value }
+                                    : l
+                                )
+                              )
+                            }
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
             <Separator />
 
             {/* Section: Description */}
@@ -746,7 +1068,11 @@ export function TransactionForm({
           )}
           <Button
             onClick={() => handleSubmit(false)}
-            disabled={isLoading || (!isDemoMode && accounts.length === 0)}
+            disabled={
+              isLoading ||
+              (!isDemoMode && accounts.length === 0) ||
+              ((type === 'income' || type === 'expense') && !sumMatchesComponents)
+            }
             className="bg-[#7B68EE] hover:bg-[#7B68EE]/90 w-full"
           >
             {isLoading ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Enviar Aprobación'}

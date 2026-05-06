@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
-  { href: '/transactions', label: 'Movimientos', icon: ArrowLeftRight },
+  { href: '/operaciones', label: 'Operaciones', icon: ArrowLeftRight },
   { href: '/accounts', label: 'Cuentas', icon: Wallet },
   { href: '/projects', label: 'Proyectos', icon: FolderKanban },
   { href: '/reports', label: 'Reportes', icon: FileText },

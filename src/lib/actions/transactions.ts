@@ -7,12 +7,14 @@ import {
   updateTransactionSchema,
   transactionFiltersSchema,
   updateTransactionStatusSchema,
+  mapOperationComponentsToRpcJson,
   type CreateTransactionInput,
   type UpdateTransactionInput,
   type TransactionFilters,
   type UpdateTransactionStatusInput,
   type TransactionStatus,
   type FundOwner,
+  type OperationComponentRow,
 } from '@/lib/validations/transaction'
 import { evaluateBudgetStatus } from '@/lib/utils/budget'
 
@@ -43,6 +45,56 @@ interface ActionResult<T = unknown> {
   success: boolean
   data?: T
   error?: string
+}
+
+export interface OperationComponentDTO extends OperationComponentRow {
+  id?: string
+}
+
+export async function getOperationComponents(
+  transactionId: string
+): Promise<ActionResult<OperationComponentDTO[]>> {
+  try {
+    const companyId = await getCurrentUserCompany()
+    if (!companyId) {
+      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    }
+
+    const supabase = await createClient()
+    const { data: tx, error: txErr } = await supabase
+      .from('transactions')
+      .select('id')
+      .eq('id', transactionId)
+      .eq('company_id', companyId)
+      .maybeSingle()
+
+    if (txErr || !tx) {
+      return { success: false, error: txErr?.message ?? 'Operación no encontrada' }
+    }
+
+    const { data: rows, error } = await supabase
+      .from('operation_components')
+      .select('id, component_type, account_id, contact_id, amount, currency')
+      .eq('transaction_id', transactionId)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    const mapped: OperationComponentDTO[] = (rows ?? []).map((r: Record<string, unknown>) => ({
+      id: r.id as string | undefined,
+      componentType: r.component_type as OperationComponentDTO['componentType'],
+      accountId: (r.account_id as string | null) ?? undefined,
+      contactId: (r.contact_id as string | null) ?? undefined,
+      amount: Number(r.amount ?? 0),
+      currency: (r.currency as string | undefined) ?? undefined,
+    }))
+
+    return { success: true, data: mapped }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Error desconocido' }
+  }
 }
 
 interface ProjectBudgetContext {
@@ -112,6 +164,42 @@ async function getCurrentUserId(): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+/** Un solo medio de pago (cartera) alineado al motor contable vía `set_operation_components`. */
+async function syncSingleWalletOperationComponents(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  transactionId: string,
+  accountId: string,
+  amount: number,
+  currency: string
+): Promise<{ error: { message: string } | null }> {
+  const { data: accRow, error: accErr } = await supabase
+    .from('accounts')
+    .select('type')
+    .eq('id', accountId)
+    .single()
+
+  if (accErr || !accRow) {
+    return { error: { message: accErr?.message ?? 'Cuenta operativa no encontrada' } }
+  }
+
+  const accType = (accRow as { type?: string }).type
+  const compType = accType === 'cash' ? 'operative_cash' : 'operative_bank'
+
+  const { error } = await supabase.rpc('set_operation_components', {
+    p_transaction_id: transactionId,
+    p_components: [
+      {
+        component_type: compType,
+        account_id: accountId,
+        amount,
+        currency: currency || 'ARS',
+      },
+    ],
+  })
+
+  return { error }
 }
 
 async function getProjectBudgetContext(
@@ -241,6 +329,35 @@ export async function createTransaction(
       }
     }
 
+    if (validated.type === 'income' || validated.type === 'expense') {
+      const tid = typeof data === 'string' ? data : String(data)
+      if (validated.operationComponents && validated.operationComponents.length > 0) {
+        const { error: compError } = await supabase.rpc('set_operation_components', {
+          p_transaction_id: tid,
+          p_components: mapOperationComponentsToRpcJson(
+            validated.operationComponents,
+            validated.currency ?? 'ARS'
+          ),
+        })
+        if (compError) {
+          console.error('Error definición de componentes de operación:', compError)
+          return { success: false, error: compError.message }
+        }
+      } else {
+        const { error: compError } = await syncSingleWalletOperationComponents(
+          supabase,
+          tid,
+          accountId,
+          validated.amount,
+          validated.currency ?? 'ARS'
+        )
+        if (compError) {
+          console.error('Error definición de componentes de operación:', compError)
+          return { success: false, error: compError.message }
+        }
+      }
+    }
+
     const { data: transaction, error: fetchError } = await supabase
       .from('transactions')
       .select(`
@@ -352,6 +469,46 @@ export async function updateTransaction(
     if (error) {
       console.error('Error updating transaction:', error)
       return { success: false, error: error.message }
+    }
+
+    const { data: rowAfter } = await supabase
+      .from('transactions')
+      .select('type, account_id, amount, currency')
+      .eq('id', id)
+      .eq('company_id', companyId)
+      .single()
+
+    if (
+      rowAfter &&
+      ((rowAfter as { type?: string }).type === 'income' ||
+        (rowAfter as { type?: string }).type === 'expense')
+    ) {
+      const r = rowAfter as {
+        account_id: string
+        amount: number | string
+        currency?: string | null
+      }
+      const cur = (validated.currency as string | undefined) ?? r.currency ?? 'ARS'
+      if (validated.operationComponents && validated.operationComponents.length > 0) {
+        const { error: compError } = await supabase.rpc('set_operation_components', {
+          p_transaction_id: id,
+          p_components: mapOperationComponentsToRpcJson(validated.operationComponents, cur),
+        })
+        if (compError) {
+          return { success: false, error: compError.message }
+        }
+      } else {
+        const { error: compError } = await syncSingleWalletOperationComponents(
+          supabase,
+          id,
+          r.account_id,
+          Number(r.amount),
+          cur
+        )
+        if (compError) {
+          return { success: false, error: compError.message }
+        }
+      }
     }
 
     // revalidateTag('transactions')
@@ -666,9 +823,24 @@ export interface CashFlowReport {
   }>
 }
 
+export interface BalanceSheetReport {
+  asOf: string
+  totalAssets: number
+  totalLiabilities: number
+  totalEquity: number
+}
+
 export interface ReportsData {
   incomeStatement: IncomeStatementReport
   cashFlow: CashFlowReport
+  balanceSheet: BalanceSheetReport
+}
+
+function numFromJson(v: unknown): number {
+  if (v === null || v === undefined) return 0
+  if (typeof v === 'number' && !Number.isNaN(v)) return v
+  const n = Number(String(v))
+  return Number.isNaN(n) ? 0 : n
 }
 
 function getCurrentMonthDateRange() {
@@ -688,66 +860,77 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
     const supabase = await createClient()
     const { start, end } = getCurrentMonthDateRange()
     const now = new Date()
+    const startStr = start.toISOString().split('T')[0]
+    const endStr = end.toISOString().split('T')[0]
+    const trendStart = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+    const trendStartStr = trendStart.toISOString().split('T')[0]
 
-    const [periodResult, trendResult] = await Promise.all([
-      supabase
-        .from('transactions')
-        .select('type, amount, status, category_id, categories(name)')
-        .eq('company_id', companyId)
-        .is('deleted_at', null)
-        .gte('date', start.toISOString().split('T')[0])
-        .lte('date', end.toISOString().split('T')[0]),
+    const [
+      plRes,
+      cashRes,
+      balRes,
+      trendResult,
+    ] = await Promise.all([
+      supabase.rpc('rpc_reports_income_statement_period', {
+        p_company_id: companyId,
+        p_from: startStr,
+        p_to: endStr,
+      }),
+      supabase.rpc('rpc_reports_cash_flow_real_monthly', {
+        p_company_id: companyId,
+        p_from: trendStartStr,
+        p_to: endStr,
+      }),
+      supabase.rpc('rpc_reports_balance_sheet', {
+        p_company_id: companyId,
+        p_as_of: endStr,
+      }),
       supabase
         .from('transactions')
         .select('type, amount, status, date')
         .eq('company_id', companyId)
         .is('deleted_at', null)
-        .gte(
-          'date',
-          new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().split('T')[0]
-        )
-        .lte('date', end.toISOString().split('T')[0]),
+        .gte('date', trendStartStr)
+        .lte('date', endStr),
     ])
 
-    if (periodResult.error) {
-      return { success: false, error: periodResult.error.message }
+    if (plRes.error) {
+      return { success: false, error: plRes.error.message }
     }
-
+    if (cashRes.error) {
+      return { success: false, error: cashRes.error.message }
+    }
+    if (balRes.error) {
+      return { success: false, error: balRes.error.message }
+    }
     if (trendResult.error) {
       return { success: false, error: trendResult.error.message }
     }
 
-    const periodRows = (periodResult.data ?? []) as Array<Record<string, unknown>>
-    const trendRows = (trendResult.data ?? []) as Array<Record<string, unknown>>
-
-    let totalIncome = 0
-    let totalExpenses = 0
-    const expenseByCategory = new Map<string, number>()
-
-    for (const row of periodRows) {
-      const type = row.type as string
-      const amount = Number(row.amount ?? 0)
-      const status = row.status as string
-      if (status !== 'posted') continue
-      if (type === 'income') {
-        totalIncome += amount
-      }
-      if (type === 'expense') {
-        totalExpenses += amount
-        const categoryName =
-          ((row.categories as Record<string, unknown> | null)?.name as string | undefined) ??
-          'Sin categoría'
-        expenseByCategory.set(categoryName, (expenseByCategory.get(categoryName) ?? 0) + amount)
-      }
-    }
-
+    const pl = (plRes.data ?? {}) as Record<string, unknown>
+    const totalIncome = numFromJson(pl.totalIncome)
+    const totalExpenses = numFromJson(pl.totalExpenses)
     const netProfit = totalIncome - totalExpenses
     const marginPercent = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0
 
-    const expenseBreakdown = Array.from(expenseByCategory.entries())
-      .map(([category, amount]) => ({ category, amount }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 8)
+    const ebRaw = pl.expenseBreakdown as unknown[] | undefined
+    const expenseBreakdown = (ebRaw ?? []).map((item) => {
+      const row = item as Record<string, unknown>
+      return {
+        category: String(row.category ?? ''),
+        amount: numFromJson(row.amount),
+      }
+    })
+
+    const bal = (balRes.data ?? {}) as Record<string, unknown>
+    const balanceSheet: BalanceSheetReport = {
+      asOf: String(bal.asOf ?? endStr),
+      totalAssets: numFromJson(bal.totalAssets),
+      totalLiabilities: numFromJson(bal.totalLiabilities),
+      totalEquity: numFromJson(bal.totalEquity),
+    }
+
+    const trendRows = (trendResult.data ?? []) as Array<Record<string, unknown>>
 
     const monthMapReal = new Map<string, { inflow: number; outflow: number }>()
     const monthMapProjected = new Map<string, { inflow: number; outflow: number }>()
@@ -758,6 +941,16 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
       monthMapProjected.set(key, { inflow: 0, outflow: 0 })
     }
 
+    const cashRows = (cashRes.data ?? []) as Array<Record<string, unknown>>
+    for (const row of cashRows) {
+      const mk = String(row.month ?? '')
+      const slot = monthMapReal.get(mk)
+      if (slot) {
+        slot.inflow = numFromJson(row.inflow)
+        slot.outflow = numFromJson(row.outflow)
+      }
+    }
+
     for (const row of trendRows) {
       const date = row.date as string
       const type = row.type as string
@@ -765,18 +958,12 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
       const amount = Number(row.amount ?? 0)
       if (!date) continue
       const monthKey = date.slice(0, 7)
-      const currentReal = monthMapReal.get(monthKey)
       const currentProjected = monthMapProjected.get(monthKey)
-      if (!currentReal || !currentProjected) continue
+      if (!currentProjected) continue
 
       const isIncome = type === 'income'
       const isExpense = type === 'expense'
       if (!isIncome && !isExpense) continue
-
-      if (status === 'posted') {
-        if (isIncome) currentReal.inflow += amount
-        if (isExpense) currentReal.outflow += amount
-      }
 
       if (status === 'posted' || status === 'approved' || status === 'pending') {
         if (isIncome) currentProjected.inflow += amount
@@ -832,6 +1019,7 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
           monthlyTrend,
           monthlyTrendProjected,
         },
+        balanceSheet,
       },
     }
   } catch (error) {

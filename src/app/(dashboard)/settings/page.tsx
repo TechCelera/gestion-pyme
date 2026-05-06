@@ -66,7 +66,9 @@ export default function SettingsPage() {
   }, [isDemoMode])
 
   useEffect(() => {
-    fetchData()
+    queueMicrotask(() => {
+      void fetchData()
+    })
   }, [fetchData])
 
   // Category handlers

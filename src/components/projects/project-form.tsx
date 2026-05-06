@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -55,29 +55,27 @@ export function ProjectForm({ isOpen, onClose, onSaved, project, projects }: Pro
     return rows.filter((item) => item.id !== project.id)
   }, [projects, project])
 
-  useEffect(() => {
-    if (project) {
-      setName(project.name)
-      setParentProjectId(project.parentProjectId ?? 'none')
-      setBudgetAmount(String(project.budgetAmount ?? 0))
-      setStartDate(project.startDate ?? '')
-      setEndDate(project.endDate ?? '')
-    } else if (isOpen) {
-      setName('')
-      setParentProjectId('none')
-      setBudgetAmount('0')
-      setStartDate('')
-      setEndDate('')
-    }
-  }, [project, isOpen])
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setName('')
     setParentProjectId('none')
     setBudgetAmount('0')
     setStartDate('')
     setEndDate('')
-  }
+  }, [])
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      if (project) {
+        setName(project.name)
+        setParentProjectId(project.parentProjectId ?? 'none')
+        setBudgetAmount(String(project.budgetAmount ?? 0))
+        setStartDate(project.startDate ?? '')
+        setEndDate(project.endDate ?? '')
+      } else if (isOpen) {
+        resetForm()
+      }
+    })
+  }, [project, isOpen, resetForm])
 
   const handleClose = () => {
     resetForm()

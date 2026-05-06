@@ -26,7 +26,7 @@ export function EmptyState() {
           <p className="text-sm text-muted-foreground max-w-sm mb-6">
             Aún no tienes operaciones registradas. Comienza agregando tu primera operación para ver el resumen de tu empresa.
           </p>
-          <Link href="/transactions">
+          <Link href="/operaciones">
             <Button className="bg-[#7B68EE] hover:bg-[#7B68EE]/90">
               <Plus className="mr-2 h-4 w-4" />
               Agregar operación

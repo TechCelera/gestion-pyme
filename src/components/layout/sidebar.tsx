@@ -22,7 +22,7 @@ import { toast } from 'sonner'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/transactions', label: 'Operaciones', icon: ArrowLeftRight },
+  { href: '/operaciones', label: 'Operaciones', icon: ArrowLeftRight },
   { href: '/accounts', label: 'Cuentas', icon: Wallet },
   { href: '/reports', label: 'Reportes', icon: FileText },
   { href: '/projects', label: 'Proyectos', icon: FolderKanban },

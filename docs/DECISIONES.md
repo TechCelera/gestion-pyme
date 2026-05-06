@@ -5,7 +5,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## Estado
 
 - Activo
-- Ultima actualizacion: 2026-05-04
+- Ultima actualizacion: 2026-05-05
 
 ## 1) Caja unica por empresa
 
@@ -137,7 +137,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ### Implementacion
 - `addTransaction` ahora acepta `asDraft` y, cuando es `false`, ejecuta cambio de estado a `pending`.
 - Llamadas ajustadas para propagar la intencion de UI:
-  - `src/app/(dashboard)/transactions/page.tsx`
+  - `src/app/(dashboard)/operaciones/page.tsx`
   - `src/hooks/use-create-transaction.ts`
 
 ### Razon
@@ -167,6 +167,28 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ### Razon
 - Evitar bloqueos en flujos de crear/editar operaciones por trigger de auditoria.
 - Mantener trazabilidad sin romper aislamiento multiempresa.
+
+## 10) Motor contable y criterio de modelo de datos (Bernabé / informe cliente)
+
+### Contexto
+- El cliente describe operaciones con desglose de medios de pago, partida doble y reportes (resultados, balance, caja).
+- No obstante, el esquema SQL no debe copiar nombres literales del PDF si ello dificulta mantenimiento o multiempresa.
+
+### Decision
+- La unidad de negocio sigue siendo `transactions` (operación en producto).
+- El desglose obligatorio de cobro/pago vive en `operation_components` (tipos `operative_cash`, `operative_bank`, `client_receivable`, `supplier_payable`).
+- El libro diario automático es `journal_entries` + `journal_entry_lines`; el usuario no arma asientos manuales.
+- Al pasar a `posted`, `fn_post_journal_for_transaction` genera el asiento y `update_account_balance` recalcula saldos de carteras desde líneas con `operative_account_id`.
+- `chart_of_accounts` por empresa con semilla `fn_seed_company_chart_accounts`; `accounts` y `categories` mapean a hojas del plan vía `chart_account_id`.
+- Las transferencias y ajustes pueden tener `category_id` nulo en base; ingresos/egresos siguen exigiendo categoría en la app.
+
+### Implementacion
+- Migraciones: `20260505163000_chart_of_accounts_contacts_mappings.sql`, `20260505163001_journal_posting_components.sql`, `20260506140000_reports_journal_rpcs.sql`.
+- RPC `set_operation_components` + sincronización por defecto en `src/lib/actions/transactions.ts`; formulario de operación con desglose de medios (`operation_components`) y validación suma = total.
+
+### Razon
+- Alinear el comportamiento contable con el informe sin renombrar tablas que ya tienen RLS, RPC y UI acoplados.
+- Evitar saldos duplicados o desincronizados: el saldo operativo sale del diario, no de reglas ad hoc solo sobre `transactions`.
 
 ## Regla de mantenimiento
 

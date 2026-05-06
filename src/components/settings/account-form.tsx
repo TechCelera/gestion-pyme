@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -55,22 +55,24 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const isEditing = !!account
 
-  // Pre-fill form when editing
-  useEffect(() => {
-    if (account) {
-      setName(account.name)
-      setType(account.type)
-      setCurrency(account.currency)
-    } else if (isOpen) {
-      resetForm()
-    }
-  }, [account, isOpen])
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setName('')
     setType('bank')
     setCurrency('ARS')
-  }
+  }, [])
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    queueMicrotask(() => {
+      if (account) {
+        setName(account.name)
+        setType(account.type)
+        setCurrency(account.currency)
+      } else if (isOpen) {
+        resetForm()
+      }
+    })
+  }, [account, isOpen, resetForm])
 
   const handleClose = () => {
     resetForm()

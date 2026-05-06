@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Generated runtime artifacts during local dev
     "tmp/**",
+    // Script Node suelto (CommonJS) fuera del bundle Next
+    "run-migrations.js",
   ]),
 ]);
 
