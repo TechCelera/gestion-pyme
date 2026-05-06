@@ -1,0 +1,9 @@
+# Evita subir artefactos pesados que superan el límite (~100 MB) del upload CLI.
+node_modules
+.next
+tmp
+coverage
+.turbo
+*.tsbuildinfo
+.env
+.env.*
