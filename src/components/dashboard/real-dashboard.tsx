@@ -8,6 +8,7 @@ import type { DashboardStats, ReportsData } from '@/lib/actions/operations'
 interface RealDashboardProps {
   stats: DashboardStats
   reportsData: ReportsData | null | undefined
+  reportsError?: string | null
 }
 
 function formatCurrency(value: number): string {
@@ -19,7 +20,7 @@ function formatCurrency(value: number): string {
   }).format(value)
 }
 
-export function RealDashboard({ stats, reportsData }: RealDashboardProps) {
+export function RealDashboard({ stats, reportsData, reportsError }: RealDashboardProps) {
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
@@ -58,9 +59,17 @@ export function RealDashboard({ stats, reportsData }: RealDashboardProps) {
       {reportsData ? (
         <ReportsCharts data={reportsData} />
       ) : (
-        <p className="text-sm text-muted-foreground">
-          No se pudieron cargar los gráficos del dashboard en este momento.
-        </p>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-medium text-red-700">
+            No se pudieron cargar los gráficos del dashboard en este momento.
+          </p>
+          {reportsError ? (
+            <p className="mt-1 text-xs text-red-600">{reportsError}</p>
+          ) : null}
+          <p className="mt-2 text-xs text-red-600">
+            Recarga la página y, si persiste, revisa el módulo de reportes.
+          </p>
+        </div>
       )}
     </div>
   )

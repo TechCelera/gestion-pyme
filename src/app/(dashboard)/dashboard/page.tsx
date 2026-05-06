@@ -50,10 +50,20 @@ export default async function DashboardPage() {
     return <EmptyState />
   }
 
+  const reportsData = reportsResult.success ? reportsResult.data : null
+  const reportsError = reportsResult.success
+    ? null
+    : (reportsResult.error ?? 'No se pudieron cargar los datos de reportes')
+
+  if (!reportsResult.success) {
+    console.error('Dashboard reports failed:', reportsError)
+  }
+
   return (
     <RealDashboard
       stats={statsResult.data}
-      reportsData={reportsResult.success ? reportsResult.data : null}
+      reportsData={reportsData}
+      reportsError={reportsError}
     />
   )
 }
