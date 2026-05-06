@@ -145,27 +145,27 @@ export default function AccountsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Moneda</TableHead>
+                  <TableHead className="text-center">Nombre</TableHead>
+                  <TableHead className="text-center">Tipo</TableHead>
+                  <TableHead className="text-center">Moneda</TableHead>
                   <TableHead className="text-right">Saldo</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {accounts.map((account) => (
                   <TableRow key={account.id}>
-                    <TableCell className="font-medium">{account.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
+                    <TableCell className="text-center font-medium">{account.name}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className="mx-auto">
                         {ACCOUNT_TYPE_LABELS[account.type] || account.type}
                       </Badge>
                     </TableCell>
-                    <TableCell>{account.currency}</TableCell>
+                    <TableCell className="text-center">{account.currency}</TableCell>
                     <TableCell className="text-right font-mono text-sm">
                       {formatBalance(account.balance, account.currency)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-center">
                       <div className="inline-flex items-center gap-1">
                         <Button
                           variant="ghost"

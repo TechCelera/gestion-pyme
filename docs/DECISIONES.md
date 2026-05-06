@@ -221,3 +221,63 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ### Razon
 - Evitar fallos de build/deploy por configuracion incompleta.
 - Reducir friccion operativa y preguntas repetidas con una regla unica, visible y mantenible.
+
+## 12) Rutas publicas en espanol (canon UX) + compatibilidad
+
+### Contexto
+- Se detecto incoherencia de producto por mezcla de rutas visibles en ingles y espanol (por ejemplo `/accounts` junto a `/operaciones`).
+- La app y su copy principal estan en espanol.
+
+### Decision
+- Las rutas publicas visibles para usuario final se unifican a espanol.
+- Canon actual:
+  - `/operaciones`
+  - `/cuentas`
+  - `/proyectos`
+  - `/reportes`
+  - `/configuracion`
+- El codigo interno (tipos, funciones, stores, acciones) se mantiene en ingles.
+
+### Implementacion
+- Renombre de paginas dashboard:
+  - `src/app/(dashboard)/accounts` -> `src/app/(dashboard)/cuentas`
+  - `src/app/(dashboard)/projects` -> `src/app/(dashboard)/proyectos`
+  - `src/app/(dashboard)/reports` -> `src/app/(dashboard)/reportes`
+  - `src/app/(dashboard)/settings` -> `src/app/(dashboard)/configuracion`
+- Navegacion y constantes ajustadas:
+  - `src/components/layout/sidebar.tsx`
+  - `src/components/layout/bottom-nav.tsx`
+  - `src/lib/constants.ts`
+- Redirecciones permanentes para enlaces legacy en `next.config.ts`:
+  - `/accounts` -> `/cuentas`
+  - `/projects` -> `/proyectos`
+  - `/reports` -> `/reportes`
+  - `/settings` -> `/configuracion`
+  - `/transactions` -> `/operaciones`
+
+### Razon
+- Consistencia de idioma en producto.
+- Menor friccion de uso y mejor trazabilidad de errores en soporte.
+- Compatibilidad con enlaces viejos sin romper accesos existentes.
+
+## 13) Endurecimiento operacional: sesion expirada y acciones de cuentas
+
+### Contexto
+- En `operaciones` se mostraba mensaje de sesion expirada sin redirigir siempre a login.
+- En `cuentas`, las acciones por fila estaban dentro de menu de 3 puntos pese a ser pocas (editar/eliminar).
+
+### Decision
+- Ante error de autenticacion en `operaciones`, redireccion automatica a `/login` (fuera de modo demo).
+- En tabla de `cuentas`, mostrar acciones directas por fila (`Editar`, `Eliminar`) sin menu contextual.
+
+### Implementacion
+- `src/app/(dashboard)/operaciones/page.tsx`:
+  - deteccion centralizada `isAuthError`,
+  - limpieza de store auth (`clearUser`) y `router.replace('/login')`.
+- `src/app/(dashboard)/cuentas/page.tsx`:
+  - eliminacion de `DropdownMenu` para acciones,
+  - botones directos visibles por fila.
+
+### Razon
+- UX mas predecible cuando la sesion caduca.
+- Menos clics y mayor claridad en operaciones frecuentes de cuentas.
