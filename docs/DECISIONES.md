@@ -95,7 +95,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 - UI:
   - `src/components/transactions/transaction-form.tsx`
   - `src/components/transactions/transaction-table.tsx`
-  - `src/app/(dashboard)/projects/page.tsx`
+  - `src/app/(dashboard)/proyectos/page.tsx`
 
 ## 7) Flujo de caja: real vs proyectado
 
@@ -118,7 +118,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
     - `monthlyTrend` (real)
     - `monthlyTrendProjected` (proyectado)
 - UI de reportes actualizada para mostrar ambos bloques y ambas tendencias:
-  - `src/app/(dashboard)/reports/page.tsx`
+  - `src/app/(dashboard)/reportes/page.tsx`
 
 ### Razon
 - Evitar mezclar caja contable cerrada con operaciones aun en tramite.

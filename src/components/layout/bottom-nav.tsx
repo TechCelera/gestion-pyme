@@ -8,10 +8,10 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
   { href: '/operaciones', label: 'Operaciones', icon: ArrowLeftRight },
-  { href: '/accounts', label: 'Cuentas', icon: Wallet },
-  { href: '/projects', label: 'Proyectos', icon: FolderKanban },
-  { href: '/reports', label: 'Reportes', icon: FileText },
-  { href: '/settings', label: 'Ajustes', icon: Settings },
+  { href: '/cuentas', label: 'Cuentas', icon: Wallet },
+  { href: '/proyectos', label: 'Proyectos', icon: FolderKanban },
+  { href: '/reportes', label: 'Reportes', icon: FileText },
+  { href: '/configuracion', label: 'Ajustes', icon: Settings },
 ]
 
 export function BottomNav() {

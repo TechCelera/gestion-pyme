@@ -603,10 +603,10 @@ export function OperationForm({
                   <Wallet className="h-10 w-10 text-muted-foreground/40" />
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">No tienes cuentas registradas</p>
-                    <p className="text-xs text-muted-foreground">Crea una cuenta en Configuración para poder registrar operations.</p>
+                    <p className="text-xs text-muted-foreground">Crea una cuenta en Configuración para poder registrar operaciones.</p>
                   </div>
                   <Link
-                    href="/settings"
+                    href="/configuracion"
                     onClick={handleClose}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#7B68EE] text-white hover:bg-[#7B68EE]/90 transition-colors"
                   >
@@ -714,7 +714,7 @@ export function OperationForm({
                           </p>
                         </div>
                         <Link
-                          href="/settings"
+                          href="/configuracion"
                           onClick={handleClose}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#7B68EE] text-white hover:bg-[#7B68EE]/90 transition-colors"
                         >

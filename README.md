@@ -46,8 +46,8 @@ npm run test -- --run
 
 ## Estructura relevante
 
-- `src/app/(dashboard)/transactions` - modulo de operaciones
-- `src/app/(dashboard)/projects` - gestion de proyectos/subproyectos
+- `src/app/(dashboard)/operaciones` - modulo de operaciones
+- `src/app/(dashboard)/proyectos` - gestion de proyectos/subproyectos
 - `src/lib/actions` - server actions
 - `src/lib/validations` - schemas de validacion
 - `src/stores` - estado cliente (Zustand)

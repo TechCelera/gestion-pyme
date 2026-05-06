@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -14,6 +15,7 @@ import type { Operation } from '@/lib/actions/operations'
 import type { CreateOperationInput } from '@/lib/validations/operation'
 
 export default function OperacionesPage() {
+  const router = useRouter()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingOperation, setEditingOperation] = useState<Operation | null>(null)
 
@@ -134,6 +136,14 @@ export default function OperacionesPage() {
   }
 
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
+  const clearUser = useAuthStore((state) => state.clearUser)
+  const isAuthError = !!error && (error.includes('no autenticado') || error.includes('sin empresa'))
+
+  useEffect(() => {
+    if (isDemoMode || !isAuthError) return
+    clearUser()
+    router.replace('/login')
+  }, [isDemoMode, isAuthError, clearUser, router])
 
   // Solo ocultar errores de auth en modo demo
   const isDemoError = isDemoMode && (error?.includes('no autenticado') || error?.includes('demo'))
@@ -147,18 +157,18 @@ export default function OperacionesPage() {
           <CardContent className="flex items-center justify-between py-4">
             <div>
               <p className="font-medium text-red-700">
-                {error?.includes('no autenticado') || error?.includes('sin empresa')
+                {isAuthError
                   ? 'Sesión expirada'
                   : 'Error al cargar datos'}
               </p>
               <p className="text-sm text-red-600">
-                {error?.includes('no autenticado') || error?.includes('sin empresa')
+                {isAuthError
                   ? 'Tu sesión ha expirado. Intenta recargar la página o iniciar sesión de nuevo.'
                   : error}
               </p>
             </div>
             <div className="flex gap-2">
-              {error?.includes('no autenticado') || error?.includes('sin empresa') ? (
+              {isAuthError ? (
                 <Button onClick={() => window.location.href = '/login'} variant="default" size="sm" className="bg-[#7B68EE] hover:bg-[#7B68EE]/90">
                   Iniciar sesión
                 </Button>

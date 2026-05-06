@@ -10,6 +10,26 @@ const nextConfig: NextConfig = {
         destination: '/operaciones',
         permanent: true,
       },
+      {
+        source: '/accounts',
+        destination: '/cuentas',
+        permanent: true,
+      },
+      {
+        source: '/projects',
+        destination: '/proyectos',
+        permanent: true,
+      },
+      {
+        source: '/reports',
+        destination: '/reportes',
+        permanent: true,
+      },
+      {
+        source: '/settings',
+        destination: '/configuracion',
+        permanent: true,
+      },
     ]
   },
 

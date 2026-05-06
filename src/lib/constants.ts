@@ -4,8 +4,8 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   /** Listado de movimientos (producto en ES: "operaciones") */
   OPERATIONS: '/operaciones',
-  REPORTS: '/reports',
-  SETTINGS: '/settings',
+  REPORTS: '/reportes',
+  SETTINGS: '/configuracion',
 } as const
 
 export const OPERATION_TYPES = {

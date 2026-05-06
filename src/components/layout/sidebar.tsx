@@ -23,10 +23,10 @@ import { toast } from 'sonner'
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/operaciones', label: 'Operaciones', icon: ArrowLeftRight },
-  { href: '/accounts', label: 'Cuentas', icon: Wallet },
-  { href: '/reports', label: 'Reportes', icon: FileText },
-  { href: '/projects', label: 'Proyectos', icon: FolderKanban },
-  { href: '/settings', label: 'Configuracion', icon: Settings },
+  { href: '/cuentas', label: 'Cuentas', icon: Wallet },
+  { href: '/reportes', label: 'Reportes', icon: FileText },
+  { href: '/proyectos', label: 'Proyectos', icon: FolderKanban },
+  { href: '/configuracion', label: 'Configuracion', icon: Settings },
 ]
 
 export function Sidebar() {
