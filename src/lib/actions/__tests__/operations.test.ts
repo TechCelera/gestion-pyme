@@ -656,57 +656,15 @@ describe('createOperation con operationComponents', () => {
   })
 })
 
-describe('updateOperation con operationComponents', () => {
+describe('updateOperation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('llama set_operation_components cuando hay desglose', async () => {
-    const companyId = 'company-123'
+  it('rechaza edición directa de operaciones', async () => {
     const txId = '22222222-2222-4222-8222-222222222222'
     const accountId = '550e8400-e29b-41d4-a716-446655440001'
     const categoryId = '550e8400-e29b-41d4-a716-446655440002'
-
-    const mockAuthGetUser = vi.fn().mockResolvedValue({
-      data: { user: { id: 'user-123', app_metadata: { company_id: companyId } } },
-      error: null,
-    })
-
-    const mockRpc = vi.fn((name: string) => {
-      if (name === 'set_operation_components') {
-        return Promise.resolve({ data: null, error: null })
-      }
-      return Promise.resolve({ data: null, error: null })
-    })
-
-    const rowAfterChain = {
-      eq: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({
-        data: { type: 'income', account_id: accountId, amount: 200, currency: 'ARS' },
-        error: null,
-      }),
-    }
-    rowAfterChain.eq.mockReturnValue(rowAfterChain)
-
-    const mockFrom = vi.fn((table: string) => {
-      if (table === 'transactions') {
-        return {
-          update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({ error: null }),
-            }),
-          }),
-          select: vi.fn().mockReturnValue(rowAfterChain),
-        }
-      }
-      return { select: vi.fn() }
-    })
-
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { getUser: mockAuthGetUser },
-      from: mockFrom,
-      rpc: mockRpc,
-    } as unknown as Awaited<ReturnType<typeof createClient>>)
 
     const result = await updateOperation(txId, {
       accountId,
@@ -720,21 +678,10 @@ describe('updateOperation con operationComponents', () => {
       operationComponents: [{ componentType: 'operative_bank', accountId, amount: 200 }],
     })
 
-    expect(result.success).toBe(true)
-    expect(mockRpc).toHaveBeenCalledWith(
-      'set_operation_components',
-      expect.objectContaining({
-        p_transaction_id: txId,
-        p_components: [
-          expect.objectContaining({
-            component_type: 'operative_bank',
-            account_id: accountId,
-            amount: 200,
-            currency: 'ARS',
-          }),
-        ],
-      })
-    )
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain('No se permite editar operaciones registradas')
+    }
   })
 })
 

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Pencil, CheckCircle, Send, Trash2, CircleArrowRight } from 'lucide-react'
+import { CheckCircle, Send, Trash2, CircleArrowRight } from 'lucide-react'
 
 import {
   Table,
@@ -21,7 +21,6 @@ import { OPERATION_METHODS_LABELS } from '@/lib/constants'
 
 interface OperationTableProps {
   operations: Operation[]
-  onEdit: (operation: Operation) => void
   onDelete: (id: string) => void
   onSendToApproval: (id: string) => void
   onApprove: (id: string) => void
@@ -41,7 +40,6 @@ const dateRowFormatOpts = { locale: es }
 
 export function OperationTable({
   operations,
-  onEdit,
   onDelete,
   onSendToApproval,
   onApprove,
@@ -57,7 +55,6 @@ export function OperationTable({
     }).format(amount)
   }
 
-  const canEdit = (status: OperationStatus) => status === 'draft'
   const canSendToApproval = (status: OperationStatus) => status === 'draft'
   const canApprove = (status: OperationStatus) => status === 'pending'
   const canPost = (status: OperationStatus) => status === 'approved'
@@ -155,16 +152,6 @@ export function OperationTable({
               </TableCell>
               <TableCell>
                 <div className="flex items-center justify-center gap-1">
-                  {canEdit(operation.status) && (
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => onEdit(operation)}
-                      title="Editar"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
                   {canSendToApproval(operation.status) && (
                     <Button
                       variant="ghost"

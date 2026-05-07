@@ -116,6 +116,13 @@ export const createOperationSchema = baseOperationSchemaObject
         path: ['categoryId'],
       })
     }
+    if (!data.operationComponents?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'El desglose de medios de pago es obligatorio para ingresos y egresos',
+        path: ['operationComponents'],
+      })
+    }
   }
 
   if (data.type === 'transfer') {

@@ -11,13 +11,11 @@ import { OperationTable } from '@/components/operations/operation-table'
 import { OperationForm } from '@/components/operations/operation-form'
 import { useOperationStore } from '@/stores/operation-store'
 import { useAuthStore } from '@/stores/auth-store'
-import type { Operation } from '@/lib/actions/operations'
 import type { CreateOperationInput } from '@/lib/validations/operation'
 
 export default function OperacionesPage() {
   const router = useRouter()
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingOperation, setEditingOperation] = useState<Operation | null>(null)
 
   const {
     operations,
@@ -26,14 +24,12 @@ export default function OperacionesPage() {
     error,
     fetchOperations,
     addOperation,
-    editOperation,
     changeStatus,
     removeOperation,
     setPagination,
   } = useOperationStore()
 
   const handleOpenModal = useCallback(() => {
-    setEditingOperation(null)
     setIsModalOpen(true)
   }, [])
 
@@ -59,37 +55,21 @@ export default function OperacionesPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleOpenModal])
 
-  const handleEdit = (operation: Operation) => {
-    setEditingOperation(operation)
-    setIsModalOpen(true)
-  }
-
   const handleCloseModal = () => {
     setIsModalOpen(false)
-    setEditingOperation(null)
   }
 
   const handleSubmit = async (data: CreateOperationInput, asDraft: boolean) => {
-    if (editingOperation) {
-      const success = await editOperation(editingOperation.id, data)
-      if (success) {
-        toast.success('Operación actualizada exitosamente')
-        handleCloseModal()
-      } else {
-        toast.error('Error al actualizar la operación')
-      }
+    const success = await addOperation(data, asDraft)
+    if (success) {
+      toast.success(
+        asDraft
+          ? 'Operación guardada como borrador'
+          : 'Operación enviada a aprobación'
+      )
+      handleCloseModal()
     } else {
-      const success = await addOperation(data, asDraft)
-      if (success) {
-        toast.success(
-          asDraft
-            ? 'Operación guardada como borrador'
-            : 'Operación enviada a aprobación'
-        )
-        handleCloseModal()
-      } else {
-        toast.error('Error al crear la operación')
-      }
+      toast.error('Error al crear la operación')
     }
   }
 
@@ -251,7 +231,6 @@ export default function OperacionesPage() {
       {/* Table */}
       <OperationTable
         operations={operations}
-        onEdit={handleEdit}
         onDelete={handleDelete}
         onSendToApproval={handleSendToApproval}
         onApprove={handleApprove}
@@ -297,7 +276,7 @@ export default function OperacionesPage() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
-        operation={editingOperation}
+        operation={null}
         isLoading={isLoading}
       />
     </div>

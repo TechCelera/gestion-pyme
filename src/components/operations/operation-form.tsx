@@ -287,15 +287,11 @@ export function OperationForm({
     let operationComponents: OperationComponentRow[] | undefined
     if (type === 'income' || type === 'expense') {
       const built = buildOperationComponents()
-      if (!asDraft) {
-        if (!built.length) {
-          toast.error('El desglose de medios de pago debe sumar exactamente el monto total')
-          return
-        }
-        operationComponents = built
-      } else if (built.length > 0) {
-        operationComponents = built
+      if (!built.length) {
+        toast.error('El desglose de medios de pago debe sumar exactamente el monto total')
+        return
       }
+      operationComponents = built
     }
 
     const data: CreateOperationInput = {
@@ -478,7 +474,7 @@ export function OperationForm({
                 <span>Información General</span>
               </div>
               
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className={`grid grid-cols-1 gap-4 ${type === 'income' || type === 'expense' ? '' : 'sm:grid-cols-2'}`}>
                 <div className="space-y-2">
                   <Label htmlFor="date">Fecha</Label>
                   <Input
@@ -489,29 +485,31 @@ export function OperationForm({
                     disabled={isLoading}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="method">Método de Pago</Label>
-                  <Select 
-                    value={method} 
-                    onValueChange={(v) => setMethod(v as OperationMethod)}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger id="method" className="w-full">
-                      <SelectValue>
-                        <span className="block truncate" title={methodLabel}>
-                          {methodLabel || 'Seleccione método'}
-                        </span>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {methods.map((m) => (
-                        <SelectItem key={m.value} value={m.value}>
-                          {m.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {(type === 'transfer' || type === 'adjustment') && (
+                  <div className="space-y-2">
+                    <Label htmlFor="method">Método de operación</Label>
+                    <Select 
+                      value={method} 
+                      onValueChange={(v) => setMethod(v as OperationMethod)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="method" className="w-full">
+                        <SelectValue>
+                          <span className="block truncate" title={methodLabel}>
+                            {methodLabel || 'Seleccione método'}
+                          </span>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {methods.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>
+                            {m.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -845,7 +843,7 @@ export function OperationForm({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                       <Wallet className="h-4 w-4" />
-                      <span>Medios de pago</span>
+                      <span>Desglose de cobro/pago</span>
                     </div>
                     <Button
                       type="button"
@@ -862,7 +860,7 @@ export function OperationForm({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    La suma debe coincidir con el monto total ({currency}). Obligatorio al enviar a aprobación.
+                    La suma debe coincidir con el monto total ({currency}). Es obligatorio para guardar.
                   </p>
                   <div
                     className={`rounded-md border px-3 py-2 text-xs font-medium ${
@@ -877,7 +875,14 @@ export function OperationForm({
                   </div>
 
                   <div className="space-y-4">
-                    {componentLines.map((line, idx) => (
+                    {componentLines.map((line, idx) => {
+                      const selectedTypeLabel =
+                        activeCompTypes.find((opt) => opt.value === line.componentType)?.label ??
+                        line.componentType
+                      const selectedAccount = accounts.find((account) => account.id === line.accountId)
+                      const selectedContact = filteredContacts.find((c) => c.id === line.contactId)
+
+                      return (
                       <div
                         key={line.localId}
                         className="rounded-lg border border-muted p-3 space-y-3 bg-muted/20"
@@ -930,7 +935,11 @@ export function OperationForm({
                             disabled={isLoading}
                           >
                             <SelectTrigger className="w-full">
-                              <SelectValue />
+                              <SelectValue>
+                                <span className="block truncate" title={selectedTypeLabel}>
+                                  {selectedTypeLabel}
+                                </span>
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                               {activeCompTypes.map((opt) => (
@@ -957,7 +966,20 @@ export function OperationForm({
                               disabled={isLoading || isLoadingData}
                             >
                               <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Seleccione cuenta" />
+                                <SelectValue>
+                                  <span
+                                    className="block truncate"
+                                    title={
+                                      selectedAccount
+                                        ? `${selectedAccount.name} (${selectedAccount.currency})`
+                                        : 'Seleccione cuenta'
+                                    }
+                                  >
+                                    {selectedAccount
+                                      ? `${selectedAccount.name} (${selectedAccount.currency})`
+                                      : 'Seleccione cuenta'}
+                                  </span>
+                                </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
                                 {accounts.map((account) => (
@@ -983,11 +1005,22 @@ export function OperationForm({
                               disabled={isLoading || isLoadingData}
                             >
                               <SelectTrigger className="w-full">
-                                <SelectValue placeholder={
-                                  filteredContacts.length
-                                    ? 'Seleccione contacto'
-                                    : 'Sin contactos — créalos en Configuración'
-                                } />
+                                <SelectValue>
+                                  <span
+                                    className="block truncate"
+                                    title={
+                                      selectedContact?.name ??
+                                      (filteredContacts.length
+                                        ? 'Seleccione contacto'
+                                        : 'Sin contactos - crealos en Configuracion')
+                                    }
+                                  >
+                                    {selectedContact?.name ??
+                                      (filteredContacts.length
+                                        ? 'Seleccione contacto'
+                                        : 'Sin contactos - crealos en Configuracion')}
+                                  </span>
+                                </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
                                 {filteredContacts.map((c) => (
@@ -1019,7 +1052,7 @@ export function OperationForm({
                           />
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </div>
               </>

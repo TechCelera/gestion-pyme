@@ -167,42 +167,6 @@ async function getCurrentUserId(): Promise<string | null> {
   }
 }
 
-/** Un solo medio de pago (cartera) alineado al motor contable vía `set_operation_components`. */
-async function syncSingleWalletOperationComponents(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  operationId: string,
-  accountId: string,
-  amount: number,
-  currency: string
-): Promise<{ error: { message: string } | null }> {
-  const { data: accRow, error: accErr } = await supabase
-    .from('accounts')
-    .select('type')
-    .eq('id', accountId)
-    .single()
-
-  if (accErr || !accRow) {
-    return { error: { message: accErr?.message ?? 'Cuenta operativa no encontrada' } }
-  }
-
-  const accType = (accRow as { type?: string }).type
-  const compType = accType === 'cash' ? 'operative_cash' : 'operative_bank'
-
-  const { error } = await supabase.rpc('set_operation_components', {
-    p_transaction_id: operationId,
-    p_components: [
-      {
-        component_type: compType,
-        account_id: accountId,
-        amount,
-        currency: currency || 'ARS',
-      },
-    ],
-  })
-
-  return { error }
-}
-
 async function getProjectBudgetContext(
   supabase: Awaited<ReturnType<typeof createClient>>,
   companyId: string,
@@ -332,30 +296,16 @@ export async function createOperation(
 
     if (validated.type === 'income' || validated.type === 'expense') {
       const tid = typeof data === 'string' ? data : String(data)
-      if (validated.operationComponents && validated.operationComponents.length > 0) {
-        const { error: compError } = await supabase.rpc('set_operation_components', {
-          p_transaction_id: tid,
-          p_components: mapOperationComponentsToRpcJson(
-            validated.operationComponents,
-            validated.currency ?? 'ARS'
-          ),
-        })
-        if (compError) {
-          console.error('Error definición de componentes de operación:', compError)
-          return { success: false, error: compError.message }
-        }
-      } else {
-        const { error: compError } = await syncSingleWalletOperationComponents(
-          supabase,
-          tid,
-          accountId,
-          validated.amount,
+      const { error: compError } = await supabase.rpc('set_operation_components', {
+        p_transaction_id: tid,
+        p_components: mapOperationComponentsToRpcJson(
+          validated.operationComponents,
           validated.currency ?? 'ARS'
-        )
-        if (compError) {
-          console.error('Error definición de componentes de operación:', compError)
-          return { success: false, error: compError.message }
-        }
+        ),
+      })
+      if (compError) {
+        console.error('Error definición de componentes de operación:', compError)
+        return { success: false, error: compError.message }
       }
     }
 
@@ -407,110 +357,11 @@ export async function updateOperation(
   input: Omit<UpdateOperationInput, 'id'>
 ): Promise<ActionResult<Operation>> {
   try {
-    const validated = updateOperationSchema.parse({ ...input, id })
-    const companyId = await getCurrentUserCompany()
-    const userId = await getCurrentUserId()
-    
-    if (!companyId) {
-      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    updateOperationSchema.parse({ ...input, id })
+    return {
+      success: false,
+      error: 'No se permite editar operaciones registradas. Usa anulación o reversión.',
     }
-
-    const supabase = await createClient()
-
-    const updatePayload: Record<string, unknown> = {
-      account_id: validated.accountId,
-      category_id: validated.categoryId,
-      type: validated.type,
-      amount: validated.amount,
-      date: validated.date?.toISOString().split('T')[0],
-      description: validated.description,
-      method: validated.method,
-      currency: validated.currency,
-      contact_id: validated.contactId,
-      contact_type: validated.contactType,
-      source_account_id: validated.sourceAccountId,
-      destination_account_id: validated.destinationAccountId,
-      adjustment_reason: validated.adjustmentReason,
-      document_type: validated.documentType,
-      document_number: validated.documentNumber,
-      attachment_url: validated.attachmentUrl,
-      project_id: validated.projectId ?? null,
-      fund_owner: validated.fundOwner ?? 'company',
-      updated_at: new Date().toISOString(),
-    }
-
-    if (validated.projectId && validated.type === 'expense' && validated.amount !== undefined) {
-      const budgetContext = await getProjectBudgetContext(supabase, companyId, validated.projectId)
-      if (budgetContext) {
-        const budgetState = evaluateBudgetStatus({
-          budgetAmount: budgetContext.budgetAmount,
-          spentAmount: budgetContext.spentAmount,
-          newExpenseAmount: validated.amount,
-          endDate: budgetContext.endDate,
-          operationDate: validated.date ?? new Date(),
-        })
-        updatePayload.requires_budget_approval = budgetState.requiresBudgetApproval
-      }
-    }
-
-    // Include updated_by for audit trail (T10)
-    if (userId) {
-      updatePayload.updated_by = userId
-    }
-
-    const { error } = await supabase
-      .from('transactions')
-      .update(updatePayload)
-      .eq('id', id)
-      .eq('status', 'draft') // Solo se puede editar si está en draft
-
-    if (error) {
-      console.error('Error updating transaction:', error)
-      return { success: false, error: error.message }
-    }
-
-    const { data: rowAfter } = await supabase
-      .from('transactions')
-      .select('type, account_id, amount, currency')
-      .eq('id', id)
-      .eq('company_id', companyId)
-      .single()
-
-    if (
-      rowAfter &&
-      ((rowAfter as { type?: string }).type === 'income' ||
-        (rowAfter as { type?: string }).type === 'expense')
-    ) {
-      const r = rowAfter as {
-        account_id: string
-        amount: number | string
-        currency?: string | null
-      }
-      const cur = (validated.currency as string | undefined) ?? r.currency ?? 'ARS'
-      if (validated.operationComponents && validated.operationComponents.length > 0) {
-        const { error: compError } = await supabase.rpc('set_operation_components', {
-          p_transaction_id: id,
-          p_components: mapOperationComponentsToRpcJson(validated.operationComponents, cur),
-        })
-        if (compError) {
-          return { success: false, error: compError.message }
-        }
-      } else {
-        const { error: compError } = await syncSingleWalletOperationComponents(
-          supabase,
-          id,
-          r.account_id,
-          Number(r.amount),
-          cur
-        )
-        if (compError) {
-          return { success: false, error: compError.message }
-        }
-      }
-    }
-
-    // revalidateTag('transactions')
-    return { success: true }
   } catch (error) {
     return { success: false, error: errorMessageForUser(error, 'Error al actualizar operación') }
   }

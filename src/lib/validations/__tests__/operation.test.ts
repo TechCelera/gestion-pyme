@@ -18,6 +18,13 @@ describe('Validaciones de operación', () => {
       description: 'Venta de producto',
       accountId: '550e8400-e29b-41d4-a716-446655440000',
       categoryId: '550e8400-e29b-41d4-a716-446655440001',
+      operationComponents: [
+        {
+          componentType: 'operative_cash',
+          accountId: '550e8400-e29b-41d4-a716-446655440000',
+          amount: 100,
+        },
+      ],
     }
 
     it('should validate a valid income transaction', () => {
@@ -45,6 +52,12 @@ describe('Validaciones de operación', () => {
 
     it('should require description with at least 3 characters', () => {
       const invalid = { ...validIncome, description: 'AB' }
+      const result = createOperationSchema.safeParse(invalid)
+      expect(result.success).toBe(false)
+    })
+
+    it('should require operation components for income/expense', () => {
+      const invalid = { ...validIncome, operationComponents: undefined }
       const result = createOperationSchema.safeParse(invalid)
       expect(result.success).toBe(false)
     })
