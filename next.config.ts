@@ -33,8 +33,8 @@ const nextConfig: NextConfig = {
     ]
   },
 
-  // Allow dev access from network IP for mobile testing
-  allowedDevOrigins: ['192.168.1.11'],
+  // Allow dev access from network IP (mobile testing) and loopback (Playwright)
+  allowedDevOrigins: ['192.168.1.11', '127.0.0.1'],
   
   // Move build cache to local temp dir to avoid slow network filesystem
   distDir: process.env.NODE_ENV === 'development' 

@@ -3,15 +3,30 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" next dev",
+    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
-    "verify": "npm run lint && npm run test:run && npm run build"
+    "test": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" vitest",
+    "test:run": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" vitest run",
+    "test:ui": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" vitest --ui",
+    "test:coverage": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" vitest --coverage",
+    "test:e2e": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test",
+    "test:e2e:ci": "env -u PLAYWRIGHT_SKIP_WEBSERVER NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" playwright test",
+    "test:e2e:ui": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --ui",
+    "test:e2e:running": "npm run test:e2e",
+    "test:e2e:list": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" playwright test --list",
+    "playwright:install": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" playwright install chromium-headless-shell",
+    "playwright:install:full": "NODE_OPTIONS=\"${NODE_OPTIONS:+${NODE_OPTIONS} }--disable-warning=DEP0205\" playwright install chromium",
+    "verify": "npm run lint && npm run test:run && npm run build",
+    "verify:all": "npm run verify && npm run test:e2e:ci",
+    "verify:all:local": "npm run verify && npm run test:e2e",
+    "sb": "supabase",
+    "sb:version": "supabase --version",
+    "sb:login": "supabase login",
+    "sb:projects": "supabase projects list",
+    "sb:push:dry": "supabase db push --dry-run",
+    "sb:push": "supabase db push"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
@@ -36,6 +51,7 @@
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "^16.2.3",
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -47,11 +63,20 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.3",
     "jsdom": "^29.0.2",
+    "supabase": "2.98.2",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.5"
   },
   "overrides": {
     "glob": "^13.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "supabase",
+      "sharp",
+      "msw",
+      "unrs-resolver"
+    ]
   }
 }

@@ -46,6 +46,8 @@ describe('getContacts', () => {
     if (res.success && res.data) {
       expect(res.data).toHaveLength(2)
       expect(res.data[0].name).toBe('Ana')
+      expect(res.data[0].clientSegment).toBeNull()
+      expect(res.data[0].associatedServices).toBeNull()
     }
   })
 })

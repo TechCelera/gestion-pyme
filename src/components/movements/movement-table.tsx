@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CheckCircle, Send, Trash2, CircleArrowRight } from 'lucide-react'
+import { CheckCircle, Trash2, CircleArrowRight, Ban } from 'lucide-react'
 
 import {
   Table,
@@ -14,40 +13,38 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { OperationStatusBadge } from './operation-status-badge'
-import type { Operation } from '@/lib/actions/operations'
-import type { OperationStatus } from '@/lib/validations/operation'
-import { OPERATION_METHODS_LABELS } from '@/lib/constants'
+import { MovementStatusBadge } from './movement-status-badge'
+import type { Movement } from '@/lib/actions/movements'
+import type { MovementStatus } from '@/lib/validations/movement'
+import { MOVEMENT_METHODS_LABELS } from '@/lib/constants'
 
-interface OperationTableProps {
-  operations: Operation[]
+interface MovementTableProps {
+  movements: Movement[]
   onDelete: (id: string) => void
   onSendToApproval: (id: string) => void
   onApprove: (id: string) => void
-  onPost: (id: string) => void
+  onCancel: (id: string) => void
   isLoading?: boolean
 }
 
 const typeLabels: Record<string, string> = {
-  income: 'Ingreso',
-  expense: 'Egreso',
-  transfer: 'Transferencia',
+  income: 'Venta / Cobro',
+  expense: 'Compra / Pago',
+  transfer: 'Pasaje entre cuentas',
   adjustment: 'Ajuste',
 }
 
 /** Fuera del JSX para evitar ambiguedad del parser con `- { locale }` dentro de `{format(...)}` */
 const dateRowFormatOpts = { locale: es }
 
-export function OperationTable({
-  operations,
+export function MovementTable({
+  movements,
   onDelete,
   onSendToApproval,
   onApprove,
-  onPost,
+  onCancel,
   isLoading,
-}: OperationTableProps) {
-  const [hoveredRow, setHoveredRow] = useState<string | null>(null)
-
+}: MovementTableProps) {
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -55,10 +52,10 @@ export function OperationTable({
     }).format(amount)
   }
 
-  const canSendToApproval = (status: OperationStatus) => status === 'draft'
-  const canApprove = (status: OperationStatus) => status === 'pending'
-  const canPost = (status: OperationStatus) => status === 'approved'
-  const canDelete = (status: OperationStatus) => status === 'draft'
+  const canSendToApproval = (status: MovementStatus) => status === 'draft'
+  const canApprove = (status: MovementStatus) => status === 'pending'
+  const canDelete = (status: MovementStatus) => status === 'draft'
+  const canCancel = (status: MovementStatus) => status === 'approved'
 
   if (isLoading) {
     return (
@@ -90,10 +87,10 @@ export function OperationTable({
     )
   }
 
-  if (operations.length === 0) {
+  if (movements.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center rounded-xl border bg-card">
-        <p className="text-muted-foreground">No hay operaciones para mostrar</p>
+        <p className="text-muted-foreground">No hay movimientos para mostrar</p>
       </div>
     )
   }
@@ -114,30 +111,26 @@ export function OperationTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {operations.map((operation) => (
-            <TableRow
-              key={operation.id}
-              onMouseEnter={() => setHoveredRow(operation.id)}
-              onMouseLeave={() => setHoveredRow(null)}
-            >
+          {movements.map((movement) => (
+            <TableRow key={movement.id}>
               <TableCell className="text-center">
-                {format(new Date(operation.date), 'dd/MM/yyyy', dateRowFormatOpts)}
+                {format(new Date(movement.date), 'dd/MM/yyyy', dateRowFormatOpts)}
               </TableCell>
-              <TableCell className="text-center">{typeLabels[operation.type] || operation.type}</TableCell>
+              <TableCell className="text-center">{typeLabels[movement.type] || movement.type}</TableCell>
               <TableCell className="text-center">
                 <span className="inline-flex text-xs px-1.5 py-0.5 rounded bg-muted">
-                  {OPERATION_METHODS_LABELS[operation.method] || operation.method}
+                  {MOVEMENT_METHODS_LABELS[movement.method] || movement.method}
                 </span>
               </TableCell>
               <TableCell className="max-w-[200px] truncate text-center">
-                {operation.description}
+                {movement.description}
               </TableCell>
               <TableCell className="text-center">
                 <div className="flex flex-col gap-1 items-center">
                   <span className="text-xs text-muted-foreground text-center">
-                    {operation.projectName ?? 'General empresa'}
+                    {movement.projectName ?? 'General empresa'}
                   </span>
-                  {operation.requiresBudgetApproval ? (
+                  {movement.requiresBudgetApproval ? (
                     <span className="text-[11px] text-amber-700 bg-amber-100 rounded px-1.5 py-0.5 w-fit">
                       Requiere aprobación presupuesto
                     </span>
@@ -145,51 +138,51 @@ export function OperationTable({
                 </div>
               </TableCell>
               <TableCell className="font-medium text-center">
-                {formatCurrency(operation.amount, operation.currency)}
+                {formatCurrency(movement.amount, movement.currency)}
               </TableCell>
               <TableCell className="text-center">
-                <OperationStatusBadge status={operation.status} />
+                <MovementStatusBadge status={movement.status} />
               </TableCell>
               <TableCell>
                 <div className="flex items-center justify-center gap-1">
-                  {canSendToApproval(operation.status) && (
+                  {canSendToApproval(movement.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      onClick={() => onSendToApproval(operation.id)}
+                      onClick={() => onSendToApproval(movement.id)}
                       title="Enviar a aprobación"
                       className="text-amber-700"
                     >
                       <CircleArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                  {canApprove(operation.status) && (
+                  {canApprove(movement.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      onClick={() => onApprove(operation.id)}
-                      title="Aprobar"
-                      className="text-[#7B68EE]"
+                      onClick={() => onApprove(movement.id)}
+                      title="Aprobar y registrar"
+                      className="text-green-600"
                     >
                       <CheckCircle className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                  {canPost(operation.status) && (
+                  {canCancel(movement.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      onClick={() => onPost(operation.id)}
-                      title="Postear"
-                      className="text-green-600"
+                      onClick={() => onCancel(movement.id)}
+                      title="Anular movimiento aprobado"
+                      className="text-orange-700"
                     >
-                      <Send className="h-3.5 w-3.5" />
+                      <Ban className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                  {canDelete(operation.status) && (
+                  {canDelete(movement.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      onClick={() => onDelete(operation.id)}
+                      onClick={() => onDelete(movement.id)}
                       title="Eliminar"
                       className="text-red-600"
                     >

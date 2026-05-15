@@ -26,6 +26,14 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -47,30 +55,30 @@ import type { Category } from '@/lib/actions/categories'
 import type { Project } from '@/lib/actions/projects'
 import { DEMO_ACCOUNTS, DEMO_CATEGORIES } from '@/lib/demo-data'
 import { useAuthStore } from '@/stores/auth-store'
-import type { Operation } from '@/lib/actions/operations'
-import { getOperationComponents } from '@/lib/actions/operations'
-import { getContacts } from '@/lib/actions/contacts'
+import type { Movement } from '@/lib/actions/movements'
+import { getMovementComponents } from '@/lib/actions/movements'
+import { getContacts, createContact, type ContactRow } from '@/lib/actions/contacts'
 import type {
-  CreateOperationInput,
-  OperationType,
-  OperationMethod,
-  OperationComponentType,
-  OperationComponentRow,
+  CreateMovementInput,
+  MovementType,
+  MovementMethod,
+  MovementComponentType,
+  MovementComponentRow,
   AdjustmentReason,
-} from '@/lib/validations/operation'
+} from '@/lib/validations/movement'
 import { toast } from 'sonner'
 
-interface OperationFormProps {
+interface MovementFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: CreateOperationInput, asDraft: boolean) => void
-  operation?: Operation | null
+  onSubmit: (data: CreateMovementInput, asDraft: boolean) => void
+  movement?: Movement | null
   isLoading?: boolean
 }
 
 type ComponentLineDraft = {
   localId: string
-  componentType: OperationComponentType
+  componentType: MovementComponentType
   accountId: string
   contactId: string
   amount: string
@@ -86,14 +94,14 @@ function newComponentLine(partial?: Partial<ComponentLineDraft>): ComponentLineD
   }
 }
 
-const operationTypeOptions: { value: OperationType; label: string; icon: React.ElementType; color: string }[] = [
+const movementTypeOptions: { value: MovementType; label: string; icon: React.ElementType; color: string }[] = [
   { value: 'income', label: 'Ingreso', icon: Wallet, color: 'bg-green-100 text-green-700 border-green-200' },
   { value: 'expense', label: 'Egreso', icon: CreditCard, color: 'bg-red-100 text-red-700 border-red-200' },
   { value: 'transfer', label: 'Transferencia', icon: ArrowRightLeft, color: 'bg-blue-100 text-blue-700 border-blue-200' },
   { value: 'adjustment', label: 'Ajuste', icon: Settings, color: 'bg-orange-100 text-orange-700 border-orange-200' },
 ]
 
-const methods: { value: OperationMethod; label: string }[] = [
+const methods: { value: MovementMethod; label: string }[] = [
   { value: 'cash', label: 'Efectivo' },
   { value: 'transfer', label: 'Transferencia' },
   { value: 'card', label: 'Tarjeta' },
@@ -108,39 +116,45 @@ const currencies = [
   { value: 'EUR', label: 'EUR (€)', flag: '🇪🇺' },
 ]
 
-export function OperationForm({
+export function MovementForm({
   isOpen,
   onClose,
   onSubmit,
-  operation,
+  movement,
   isLoading,
-}: OperationFormProps) {
-  const [type, setType] = useState<OperationType>('income')
+}: MovementFormProps) {
+  const [type, setType] = useState<MovementType>('income')
   const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
   const [accountId, setAccountId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState('ARS')
   const [description, setDescription] = useState('')
-  const [method, setMethod] = useState<OperationMethod>('cash')
+  const [method, setMethod] = useState<MovementMethod>('cash')
   const [sourceAccountId, setSourceAccountId] = useState('')
   const [destinationAccountId, setDestinationAccountId] = useState('')
   const [adjustmentReason, setAdjustmentReason] = useState('')
   const [fundOwner, setFundOwner] = useState<'company' | 'client_advance'>('company')
-  const [operationScope, setOperationScope] = useState<'general' | 'project'>('general')
+  const [movementScope, setMovementScope] = useState<'general' | 'project'>('general')
   const [projectId, setProjectId] = useState('')
 
   // Data from server
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [projects, setProjects] = useState<Project[]>([])
-  const [contacts, setContacts] = useState<Array<{ id: string; name: string; kind: string }>>([])
+  const [contacts, setContacts] = useState<ContactRow[]>([])
   const [componentLines, setComponentLines] = useState<ComponentLineDraft[]>([newComponentLine()])
   const [isLoadingData, setIsLoadingData] = useState(false)
+  const [quickContactOpen, setQuickContactOpen] = useState(false)
+  const [quickContactLineId, setQuickContactLineId] = useState<string | null>(null)
+  const [quickContactName, setQuickContactName] = useState('')
+  const [quickClientSegment, setQuickClientSegment] = useState('')
+  const [quickServices, setQuickServices] = useState('')
+  const [quickSaving, setQuickSaving] = useState(false)
 
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
-  const isEditing = !!operation
-  const selectedType = operationTypeOptions.find((t) => t.value === type)
+  const isEditing = !!movement
+  const selectedType = movementTypeOptions.find((t) => t.value === type)
 
   const resetForm = useCallback(() => {
     setType('income')
@@ -156,7 +170,7 @@ export function OperationForm({
     setAdjustmentReason('')
     setFundOwner('company')
     setProjectId('')
-    setOperationScope('general')
+    setMovementScope('general')
     setComponentLines([newComponentLine()])
   }, [])
 
@@ -205,33 +219,33 @@ export function OperationForm({
     })
   }, [isOpen, loadFormData])
 
-  // Sincronizar formulario cuando cambia la operación en edición
+  // Sync form when the movement being edited changes
   useEffect(() => {
     if (!isOpen) return
     queueMicrotask(() => {
-      if (operation) {
-        setType(operation.type)
-        setDate(format(new Date(operation.date), 'yyyy-MM-dd'))
-        setAccountId(operation.accountId)
-        setCategoryId(operation.categoryId || '')
-        setAmount(operation.amount.toString())
-        setCurrency(operation.currency)
-        setDescription(operation.description)
+      if (movement) {
+        setType(movement.type)
+        setDate(format(new Date(movement.date), 'yyyy-MM-dd'))
+        setAccountId(movement.accountId)
+        setCategoryId(movement.categoryId || '')
+        setAmount(movement.amount.toString())
+        setCurrency(movement.currency)
+        setDescription(movement.description)
         setMethod('cash')
-        setFundOwner((operation.fundOwner ?? 'company') as 'company' | 'client_advance')
-        setProjectId(operation.projectId ?? '')
-        setOperationScope(operation.projectId ? 'project' : 'general')
+        setFundOwner((movement.fundOwner ?? 'company') as 'company' | 'client_advance')
+        setProjectId(movement.projectId ?? '')
+        setMovementScope(movement.projectId ? 'project' : 'general')
       } else {
         resetForm()
       }
     })
-  }, [operation, isOpen, resetForm])
+  }, [movement, isOpen, resetForm])
 
   useEffect(() => {
-    if (!isOpen || !operation || isDemoMode) return
+    if (!isOpen || !movement || isDemoMode) return
     let cancelled = false
     ;(async () => {
-      const res = await getOperationComponents(operation.id)
+      const res = await getMovementComponents(movement.id)
       if (cancelled || !res.success || !res.data?.length) return
       setComponentLines(
         res.data.map((c) =>
@@ -248,11 +262,11 @@ export function OperationForm({
     return () => {
       cancelled = true
     }
-  }, [isOpen, operation, isDemoMode])
+  }, [isOpen, movement, isDemoMode])
 
-  const buildOperationComponents = (): OperationComponentRow[] => {
+  const buildMovementComponents = (): MovementComponentRow[] => {
     const total = parseFloat(amount)
-    const rows: OperationComponentRow[] = []
+    const rows: MovementComponentRow[] = []
     for (const line of componentLines) {
       const amt = parseFloat(line.amount)
       if (!line.amount.trim() || Number.isNaN(amt) || amt <= 0) continue
@@ -284,17 +298,17 @@ export function OperationForm({
       return
     }
 
-    let operationComponents: OperationComponentRow[] | undefined
+    let movementComponents: MovementComponentRow[] | undefined
     if (type === 'income' || type === 'expense') {
-      const built = buildOperationComponents()
+      const built = buildMovementComponents()
       if (!built.length) {
         toast.error('El desglose de medios de pago debe sumar exactamente el monto total')
         return
       }
-      operationComponents = built
+      movementComponents = built
     }
 
-    const data: CreateOperationInput = {
+    const data: CreateMovementInput = {
       type,
       date: new Date(date),
       amount: parsedAmount,
@@ -302,7 +316,7 @@ export function OperationForm({
       description,
       method,
       ...(type === 'income' || type === 'expense'
-        ? { accountId, categoryId: categoryId || undefined, operationComponents }
+        ? { accountId, categoryId: categoryId || undefined, movementComponents }
         : {}),
       ...(type === 'transfer'
         ? { sourceAccountId, destinationAccountId }
@@ -311,7 +325,7 @@ export function OperationForm({
         ? { accountId, adjustmentReason: adjustmentReason as AdjustmentReason }
         : {}),
       fundOwner,
-      projectId: operationScope === 'project' ? projectId || undefined : undefined,
+      projectId: movementScope === 'project' ? projectId || undefined : undefined,
     }
 
     onSubmit(data, asDraft)
@@ -325,7 +339,7 @@ export function OperationForm({
     onClose()
   }
 
-  // Filtrar categorías según tipo de operación
+  // Filter categories by movement type
   const filteredCategories = categories.filter((c) => {
     if (type === 'income') return c.type === CATEGORY_TYPES.INCOME
     if (type === 'expense') return ([
@@ -374,12 +388,12 @@ export function OperationForm({
   const flatProjects = flattenProjects(projects)
   const projectLabel = projectId ? flatProjects.find((p) => p.id === projectId)?.name ?? '' : ''
 
-  const incomeCompTypes: { value: OperationComponentType; label: string }[] = [
+  const incomeCompTypes: { value: MovementComponentType; label: string }[] = [
     { value: 'operative_cash', label: 'Efectivo (caja)' },
     { value: 'operative_bank', label: 'Banco / cuenta' },
     { value: 'client_receivable', label: 'Cliente (cuenta corriente)' },
   ]
-  const expenseCompTypes: { value: OperationComponentType; label: string }[] = [
+  const expenseCompTypes: { value: MovementComponentType; label: string }[] = [
     { value: 'operative_cash', label: 'Efectivo (caja)' },
     { value: 'operative_bank', label: 'Banco / cuenta' },
     { value: 'supplier_payable', label: 'Proveedor (cuenta corriente)' },
@@ -401,7 +415,53 @@ export function OperationForm({
       : !Number.isNaN(parsedTotalAmt) &&
         Math.round(componentsSum * 100) === Math.round(parsedTotalAmt * 100)
 
+  function defaultQuickContactKind(): ContactRow['kind'] {
+    if (type === 'income') return 'client'
+    if (type === 'expense') return 'provider'
+    return 'both'
+  }
+
+  function openQuickContact(lineLocalId: string) {
+    setQuickContactLineId(lineLocalId)
+    setQuickContactName('')
+    setQuickClientSegment('')
+    setQuickServices('')
+    setQuickContactOpen(true)
+  }
+
+  async function saveQuickContact() {
+    const trimmed = quickContactName.trim()
+    if (!trimmed) {
+      toast.error('Escribí el nombre del contacto')
+      return
+    }
+    setQuickSaving(true)
+    try {
+      const res = await createContact({
+        name: trimmed,
+        kind: defaultQuickContactKind(),
+        clientSegment: quickClientSegment.trim() || null,
+        associatedServices: quickServices.trim() || null,
+      })
+      if (!res.success || !res.data) {
+        toast.error(res.error ?? 'No se pudo crear el contacto')
+        return
+      }
+      setContacts((prev) => [...prev, res.data!].sort((a, b) => a.name.localeCompare(b.name)))
+      if (quickContactLineId) {
+        setComponentLines((prev) =>
+          prev.map((l) => (l.localId === quickContactLineId ? { ...l, contactId: res.data!.id } : l))
+        )
+      }
+      toast.success('Contacto creado')
+      setQuickContactOpen(false)
+    } finally {
+      setQuickSaving(false)
+    }
+  }
+
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent
         side="right"
@@ -415,12 +475,12 @@ export function OperationForm({
             </div>
             <div>
               <SheetTitle className="text-lg">
-                {isEditing ? 'Editar Operación' : 'Nueva Operación'}
+                {isEditing ? 'Editar movimiento' : 'Nuevo movimiento'}
               </SheetTitle>
               <SheetDescription>
                 {isEditing 
-                  ? 'Modifica los datos de la operación' 
-                  : 'Completa los datos para registrar una nueva operación'}
+                  ? 'Modifica los datos del movimiento'
+                  : 'Completa los datos para registrar un nuevo movimiento'}
               </SheetDescription>
             </div>
           </div>
@@ -429,10 +489,10 @@ export function OperationForm({
           {!isEditing && (
             <div className="pt-2">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Tipo de operación
+                Tipo de movimiento
               </p>
               <div className="flex flex-wrap gap-2">
-                {operationTypeOptions.map((t) => {
+                {movementTypeOptions.map((t) => {
                 const Icon = t.icon
                 const isSelected = type === t.value
                 return (
@@ -487,10 +547,10 @@ export function OperationForm({
                 </div>
                 {(type === 'transfer' || type === 'adjustment') && (
                   <div className="space-y-2">
-                    <Label htmlFor="method">Método de operación</Label>
+                    <Label htmlFor="method">Método del movimiento</Label>
                     <Select 
                       value={method} 
-                      onValueChange={(v) => setMethod(v as OperationMethod)}
+                      onValueChange={(v) => setMethod(v as MovementMethod)}
                       disabled={isLoading}
                     >
                       <SelectTrigger id="method" className="w-full">
@@ -516,10 +576,10 @@ export function OperationForm({
                 <div className="space-y-2">
                   <Label htmlFor="scope">Ámbito</Label>
                   <Select
-                    value={operationScope}
+                    value={movementScope}
                     onValueChange={(value) => {
                       const scope = (value as 'general' | 'project') ?? 'general'
-                      setOperationScope(scope)
+                      setMovementScope(scope)
                       if (scope === 'general') setProjectId('')
                     }}
                     disabled={isLoading}
@@ -527,7 +587,7 @@ export function OperationForm({
                     <SelectTrigger id="scope" className="w-full">
                       <SelectValue>
                         <span className="block truncate">
-                          {operationScope === 'general' ? 'General empresa' : 'Proyecto/Subproyecto'}
+                          {movementScope === 'general' ? 'General empresa' : 'Proyecto/Subproyecto'}
                         </span>
                       </SelectValue>
                     </SelectTrigger>
@@ -559,7 +619,7 @@ export function OperationForm({
                 </div>
               </div>
 
-              {operationScope === 'project' && (
+              {movementScope === 'project' && (
                 <div className="space-y-2">
                   <Label htmlFor="project">Proyecto / Subproyecto</Label>
                   <Select
@@ -601,7 +661,7 @@ export function OperationForm({
                   <Wallet className="h-10 w-10 text-muted-foreground/40" />
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">No tienes cuentas registradas</p>
-                    <p className="text-xs text-muted-foreground">Crea una cuenta en Configuración para poder registrar operaciones.</p>
+                    <p className="text-xs text-muted-foreground">Crea una cuenta en Configuración para poder registrar movimientos.</p>
                   </div>
                   <Link
                     href="/configuracion"
@@ -918,7 +978,7 @@ export function OperationForm({
                                   l.localId === line.localId
                                     ? {
                                         ...l,
-                                        componentType: v as OperationComponentType,
+                                        componentType: v as MovementComponentType,
                                         accountId:
                                           v === 'client_receivable' || v === 'supplier_payable'
                                             ? ''
@@ -992,7 +1052,20 @@ export function OperationForm({
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            <Label>Contacto</Label>
+                            <div className="flex items-center justify-between gap-2">
+                              <Label>Contacto</Label>
+                              {!isDemoMode ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs shrink-0"
+                                  onClick={() => openQuickContact(line.localId)}
+                                >
+                                  + Nuevo
+                                </Button>
+                              ) : null}
+                            </div>
                             <Select
                               value={line.contactId}
                               onValueChange={(v) =>
@@ -1068,7 +1141,7 @@ export function OperationForm({
               </div>
               <div className="space-y-2">
                 <Input
-                  placeholder="Describe la operación..."
+                  placeholder="Describe el movimiento..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={isLoading}
@@ -1113,5 +1186,56 @@ export function OperationForm({
         </SheetFooter>
       </SheetContent>
     </Sheet>
+
+    <Dialog open={quickContactOpen} onOpenChange={setQuickContactOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Nuevo contacto</DialogTitle>
+          <DialogDescription>
+            Queda en tu empresa y seleccionado en esta línea. El tipo cliente/proveedor sigue el movimiento.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <div className="space-y-1">
+            <Label>Nombre</Label>
+            <Input
+              value={quickContactName}
+              onChange={(e) => setQuickContactName(e.target.value)}
+              placeholder="Nombre o razón social"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Segmento (opcional)</Label>
+            <Input
+              value={quickClientSegment}
+              onChange={(e) => setQuickClientSegment(e.target.value)}
+              placeholder="ej. particular, corporativo"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Servicios asociados (opcional)</Label>
+            <Input
+              value={quickServices}
+              onChange={(e) => setQuickServices(e.target.value)}
+              placeholder="Texto libre"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setQuickContactOpen(false)} disabled={quickSaving}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void saveQuickContact()}
+            disabled={quickSaving}
+            className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
+          >
+            {quickSaving ? 'Guardando...' : 'Crear contacto'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

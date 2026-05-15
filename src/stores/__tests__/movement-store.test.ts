@@ -1,18 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useOperationStore } from '../operation-store'
+import { useMovementStore } from '../movement-store'
 
-vi.mock('@/lib/actions/operations', () => ({
-  listOperations: vi.fn(),
-  createOperation: vi.fn(),
-  updateOperation: vi.fn(),
-  updateOperationStatus: vi.fn(),
-  deleteOperation: vi.fn(),
+vi.mock('@/lib/actions/movements', () => ({
+  listMovements: vi.fn(),
+  createMovement: vi.fn(),
+  updateMovement: vi.fn(),
+  updateMovementStatus: vi.fn(),
+  deleteMovement: vi.fn(),
 }))
 
-describe('operation store', () => {
+describe('movement store', () => {
   beforeEach(() => {
-    useOperationStore.setState({
-      operations: [],
+    useMovementStore.setState({
+      movements: [],
       filters: { page: 1, pageSize: 50 },
       pagination: { page: 1, pageSize: 50, total: 0 },
       isLoading: false,
@@ -21,65 +21,65 @@ describe('operation store', () => {
   })
 
   describe('initial state', () => {
-    it('should have empty operations array', () => {
-      const state = useOperationStore.getState()
-      expect(state.operations).toEqual([])
+    it('should have empty movements array', () => {
+      const state = useMovementStore.getState()
+      expect(state.movements).toEqual([])
     })
 
     it('should have default filters', () => {
-      const state = useOperationStore.getState()
+      const state = useMovementStore.getState()
       expect(state.filters).toEqual({ page: 1, pageSize: 50 })
     })
 
     it('should not be loading initially', () => {
-      const state = useOperationStore.getState()
+      const state = useMovementStore.getState()
       expect(state.isLoading).toBe(false)
     })
 
     it('should have no error initially', () => {
-      const state = useOperationStore.getState()
+      const state = useMovementStore.getState()
       expect(state.error).toBeNull()
     })
   })
 
   describe('setFilters', () => {
     it('should update filters', () => {
-      const { setFilters } = useOperationStore.getState()
+      const { setFilters } = useMovementStore.getState()
       setFilters({ status: ['draft'] })
 
-      const state = useOperationStore.getState()
+      const state = useMovementStore.getState()
       expect(state.filters.status).toEqual(['draft'])
     })
 
     it('should reset page to 1 when filters change', () => {
-      useOperationStore.setState({ filters: { page: 5, pageSize: 50 } })
+      useMovementStore.setState({ filters: { page: 5, pageSize: 50 } })
 
-      const { setFilters } = useOperationStore.getState()
+      const { setFilters } = useMovementStore.getState()
       setFilters({ status: ['pending'] })
 
-      const state = useOperationStore.getState()
+      const state = useMovementStore.getState()
       expect(state.filters.page).toBe(1)
     })
   })
 
   describe('setPagination', () => {
     it('should update pagination', () => {
-      const { setPagination } = useOperationStore.getState()
+      const { setPagination } = useMovementStore.getState()
       setPagination({ page: 2 })
 
-      const state = useOperationStore.getState()
+      const state = useMovementStore.getState()
       expect(state.pagination.page).toBe(2)
     })
 
     it('should preserve other pagination values', () => {
-      useOperationStore.setState({
+      useMovementStore.setState({
         pagination: { page: 1, pageSize: 50, total: 100 },
       })
 
-      const { setPagination } = useOperationStore.getState()
+      const { setPagination } = useMovementStore.getState()
       setPagination({ page: 3 })
 
-      const state = useOperationStore.getState()
+      const state = useMovementStore.getState()
       expect(state.pagination.pageSize).toBe(50)
       expect(state.pagination.total).toBe(100)
     })
@@ -87,26 +87,26 @@ describe('operation store', () => {
 
   describe('resetFilters', () => {
     it('should reset filters to defaults', () => {
-      useOperationStore.setState({
+      useMovementStore.setState({
         filters: { status: ['draft'], type: ['income'], page: 3, pageSize: 25 },
       })
 
-      const { resetFilters } = useOperationStore.getState()
+      const { resetFilters } = useMovementStore.getState()
       resetFilters()
 
-      const state = useOperationStore.getState()
+      const state = useMovementStore.getState()
       expect(state.filters).toEqual({ page: 1, pageSize: 50 })
     })
 
     it('should preserve total count', () => {
-      useOperationStore.setState({
+      useMovementStore.setState({
         pagination: { page: 5, pageSize: 25, total: 150 },
       })
 
-      const { resetFilters } = useOperationStore.getState()
+      const { resetFilters } = useMovementStore.getState()
       resetFilters()
 
-      const state = useOperationStore.getState()
+      const state = useMovementStore.getState()
       expect(state.pagination.total).toBe(150)
     })
   })

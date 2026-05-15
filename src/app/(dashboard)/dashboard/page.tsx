@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { getDashboardStats, getReportsData } from '@/lib/actions/operations'
+import { getDashboardStats, getReportsData } from '@/lib/actions/movements'
 import { redirect } from 'next/navigation'
 import { DemoDashboard } from '@/components/dashboard/demo-dashboard'
 import { RealDashboard } from '@/components/dashboard/real-dashboard'
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
   }
 
   // 4. Branch based on data
-  if (statsResult.data.totalOperations === 0) {
+  if (statsResult.data.totalMovements === 0) {
     return <EmptyState />
   }
 

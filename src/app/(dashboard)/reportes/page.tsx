@@ -1,8 +1,14 @@
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { AlertCircle, BarChart3, TrendingUp, Scale } from 'lucide-react'
-import { getReportsData } from '@/lib/actions/operations'
+import { getReportsData } from '@/lib/actions/movements'
 import { ReportsCharts } from '@/components/reports/reports-charts'
 import { PageHeader } from '@/components/ui/page-header'
+import { cn } from '@/lib/utils'
+import type { ReportsRangeKey } from '@/lib/utils/reports-period'
+
+export const dynamic = 'force-dynamic'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', {
@@ -19,8 +25,20 @@ function formatMonth(monthKey: string): string {
   return date.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' })
 }
 
-export default async function ReportsPage() {
-  const result = await getReportsData()
+const PERIOD_LINKS: { key: ReportsRangeKey; label: string; href: string }[] = [
+  { key: 'mes', label: 'Este mes', href: '/reportes' },
+  { key: 'mes_anterior', label: 'Mes anterior', href: '/reportes?rango=mes_anterior' },
+  { key: 'trimestre', label: 'Este trimestre', href: '/reportes?rango=trimestre' },
+  { key: 'trim_anterior', label: 'Trimestre anterior', href: '/reportes?rango=trim_anterior' },
+]
+
+type ReportsPageProps = {
+  searchParams?: Promise<{ rango?: string }>
+}
+
+export default async function ReportsPage({ searchParams }: ReportsPageProps) {
+  const rango = searchParams ? (await searchParams).rango : undefined
+  const result = await getReportsData(rango)
 
   if (!result.success || !result.data) {
     return (
@@ -42,7 +60,7 @@ export default async function ReportsPage() {
     )
   }
 
-  const { incomeStatement, cashFlow, balanceSheet } = result.data
+  const { incomeStatement, cashFlow, balanceSheet, rangeKey } = result.data
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -50,6 +68,20 @@ export default async function ReportsPage() {
         title="Reportes"
         description={`Estado de resultados, balance y flujo de caja · ${incomeStatement.periodLabel}`}
       />
+
+      <div className="flex flex-wrap gap-2">
+        {PERIOD_LINKS.map(({ key, label, href }) => (
+          <Button
+            key={key}
+            variant={rangeKey === key ? 'default' : 'outline'}
+            size="sm"
+            className={cn(rangeKey === key && 'bg-primary')}
+            asChild
+          >
+            <Link href={href}>{label}</Link>
+          </Button>
+        ))}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
@@ -109,7 +141,7 @@ export default async function ReportsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2 text-sm rounded-lg border border-green-200/70 bg-green-50/60 p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-green-700">
-                Real desde diario (caja/banco · posted)
+                Real desde diario (caja/banco · aprobadas)
               </p>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Entradas de efectivo</span>
@@ -129,7 +161,7 @@ export default async function ReportsPage() {
 
             <div className="space-y-2 text-sm rounded-lg border border-blue-200/70 bg-blue-50/60 p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                Proyectado (posted + approved + pending)
+                Proyectado (pendientes de aprobación)
               </p>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Entradas de efectivo</span>
@@ -164,7 +196,7 @@ export default async function ReportsPage() {
             </div>
 
             <div className="pt-2">
-              <p className="text-sm font-medium mb-2">Tendencia proyectada últimos 6 meses</p>
+              <p className="text-sm font-medium mb-2">Tendencia proyectada (pendientes) últimos 6 meses</p>
               <div className="space-y-1.5">
                 {cashFlow.monthlyTrendProjected.map((item) => (
                   <div key={`projected-${item.month}`} className="grid grid-cols-4 gap-2 text-xs">
@@ -190,7 +222,7 @@ export default async function ReportsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              Posición acumulada hasta el {balanceSheet.asOf} desde partidas contabilizadas.
+              Posición acumulada hasta el {balanceSheet.asOf} desde el diario (movimientos aprobados).
             </p>
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">

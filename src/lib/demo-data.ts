@@ -1,4 +1,4 @@
-import type { Operation } from '@/lib/actions/operations'
+import type { Movement } from '@/lib/actions/movements'
 
 // Tipos compartidos para demo data
 export interface DemoAccount {
@@ -96,9 +96,9 @@ export const DEMO_CATEGORIES: DemoCategory[] = [
 ]
 
 // ============================================================================
-// TRANSACCIONES DEMO
+// MOVIMIENTOS DEMO
 // ============================================================================
-export const DEMO_OPERATIONS: Operacion[] = [
+export const DEMO_MOVEMENTS: Movement[] = [
   {
     id: 'demo-1',
     accountId: 'demo-acc-1',
@@ -106,7 +106,7 @@ export const DEMO_OPERATIONS: Operacion[] = [
     categoryId: 'demo-cat-1',
     categoryName: 'Ventas',
     type: 'income',
-    status: 'posted',
+    status: 'approved',
     method: 'transfer',
     amount: 2500000,
     currency: 'ARS',
@@ -174,7 +174,7 @@ export const DEMO_OPERATIONS: Operacion[] = [
     categoryId: null,
     categoryName: null,
     type: 'transfer',
-    status: 'posted',
+    status: 'approved',
     method: 'transfer',
     amount: 1000000,
     currency: 'ARS',
@@ -190,14 +190,15 @@ export const DEMO_OPERATIONS: Operacion[] = [
 // ESTADÍSTICAS DEMO
 // ============================================================================
 export const DEMO_STATS = {
-  totalOperations: DEMO_OPERATIONS.length,
-  pendingCount: DEMO_OPERATIONS.filter(t => t.status === 'pending').length,
-  approvedCount: DEMO_OPERATIONS.filter(t => t.status === 'approved').length,
-  postedCount: DEMO_OPERATIONS.filter(t => t.status === 'posted').length,
-  totalIncome: DEMO_OPERATIONS
-    .filter(t => t.type === 'income' && t.status === 'posted')
-    .reduce((sum, t) => sum + t.amount, 0),
-  totalExpenses: DEMO_OPERATIONS
-    .filter(t => t.type === 'expense' && t.status === 'posted')
-    .reduce((sum, t) => sum + t.amount, 0),
+  totalMovements: DEMO_MOVEMENTS.length,
+  pendingCount: DEMO_MOVEMENTS.filter((t) => t.status === 'pending').length,
+  approvedCount: DEMO_MOVEMENTS.filter((t) => t.status === 'approved').length,
+  totalIncome: DEMO_MOVEMENTS.filter((t) => t.type === 'income' && t.status === 'approved').reduce(
+    (sum, t) => sum + t.amount,
+    0
+  ),
+  totalExpenses: DEMO_MOVEMENTS.filter((t) => t.type === 'expense' && t.status === 'approved').reduce(
+    (sum, t) => sum + t.amount,
+    0
+  ),
 }

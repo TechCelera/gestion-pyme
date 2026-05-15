@@ -9,12 +9,12 @@ export function evaluateBudgetStatus(params: {
   spentAmount: number
   newExpenseAmount: number
   endDate: string | null
-  operationDate: Date
+  movementDate: Date
 }): BudgetEvaluation {
-  const { budgetAmount, spentAmount, newExpenseAmount, endDate, operationDate } = params
+  const { budgetAmount, spentAmount, newExpenseAmount, endDate, movementDate } = params
   const projected = spentAmount + newExpenseAmount
   const overBudgetBy = Math.max(0, projected - Math.max(0, budgetAmount))
-  const outOfTerm = !!endDate && operationDate > new Date(`${endDate}T23:59:59`)
+  const outOfTerm = !!endDate && movementDate > new Date(`${endDate}T23:59:59`)
   return {
     requiresBudgetApproval: overBudgetBy > 0 || outOfTerm,
     overBudgetBy,

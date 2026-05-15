@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
-import { Pencil, Plus } from 'lucide-react'
+import { BarChart3, Pencil, Plus } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
@@ -63,10 +64,18 @@ export default function ProjectsPage() {
           <TableCell>{(project.spentAmount ?? 0).toLocaleString('es-AR')}</TableCell>
           <TableCell className={usage > 100 ? 'text-red-600 font-medium' : ''}>{usage.toFixed(1)}%</TableCell>
           <TableCell className="text-right">
-            <Button variant="ghost" size="sm" onClick={() => handleEditProject(project)}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
+            <div className="inline-flex items-center gap-1">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={`/proyectos/${project.id}`}>
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Análisis
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => handleEditProject(project)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+            </div>
           </TableCell>
         </TableRow>
       )

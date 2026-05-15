@@ -15,15 +15,15 @@ El contexto de negocio y arquitectura vigente esta en:
 
 - Caja unica por empresa.
 - Dinero de terceros modelado como `Anticipo de Clientes` (pasivo), no como segunda caja fisica.
-- Operaciones con alcance:
+- Movimientos con alcance:
   - general de empresa, o
   - proyecto/subproyecto.
 - Control de presupuesto y plazo por proyecto/subproyecto.
 - Si hay sobrepresupuesto o fuera de plazo:
   - se permite guardar,
   - se marca `requires_budget_approval`,
-  - y se exige aprobacion adicional antes de `posted`.
-- Terminologia de producto: `Operacion` / `Operaciones`.
+  - y se exige aprobacion adicional antes de aprobar (flujo financiero).
+- Terminologia de producto: **Movimiento** / **Movimientos** (codigo: `Movement`, `movements.ts`).
 
 ## Stack
 
@@ -32,7 +32,20 @@ El contexto de negocio y arquitectura vigente esta en:
 - TypeScript
 - Supabase (auth, database, RLS, RPC)
 - Zustand
-- Vitest + Testing Library
+- Vitest + Testing Library (unit / integracion ligera en jsdom)
+- Playwright (E2E en Chromium; carpeta `e2e/`)
+
+## Pruebas
+
+| Comando | Que hace |
+|---------|----------|
+| `npm run verify` | ESLint + Vitest + `next build` |
+| `npm run test:e2e` | E2E asumiendo **`npm run dev` en 3000** (no arranca otro servidor; evita EADDRINUSE y el lock de Next). |
+| `npm run test:e2e:ci` | E2E levantando el dev con Playwright (CI o máquina sin servidor; **no** lo uses si ya tenés `next dev` en el mismo repo). |
+| `npm run verify:all` | `verify` + `test:e2e:ci` (CI / sin dev previo). |
+| `npm run verify:all:local` | `verify` + `test:e2e` (con `next dev` ya en marcha en el puerto de `PLAYWRIGHT_BASE_URL`, por defecto **127.0.0.1:3000**). |
+| `npm run playwright:install` | **Rápido (recomendado):** solo **chromium-headless-shell** + ffmpeg — alcanza para `test:e2e` en headless (sin el ZIP gigante de Chromium completo). |
+| `npm run playwright:install:full` | Chromium completo (~168 MiB + unzip largo). Usalo si vas a `test:e2e:ui` / headed o te falla algo raro. |
 
 ## Scripts
 
@@ -41,12 +54,14 @@ npm run dev
 npm run build
 npm run start
 npm run lint
-npm run test -- --run
+npm run test:run
+npm run verify
+npm run test:e2e
 ```
 
 ## Estructura relevante
 
-- `src/app/(dashboard)/operaciones` - modulo de operaciones
+- `src/app/(dashboard)/operaciones` - módulo de movimientos (ruta en español; código `movement`)
 - `src/app/(dashboard)/proyectos` - gestion de proyectos/subproyectos
 - `src/lib/actions` - server actions
 - `src/lib/validations` - schemas de validacion

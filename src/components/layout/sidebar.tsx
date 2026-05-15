@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -12,26 +12,74 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  TrendingUp,
+  Receipt,
 } from 'lucide-react'
 import { useState } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { useAuthStore } from '@/stores/auth-store'
 import { clearDemoCookie } from '@/lib/actions/demo-cookie'
 import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/operaciones', label: 'Operaciones', icon: ArrowLeftRight },
-  { href: '/cuentas', label: 'Cuentas', icon: Wallet },
-  { href: '/reportes', label: 'Reportes', icon: FileText },
-  { href: '/proyectos', label: 'Proyectos', icon: FolderKanban },
-  { href: '/configuracion', label: 'Configuracion', icon: Settings },
-]
+type NavLink = {
+  href: string
+  label: string
+  icon: LucideIcon
+  badge?: number
+}
 
-export function Sidebar() {
+function isOperacionesHrefActive(pathname: string, searchParams: URLSearchParams, href: string): boolean {
+  if (!href.startsWith('/operaciones')) return false
+  if (pathname !== '/operaciones') return false
+  const want = new URL(href, 'http://local').searchParams.get('flujo')
+  const cur = searchParams.get('flujo')
+  if (want === null && href === '/operaciones') {
+    return cur !== 'ventas' && cur !== 'compras'
+  }
+  return cur === want
+}
+
+function NavRow({
+  item,
+  collapsed,
+  active,
+}: {
+  item: NavLink
+  collapsed: boolean
+  active: boolean
+}) {
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors rounded-md mx-1',
+        active
+          ? 'bg-primary text-primary-foreground font-medium'
+          : 'text-sidebar-foreground hover:bg-sidebar-accent'
+      )}
+    >
+      <item.icon className="h-5 w-5 shrink-0" />
+      {!collapsed && (
+        <span className="flex-1 flex items-center justify-between gap-2 min-w-0">
+          <span className="truncate">{item.label}</span>
+          {item.badge !== undefined && item.badge > 0 ? (
+            <Badge variant="secondary" className="shrink-0 text-xs tabular-nums bg-amber-500/20 text-amber-900 dark:text-amber-100">
+              {item.badge > 99 ? '99+' : item.badge}
+            </Badge>
+          ) : null}
+        </span>
+      )}
+    </Link>
+  )
+}
+
+export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const clearUser = useAuthStore((state) => state.clearUser)
@@ -41,8 +89,6 @@ export function Sidebar() {
   async function handleLogout() {
     try {
       if (isDemoMode) {
-        // En modo demo, limpiar store local SIEMPRE
-        // Limpiar cookie en background (no bloquea)
         clearDemoCookie().catch(() => {})
         clearUser()
         toast.success('Sesión demo cerrada')
@@ -55,10 +101,27 @@ export function Sidebar() {
       toast.success('Sesión cerrada')
       router.push('/login')
       router.refresh()
-    } catch (error) {
+    } catch {
       toast.error('Error al cerrar sesión')
     }
   }
+
+  const cajaLinks: NavLink[] = [
+    { href: '/operaciones?flujo=ventas', label: 'Ventas y cobros', icon: TrendingUp },
+    { href: '/operaciones?flujo=compras', label: 'Compras y pagos', icon: Receipt },
+    {
+      href: '/operaciones',
+      label: 'Todos los movimientos',
+      icon: ArrowLeftRight,
+      badge: pendingCount,
+    },
+  ]
+
+  const gestionLinks: NavLink[] = [
+    { href: '/cuentas', label: 'Mis cuentas', icon: Wallet },
+    { href: '/reportes', label: 'Informes', icon: FileText },
+    { href: '/proyectos', label: 'Proyectos', icon: FolderKanban },
+  ]
 
   return (
     <aside
@@ -79,6 +142,7 @@ export function Sidebar() {
           </div>
         )}
         <button
+          type="button"
           onClick={() => setCollapsed(!collapsed)}
           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground"
           aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
@@ -86,36 +150,75 @@ export function Sidebar() {
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
       </div>
-      <nav className="flex-1 py-2">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 px-4 py-3 text-sm transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground font-medium'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent'
-              )}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          )
-        })}
+
+      <nav className="flex-1 py-2 overflow-y-auto">
+        <div className="px-3 py-1">
+          <Link
+            href="/dashboard"
+            className={cn(
+              'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors rounded-md',
+              pathname === '/dashboard'
+                ? 'bg-primary text-primary-foreground font-medium'
+                : 'text-sidebar-foreground hover:bg-sidebar-accent'
+            )}
+          >
+            <LayoutDashboard className="h-5 w-5 shrink-0" />
+            {!collapsed && <span>Inicio</span>}
+          </Link>
+        </div>
+
+        {!collapsed && (
+          <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Flujo de caja
+          </p>
+        )}
+        {cajaLinks.map((item) => (
+          <NavRow
+            key={item.href}
+            item={item}
+            collapsed={collapsed}
+            active={isOperacionesHrefActive(pathname, searchParams, item.href)}
+          />
+        ))}
+
+        {!collapsed && (
+          <p className="px-4 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Gestión
+          </p>
+        )}
+        {gestionLinks.map((item) => (
+          <NavRow
+            key={item.href}
+            item={item}
+            collapsed={collapsed}
+            active={pathname === item.href}
+          />
+        ))}
       </nav>
-      <div className="p-4 border-t border-border">
+
+      <div className="p-2 border-t border-border">
+        <Link
+          href="/configuracion"
+          className={cn(
+            'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors rounded-md',
+            pathname === '/configuracion'
+              ? 'bg-primary text-primary-foreground font-medium'
+              : 'text-sidebar-foreground hover:bg-sidebar-accent'
+          )}
+        >
+          <Settings className="h-5 w-5 shrink-0" />
+          {!collapsed && <span>Configuración</span>}
+        </Link>
         <button
+          type="button"
           onClick={handleLogout}
           className={cn(
-            'flex items-center gap-3 px-4 py-3 text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors w-full',
+            'flex items-center gap-3 px-4 py-2.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors w-full rounded-md',
             collapsed && 'justify-center'
           )}
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {!collapsed && <span>Cerrar Sesión</span>}
+          {!collapsed && <span>Cerrar sesión</span>}
         </button>
       </div>
     </aside>

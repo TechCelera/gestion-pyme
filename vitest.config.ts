@@ -8,6 +8,13 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
+    /**
+     * Vitest 4 default `forks` pool puede agotar tiempo al arrancar workers bajo carga
+     * (p. ej. `verify:all:local` con `next dev` + `next build`). `threads` evita esos timeouts.
+     * @see https://vitest.dev/config/#pool
+     */
+    pool: 'threads',
   },
   resolve: {
     alias: {

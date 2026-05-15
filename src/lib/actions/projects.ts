@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { formatReportsPeriodLabel, resolveReportsPeriod, type ReportsRangeKey } from '@/lib/utils/reports-period'
 
 export interface Project {
   id: string
@@ -94,7 +95,7 @@ export async function getProjects(): Promise<ActionResult<Project[]>> {
       .select('project_id, amount')
       .eq('company_id', companyId)
       .eq('type', 'expense')
-      .eq('status', 'posted')
+      .eq('status', 'approved')
       .is('deleted_at', null)
       .not('project_id', 'is', null)
 
@@ -219,6 +220,87 @@ export async function updateProject(
 
     if (error) return { success: false, error: error.message }
     return { success: true }
+  } catch (error) {
+    if (error instanceof Error) return { success: false, error: error.message }
+    return { success: false, error: 'Error desconocido' }
+  }
+}
+
+export interface ProjectFinancialAnalysis {
+  id: string
+  name: string
+  budgetAmount: number
+  expensesApproved: number
+  incomeApproved: number
+  /** Presupuesto menos gastos aprobados en el período (positivo = resta presupuesto) */
+  varianceVsBudget: number
+  rangeKey: ReportsRangeKey
+  periodLabel: string
+}
+
+export async function getProjectFinancialAnalysis(
+  projectId: string,
+  rangePreset?: string | null
+): Promise<ActionResult<ProjectFinancialAnalysis>> {
+  try {
+    const companyId = await getCurrentUserCompany()
+    if (!companyId) return { success: false, error: 'Usuario no autenticado o sin empresa' }
+
+    const { start, end, key: rangeKey } = resolveReportsPeriod(rangePreset)
+    const startStr = start.toISOString().split('T')[0]
+    const endStr = end.toISOString().split('T')[0]
+    const periodLabel = formatReportsPeriodLabel(start, end)
+
+    const supabase = await createClient()
+    const { data: project, error: pErr } = await supabase
+      .from('projects')
+      .select('id, name, budget_amount')
+      .eq('id', projectId)
+      .eq('company_id', companyId)
+      .is('deleted_at', null)
+      .single()
+
+    if (pErr || !project) {
+      return { success: false, error: pErr?.message ?? 'Proyecto no encontrado' }
+    }
+
+    const { data: txs, error: tErr } = await supabase
+      .from('transactions')
+      .select('type, amount')
+      .eq('company_id', companyId)
+      .eq('project_id', projectId)
+      .eq('status', 'approved')
+      .is('deleted_at', null)
+      .gte('date', startStr)
+      .lte('date', endStr)
+
+    if (tErr) return { success: false, error: tErr.message }
+
+    let expensesApproved = 0
+    let incomeApproved = 0
+    for (const row of txs ?? []) {
+      const typ = row.type as string
+      const amt = Number(row.amount ?? 0)
+      if (typ === 'expense') expensesApproved += amt
+      if (typ === 'income') incomeApproved += amt
+    }
+
+    const budgetAmount = Number(project.budget_amount ?? 0)
+    const varianceVsBudget = budgetAmount - expensesApproved
+
+    return {
+      success: true,
+      data: {
+        id: project.id as string,
+        name: project.name as string,
+        budgetAmount,
+        expensesApproved,
+        incomeApproved,
+        varianceVsBudget,
+        rangeKey,
+        periodLabel,
+      },
+    }
   } catch (error) {
     if (error instanceof Error) return { success: false, error: error.message }
     return { success: false, error: 'Error desconocido' }

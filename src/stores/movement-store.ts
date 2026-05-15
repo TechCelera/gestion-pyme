@@ -1,19 +1,20 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import type { Operation } from '@/lib/actions/operations'
+import type { Movement } from '@/lib/actions/movements'
 import type {
-  OperationFilters,
-  CreateOperationInput,
-  OperationStatus,
-} from '@/lib/validations/operation'
+  MovementFilters,
+  CreateMovementInput,
+  MovementStatus,
+} from '@/lib/validations/movement'
 import {
-  listOperations,
-  createOperation,
-  updateOperation,
-  updateOperationStatus,
-  deleteOperation as deleteOperationRemote,
-} from '@/lib/actions/operations'
-import { DEMO_OPERATIONS } from '@/lib/demo-data'
+  listMovements,
+  createMovement,
+  updateMovement,
+  updateMovementStatus,
+  finalizeMovementSubmission,
+  deleteMovement as deleteMovementRemote,
+} from '@/lib/actions/movements'
+import { DEMO_MOVEMENTS } from '@/lib/demo-data'
 import { useAuthStore } from './auth-store'
 
 interface Pagination {
@@ -22,25 +23,25 @@ interface Pagination {
   total: number
 }
 
-interface OperationStoreState {
-  operations: Operation[]
-  filters: OperationFilters
+interface MovementStoreState {
+  movements: Movement[]
+  filters: MovementFilters
   pagination: Pagination
   isLoading: boolean
   error: string | null
 
-  setFilters: (filters: Partial<OperationFilters>) => void
+  setFilters: (filters: Partial<MovementFilters>) => void
   setPagination: (pagination: Partial<Pagination>) => void
   resetFilters: () => void
 
-  fetchOperations: () => Promise<void>
-  addOperation: (data: CreateOperationInput, asDraft?: boolean) => Promise<boolean>
-  editOperation: (id: string, data: CreateOperationInput) => Promise<boolean>
-  changeStatus: (id: string, status: OperationStatus, reason?: string) => Promise<boolean>
-  removeOperation: (id: string) => Promise<boolean>
+  fetchMovements: () => Promise<void>
+  addMovement: (data: CreateMovementInput, asDraft?: boolean) => Promise<boolean>
+  editMovement: (id: string, data: CreateMovementInput) => Promise<boolean>
+  changeStatus: (id: string, status: MovementStatus, reason?: string) => Promise<boolean>
+  removeMovement: (id: string) => Promise<boolean>
 }
 
-const defaultFilters: OperationFilters = {
+const defaultFilters: MovementFilters = {
   page: 1,
   pageSize: 50,
 }
@@ -51,10 +52,10 @@ const defaultPagination: Pagination = {
   total: 0,
 }
 
-export const useOperationStore = create<OperationStoreState>()(
+export const useMovementStore = create<MovementStoreState>()(
   devtools(
     (set, get) => ({
-      operations: [],
+      movements: [],
       filters: defaultFilters,
       pagination: defaultPagination,
       isLoading: false,
@@ -79,7 +80,7 @@ export const useOperationStore = create<OperationStoreState>()(
         })
       },
 
-      fetchOperations: async () => {
+      fetchMovements: async () => {
         set({ isLoading: true, error: null })
 
         try {
@@ -87,7 +88,7 @@ export const useOperationStore = create<OperationStoreState>()(
 
           if (isDemoMode) {
             const { filters, pagination } = get()
-            let filtered = [...DEMO_OPERATIONS]
+            let filtered = [...DEMO_MOVEMENTS]
 
             if (filters.status && filters.status.length > 0) {
               filtered = filtered.filter((o) => filters.status?.includes(o.status))
@@ -107,7 +108,7 @@ export const useOperationStore = create<OperationStoreState>()(
             const pageRows = filtered.slice(start, end)
 
             set({
-              operations: pageRows,
+              movements: pageRows,
               pagination: {
                 ...pagination,
                 total: filtered.length,
@@ -118,7 +119,7 @@ export const useOperationStore = create<OperationStoreState>()(
           }
 
           const { filters, pagination } = get()
-          const result = await listOperations({
+          const result = await listMovements({
             ...filters,
             page: pagination.page,
             pageSize: pagination.pageSize,
@@ -126,7 +127,7 @@ export const useOperationStore = create<OperationStoreState>()(
 
           if (result.success && result.data) {
             set({
-              operations: result.data.operations,
+              movements: result.data.movements,
               pagination: {
                 ...pagination,
                 total: result.data.total,
@@ -135,7 +136,7 @@ export const useOperationStore = create<OperationStoreState>()(
             })
           } else {
             set({
-              error: result.error ?? 'Error al cargar operaciones',
+              error: result.error ?? 'Error al cargar movimientos',
               isLoading: false,
             })
           }
@@ -147,7 +148,7 @@ export const useOperationStore = create<OperationStoreState>()(
         }
       },
 
-      addOperation: async (data, asDraft = true) => {
+      addMovement: async (data, asDraft = true) => {
         set({ isLoading: true, error: null })
 
         try {
@@ -159,32 +160,29 @@ export const useOperationStore = create<OperationStoreState>()(
             return true
           }
 
-          const result = await createOperation(data)
+          const result = await createMovement(data)
 
           if (result.success) {
             if (!asDraft && result.data?.id) {
-              const statusResult = await updateOperationStatus({
-                id: result.data.id,
-                status: 'pending',
-              })
+              const fin = await finalizeMovementSubmission(result.data.id)
 
-              if (!statusResult.success) {
+              if (!fin.success) {
                 set({
                   error:
-                    statusResult.error ??
-                    'Operación creada, pero no se pudo enviar a aprobación',
+                    fin.error ??
+                    'Movimiento creado, pero no se pudo completar el envío o registro',
                   isLoading: false,
                 })
                 return false
               }
             }
 
-            await get().fetchOperations()
+            await get().fetchMovements()
             set({ isLoading: false })
             return true
           }
           set({
-            error: result.error ?? 'Error al crear operación',
+            error: result.error ?? 'Error al crear el movimiento',
             isLoading: false,
           })
           return false
@@ -197,7 +195,7 @@ export const useOperationStore = create<OperationStoreState>()(
         }
       },
 
-      editOperation: async (id, data) => {
+      editMovement: async (id, data) => {
         set({ isLoading: true, error: null })
 
         try {
@@ -209,15 +207,15 @@ export const useOperationStore = create<OperationStoreState>()(
             return true
           }
 
-          const result = await updateOperation(id, data)
+          const result = await updateMovement(id, data)
 
           if (result.success) {
-            await get().fetchOperations()
+            await get().fetchMovements()
             set({ isLoading: false })
             return true
           }
           set({
-            error: result.error ?? 'Error al actualizar operación',
+            error: result.error ?? 'Error al actualizar el movimiento',
             isLoading: false,
           })
           return false
@@ -242,10 +240,10 @@ export const useOperationStore = create<OperationStoreState>()(
             return true
           }
 
-          const result = await updateOperationStatus({ id, status, reason })
+          const result = await updateMovementStatus({ id, status, reason })
 
           if (result.success) {
-            await get().fetchOperations()
+            await get().fetchMovements()
             set({ isLoading: false })
             return true
           }
@@ -263,7 +261,7 @@ export const useOperationStore = create<OperationStoreState>()(
         }
       },
 
-      removeOperation: async (id) => {
+      removeMovement: async (id) => {
         set({ isLoading: true, error: null })
 
         try {
@@ -275,15 +273,15 @@ export const useOperationStore = create<OperationStoreState>()(
             return true
           }
 
-          const result = await deleteOperationRemote(id)
+          const result = await deleteMovementRemote(id)
 
           if (result.success) {
-            await get().fetchOperations()
+            await get().fetchMovements()
             set({ isLoading: false })
             return true
           }
           set({
-            error: result.error ?? 'Error al eliminar operación',
+            error: result.error ?? 'Error al eliminar el movimiento',
             isLoading: false,
           })
           return false
@@ -296,6 +294,6 @@ export const useOperationStore = create<OperationStoreState>()(
         }
       },
     }),
-    { name: 'operation-store' }
+    { name: 'movement-store' }
   )
 )

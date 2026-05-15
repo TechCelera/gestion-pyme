@@ -108,7 +108,7 @@ export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFor
           toast.error(result.error || 'Error al crear la categoría')
         }
       }
-    } catch (error) {
+    } catch {
       toast.error('Error inesperado')
     } finally {
       setIsSaving(false)

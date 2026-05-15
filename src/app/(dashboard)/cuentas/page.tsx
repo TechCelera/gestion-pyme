@@ -1,12 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Wallet, Plus, Pencil, Trash2, Info, Loader2 } from 'lucide-react'
+import { Wallet, Plus, Pencil, Trash2, Info, Loader2, BookOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/ui/page-header'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
   TableBody,
@@ -16,7 +17,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { AccountForm } from '@/components/settings/account-form'
+import { ChartOfAccountsTree } from '@/components/accounts/chart-of-accounts-tree'
 import { getAccounts, deleteAccount, type Account } from '@/lib/actions/accounts'
+import { listChartOfAccounts, type ChartAccountRow } from '@/lib/actions/chart-of-accounts'
 import { ACCOUNT_TYPE_LABELS } from '@/lib/constants'
 import { DEMO_ACCOUNTS } from '@/lib/demo-data'
 import { useAuthStore } from '@/stores/auth-store'
@@ -44,6 +47,10 @@ export default function AccountsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isAccountFormOpen, setIsAccountFormOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
+  const [tab, setTab] = useState('accounts')
+  const [chartRows, setChartRows] = useState<ChartAccountRow[]>([])
+  const [chartLoading, setChartLoading] = useState(false)
+  const [chartError, setChartError] = useState<string | null>(null)
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
 
   const fetchAccounts = useCallback(async () => {
@@ -73,6 +80,37 @@ export default function AccountsPage() {
       void fetchAccounts()
     })
   }, [fetchAccounts])
+
+  const loadChartOfAccounts = useCallback(async () => {
+    if (isDemoMode) {
+      setChartRows([])
+      setChartError(null)
+      return
+    }
+    setChartLoading(true)
+    setChartError(null)
+    try {
+      const res = await listChartOfAccounts()
+      if (res.success && res.data) {
+        setChartRows(res.data)
+      } else {
+        setChartError(res.error ?? 'No se pudo cargar el plan de cuentas')
+      }
+    } catch (error) {
+      console.error('Error fetching chart of accounts:', error)
+      setChartError('Error al cargar el plan de cuentas')
+    } finally {
+      setChartLoading(false)
+    }
+  }, [isDemoMode])
+
+  useEffect(() => {
+    if (tab === 'chart') {
+      queueMicrotask(() => {
+        void loadChartOfAccounts()
+      })
+    }
+  }, [tab, loadChartOfAccounts])
 
   const handleOpenAccountForm = (account?: Account) => {
     setEditingAccount(account ?? null)
@@ -114,10 +152,23 @@ export default function AccountsPage() {
       )}
 
       <PageHeader
-        title="Cuentas"
-        description="Administra las cuentas financieras de tu empresa"
+        title="Mis cuentas"
+        description="Administra tus cuentas financieras y consulta el plan de cuentas de la empresa."
       />
 
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="accounts" className="gap-2">
+            <Wallet className="h-4 w-4" />
+            Cuentas
+          </TabsTrigger>
+          <TabsTrigger value="chart" className="gap-2">
+            <BookOpen className="h-4 w-4" />
+            Plan de cuentas
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="accounts" className="space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Listado de Cuentas</CardTitle>
@@ -193,6 +244,32 @@ export default function AccountsPage() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="chart" className="space-y-4">
+          {isDemoMode ? (
+            <Card>
+              <CardContent className="py-8">
+                <p className="text-sm text-muted-foreground text-center">
+                  En modo demo no hay plan de cuentas cargado desde el servidor.
+                </p>
+              </CardContent>
+            </Card>
+          ) : chartLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : chartError ? (
+            <Card>
+              <CardContent className="py-6">
+                <p className="text-sm text-destructive">{chartError}</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <ChartOfAccountsTree rows={chartRows} />
+          )}
+        </TabsContent>
+      </Tabs>
 
       <AccountForm
         isOpen={isAccountFormOpen}

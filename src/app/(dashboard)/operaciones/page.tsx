@@ -1,45 +1,50 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { OperationTable } from '@/components/operations/operation-table'
-import { OperationForm } from '@/components/operations/operation-form'
-import { useOperationStore } from '@/stores/operation-store'
+import { MovementTable } from '@/components/movements/movement-table'
+import { MovementForm } from '@/components/movements/movement-form'
+import { useMovementStore } from '@/stores/movement-store'
 import { useAuthStore } from '@/stores/auth-store'
-import type { CreateOperationInput } from '@/lib/validations/operation'
+import type { CreateMovementInput } from '@/lib/validations/movement'
 
 export default function OperacionesPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const {
-    operations,
+    movements,
     pagination,
     isLoading,
     error,
-    fetchOperations,
-    addOperation,
+    fetchMovements,
+    addMovement,
     changeStatus,
-    removeOperation,
+    removeMovement,
     setPagination,
-  } = useOperationStore()
+    setFilters,
+  } = useMovementStore()
+
+  const flujo = searchParams.get('flujo')
+
+  useEffect(() => {
+    if (flujo === 'ventas') setFilters({ type: ['income'] })
+    else if (flujo === 'compras') setFilters({ type: ['expense'] })
+    else setFilters({ type: undefined })
+    void useMovementStore.getState().fetchMovements()
+  }, [flujo, setFilters])
 
   const handleOpenModal = useCallback(() => {
     setIsModalOpen(true)
   }, [])
 
-  useEffect(() => {
-    queueMicrotask(() => {
-      void fetchOperations()
-    })
-  }, [fetchOperations])
-
-  // Atajo de teclado Ctrl+N
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 'n') {
@@ -55,59 +60,73 @@ export default function OperacionesPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleOpenModal])
 
+  const filterHint =
+    flujo === 'ventas'
+      ? 'Mostrando ventas y cobros (ingresos).'
+      : flujo === 'compras'
+        ? 'Mostrando compras y pagos (egresos).'
+        : null
+
   const handleCloseModal = () => {
     setIsModalOpen(false)
   }
 
-  const handleSubmit = async (data: CreateOperationInput, asDraft: boolean) => {
-    const success = await addOperation(data, asDraft)
+  const handleSubmit = async (data: CreateMovementInput, asDraft: boolean) => {
+    const success = await addMovement(data, asDraft)
     if (success) {
       toast.success(
         asDraft
-          ? 'Operación guardada como borrador'
-          : 'Operación enviada a aprobación'
+          ? 'Movimiento guardado como borrador'
+          : 'Movimiento enviado correctamente'
       )
       handleCloseModal()
     } else {
-      toast.error('Error al crear la operación')
+      toast.error('Error al crear el movimiento')
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta operación?')) return
+    if (!confirm('¿Estás seguro de eliminar este movimiento?')) return
 
-    const success = await removeOperation(id)
+    const success = await removeMovement(id)
     if (success) {
-      toast.success('Operación eliminada')
+      toast.success('Movimiento eliminado')
     } else {
-      toast.error('Error al eliminar la operación')
+      toast.error('Error al eliminar el movimiento')
     }
   }
 
   const handleApprove = async (id: string) => {
     const success = await changeStatus(id, 'approved')
     if (success) {
-      toast.success('Operación aprobada')
+      toast.success('Movimiento aprobado y registrado en el libro')
     } else {
-      toast.error('Error al aprobar la operación')
+      toast.error('Error al aprobar el movimiento')
+    }
+  }
+
+  const handleCancel = async (id: string) => {
+    const reason = window.prompt('Motivo de la anulación (obligatorio):')
+    if (reason === null) return
+    const trimmed = reason.trim()
+    if (!trimmed) {
+      toast.error('Debes indicar un motivo para anular')
+      return
+    }
+    const success = await changeStatus(id, 'cancelled', trimmed)
+    if (success) {
+      toast.success('Movimiento anulado')
+    } else {
+      toast.error('Error al anular el movimiento')
     }
   }
 
   const handleSendToApproval = async (id: string) => {
     const success = await changeStatus(id, 'pending')
     if (success) {
-      toast.success('Operación enviada a aprobación')
+      toast.success('Movimiento enviado a aprobación')
     } else {
-      toast.error('Error al enviar la operación a aprobación')
-    }
-  }
-
-  const handlePost = async (id: string) => {
-    const success = await changeStatus(id, 'posted')
-    if (success) {
-      toast.success('Operación contabilizada')
-    } else {
-      toast.error('Error al contabilizar la operación')
+      toast.error('Error al enviar el movimiento a aprobación')
     }
   }
 
@@ -153,7 +172,7 @@ export default function OperacionesPage() {
                   Iniciar sesión
                 </Button>
               ) : null}
-              <Button onClick={() => void fetchOperations()} variant="outline" size="sm">
+              <Button onClick={() => void fetchMovements()} variant="outline" size="sm">
                 Reintentar
               </Button>
             </div>
@@ -164,7 +183,7 @@ export default function OperacionesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Operaciones</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Movimientos</h1>
           <p className="text-muted-foreground">
             Gestiona los ingresos, egresos y transferencias de tu empresa
           </p>
@@ -174,16 +193,25 @@ export default function OperacionesPage() {
           className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
         >
           <Plus className="mr-2 h-4 w-4" />
-          Nueva Operación
+          Nuevo movimiento
         </Button>
       </div>
 
+      {filterHint ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground -mt-2">
+          <span>{filterHint}</span>
+          <Button variant="link" className="h-auto p-0 text-primary" asChild>
+            <Link href="/operaciones">Ver todos</Link>
+          </Button>
+        </div>
+      ) : null}
+
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Operaciones
+              Total movimientos
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -198,7 +226,7 @@ export default function OperacionesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {operations.filter((o) => o.status === 'pending').length}
+              {movements.filter((o) => o.status === 'pending').length}
             </div>
           </CardContent>
         </Card>
@@ -209,32 +237,21 @@ export default function OperacionesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-[#7B68EE]">
-              {operations.filter((o) => o.status === 'approved').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Contabilizadas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {operations.filter((o) => o.status === 'posted').length}
+              {movements.filter((o) => o.status === 'approved').length}
             </div>
+            <p className="text-xs text-muted-foreground mt-1">Impactan saldo e informes</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Table */}
-      <OperationTable
-        operations={operations}
+      <MovementTable
+        movements={movements}
         onDelete={handleDelete}
         onSendToApproval={handleSendToApproval}
         onApprove={handleApprove}
-        onPost={handlePost}
+        onCancel={handleCancel}
         isLoading={isLoading}
       />
 
@@ -242,7 +259,7 @@ export default function OperacionesPage() {
       {pagination.total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Mostrando {operations.length} de {pagination.total} operaciones
+            Mostrando {movements.length} de {pagination.total} movimientos
           </p>
           <div className="flex gap-2">
             <Button
@@ -272,11 +289,11 @@ export default function OperacionesPage() {
       )}
 
       {/* Modal */}
-      <OperationForm
+      <MovementForm
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
-        operation={null}
+        movement={null}
         isLoading={isLoading}
       />
     </div>

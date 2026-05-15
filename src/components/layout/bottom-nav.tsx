@@ -4,36 +4,46 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, ArrowLeftRight, FileText, Settings, FolderKanban, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 const navItems = [
-  { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
-  { href: '/operaciones', label: 'Operaciones', icon: ArrowLeftRight },
-  { href: '/cuentas', label: 'Cuentas', icon: Wallet },
-  { href: '/proyectos', label: 'Proyectos', icon: FolderKanban },
-  { href: '/reportes', label: 'Reportes', icon: FileText },
-  { href: '/configuracion', label: 'Ajustes', icon: Settings },
+  { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard, match: (p: string) => p === '/dashboard' },
+  { href: '/operaciones', label: 'Movimientos', icon: ArrowLeftRight, match: (p: string) => p === '/operaciones' },
+  { href: '/cuentas', label: 'Cuentas', icon: Wallet, match: (p: string) => p === '/cuentas' },
+  { href: '/proyectos', label: 'Proyectos', icon: FolderKanban, match: (p: string) => p === '/proyectos' },
+  { href: '/reportes', label: 'Informes', icon: FileText, match: (p: string) => p === '/reportes' },
+  { href: '/configuracion', label: 'Ajustes', icon: Settings, match: (p: string) => p === '/configuracion' },
 ]
 
-export function BottomNav() {
+export function BottomNav({ pendingCount = 0 }: { pendingCount?: number }) {
   const pathname = usePathname()
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
       <div className="flex items-center justify-around h-16">
         {navItems.map((item) => {
-          const isActive = pathname === item.href
+          const isOperaciones = item.href === '/operaciones'
+          const active = isOperaciones ? pathname === '/operaciones' : item.match(pathname)
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors',
-                isActive
-                  ? 'text-primary font-medium'
-                  : 'text-muted-foreground'
+                'relative flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors',
+                active ? 'text-primary font-medium' : 'text-muted-foreground'
               )}
             >
-              <item.icon className="h-5 w-5" />
+              <span className="relative">
+                <item.icon className="h-5 w-5" />
+                {isOperaciones && pendingCount > 0 ? (
+                  <Badge
+                    variant="secondary"
+                    className="absolute -top-1 -right-2 h-4 min-w-4 px-0.5 flex items-center justify-center text-[9px] p-0 bg-amber-500 text-amber-950 border-0"
+                  >
+                    {pendingCount > 9 ? '9+' : pendingCount}
+                  </Badge>
+                ) : null}
+              </span>
               <span className="text-[10px]">{item.label}</span>
             </Link>
           )

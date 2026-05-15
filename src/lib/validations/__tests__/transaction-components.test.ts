@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import {
-  createOperationSchema,
-  operationComponentSchema,
-  mapOperationComponentsToRpcJson,
-  updateOperationSchema,
-} from '../operation'
+  createMovementSchema,
+  movementComponentSchema,
+  mapMovementComponentsToRpcJson,
+  updateMovementSchema,
+} from '../movement'
 
-describe('operationComponentSchema', () => {
+describe('movementComponentSchema', () => {
   it('exige cuenta para medios operativos', () => {
-    const r = operationComponentSchema.safeParse({
+    const r = movementComponentSchema.safeParse({
       componentType: 'operative_cash',
       amount: 100,
     })
@@ -16,7 +16,7 @@ describe('operationComponentSchema', () => {
   })
 
   it('acepta efectivo con cuenta', () => {
-    const r = operationComponentSchema.safeParse({
+    const r = movementComponentSchema.safeParse({
       componentType: 'operative_bank',
       accountId: '550e8400-e29b-41d4-a716-446655440000',
       amount: 50,
@@ -25,7 +25,7 @@ describe('operationComponentSchema', () => {
   })
 
   it('exige contacto para cuenta corriente cliente', () => {
-    const r = operationComponentSchema.safeParse({
+    const r = movementComponentSchema.safeParse({
       componentType: 'client_receivable',
       amount: 10,
     })
@@ -33,7 +33,7 @@ describe('operationComponentSchema', () => {
   })
 })
 
-describe('createOperationSchema + operationComponents', () => {
+describe('createMovementSchema + movementComponents', () => {
   const base = {
     type: 'income' as const,
     date: new Date('2026-05-01'),
@@ -45,9 +45,9 @@ describe('createOperationSchema + operationComponents', () => {
   }
 
   it('rechaza suma distinta al total', () => {
-    const r = createOperationSchema.safeParse({
+    const r = createMovementSchema.safeParse({
       ...base,
-      operationComponents: [
+      movementComponents: [
         {
           componentType: 'operative_cash',
           accountId: '550e8400-e29b-41d4-a716-446655440001',
@@ -64,9 +64,9 @@ describe('createOperationSchema + operationComponents', () => {
   })
 
   it('acepta desglose que suma al total en ingreso', () => {
-    const r = createOperationSchema.safeParse({
+    const r = createMovementSchema.safeParse({
       ...base,
-      operationComponents: [
+      movementComponents: [
         {
           componentType: 'operative_cash',
           accountId: '550e8400-e29b-41d4-a716-446655440001',
@@ -83,9 +83,9 @@ describe('createOperationSchema + operationComponents', () => {
   })
 
   it('rechaza proveedor en ingreso', () => {
-    const r = createOperationSchema.safeParse({
+    const r = createMovementSchema.safeParse({
       ...base,
-      operationComponents: [
+      movementComponents: [
         {
           componentType: 'supplier_payable',
           contactId: '550e8400-e29b-41d4-a716-446655440003',
@@ -97,14 +97,14 @@ describe('createOperationSchema + operationComponents', () => {
   })
 })
 
-describe('updateOperationSchema + operationComponents', () => {
+describe('updateMovementSchema + movementComponents', () => {
   const id = '550e8400-e29b-41d4-a716-446655440099'
 
   it('rechaza suma distinta al monto cuando ambos vienen', () => {
-    const r = updateOperationSchema.safeParse({
+    const r = updateMovementSchema.safeParse({
       id,
       amount: 100,
-      operationComponents: [
+      movementComponents: [
         {
           componentType: 'operative_cash',
           accountId: '550e8400-e29b-41d4-a716-446655440001',
@@ -116,9 +116,9 @@ describe('updateOperationSchema + operationComponents', () => {
   })
 })
 
-describe('mapOperationComponentsToRpcJson', () => {
+describe('mapMovementComponentsToRpcJson', () => {
   it('emite claves snake_case para Supabase', () => {
-    const j = mapOperationComponentsToRpcJson(
+    const j = mapMovementComponentsToRpcJson(
       [
         {
           componentType: 'operative_cash',

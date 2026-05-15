@@ -4,7 +4,6 @@ import { useState } from 'react'
 import {
   AreaChart,
   Area,
-  BarChart,
   Bar,
   PieChart,
   Pie,
@@ -27,17 +26,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TrendingUp, Zap, Target, Activity, BarChart3, PieChart as PieChartIcon, Radar as RadarIcon } from 'lucide-react'
 
-// Vibrant color palette for "wow" effect
-const COLORS = {
-  primary: ['#7B68EE', '#00C9FF', '#92FE9D', '#FF6B6B', '#FFE66D', '#FF9F43'],
-  gradients: [
-    ['#7B68EE', '#00C9FF'],
-    ['#FF6B6B', '#FFE66D'],
-    ['#00C9FF', '#92FE9D'],
-    ['#FF9F43', '#FF6B6B'],
-  ],
-}
-
 // Mock data with impressive numbers
 const revenueData = [
   { month: 'Ene', actual: 45000, projected: 42000, growth: 12 },
@@ -56,7 +44,7 @@ const revenueData = [
 
 const expenseBreakdown = [
   { name: 'Personal', value: 35, color: '#7B68EE' },
-  { name: 'Operaciones', value: 25, color: '#00C9FF' },
+  { name: 'Movimientos', value: 25, color: '#00C9FF' },
   { name: 'Marketing', value: 15, color: '#92FE9D' },
   { name: 'Infraestructura', value: 12, color: '#FF6B6B' },
   { name: 'Otros', value: 13, color: '#FFE66D' },
@@ -79,19 +67,6 @@ const cashFlowData = [
   { day: 'Vie', entrada: 22000, salida: 13500 },
   { day: 'Sab', entrada: 8500, salida: 4200 },
   { day: 'Dom', entrada: 3200, salida: 1800 },
-]
-
-const scatterData = [
-  { x: 100, y: 200, z: 200 },
-  { x: 120, y: 100, z: 260 },
-  { x: 170, y: 300, z: 400 },
-  { x: 140, y: 250, z: 280 },
-  { x: 150, y: 400, z: 500 },
-  { x: 110, y: 280, z: 200 },
-  { x: 200, y: 350, z: 600 },
-  { x: 180, y: 320, z: 450 },
-  { x: 160, y: 180, z: 300 },
-  { x: 130, y: 220, z: 250 },
 ]
 
 export function WowDashboardCharts() {

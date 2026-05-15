@@ -5,7 +5,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## Estado
 
 - Activo
-- Ultima actualizacion: 2026-05-06
+- Ultima actualizacion: 2026-05-15
 
 ## 1) Caja unica por empresa
 
@@ -77,12 +77,13 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## 5) Terminologia de producto
 
 ### Decision
-- En interfaz y mensajes al usuario se usa:
-  - `Operacion` / `Operaciones`
+- En interfaz y mensajes al usuario se usa **`Movimiento` / `Movimientos`**, según `docs/PROPUESTA_SOCIO.md` (mapeo de dominio: pantalla y menú = movimientos; tabla SQL = `transactions`; código TypeScript = `Movement` / acciones en `movements.ts`).
+- La ruta canónica sigue siendo `/operaciones` (URLs en español del repo); el copy visible no tiene que repetir la palabra "operaciones".
 - Se evita `Transaccion` en copy de producto.
 
 ### Razon
-- Alineacion con el modelo de negocio (no todo movimiento implica solo dinero).
+- Alineacion con la propuesta comercial y con el checklist `docs/CHECKLIST_ALINEACION_FE_BE.md` (ítem 5.4).
+- El modelo de negocio sigue siendo más que "solo dinero"; el término **movimiento** cubre venta, cobro, compra, pago y traspaso sin forzar jerga contable al usuario.
 
 ## 6) Traza tecnica principal
 
@@ -100,14 +101,14 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## 7) Flujo de caja: real vs proyectado
 
 ### Contexto
-- Se detecto confusion de usuario: una operacion nueva no siempre se reflejaba en `Flujo de Caja`.
-- El motivo era funcional: el flujo oficial solo consideraba operaciones `posted`.
+- Se detecto confusion de usuario: un movimiento nuevo no siempre se reflejaba en `Flujo de Caja`.
+- El modelo evoluciono: ya no existe el paso intermedio `posted`; al **aprobar** se genera el asiento y el criterio contable estricto pasa a ser movimientos **`approved`** (con lineas en diario).
 
 ### Decision
 - Mantener `Flujo de Caja Real` con criterio contable estricto:
-  - solo operaciones `posted`.
-- Exponer ademas `Flujo de Caja Proyectado` para visibilidad operativa:
-  - `posted + approved + pending`.
+  - desde el diario (RPC), equivalente a movimientos **`approved`** con impacto en cuentas de caja/banco.
+- Exponer ademas `Flujo de Caja Proyectado` para visibilidad operativa del **pipeline**:
+  - tendencia proyectada basada en movimientos **`pending`** (no duplicar montos ya contabilizados al aprobar).
 
 ### Implementacion
 - Ajuste en `getReportsData`:
@@ -117,11 +118,12 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
   - separacion de tendencias:
     - `monthlyTrend` (real)
     - `monthlyTrendProjected` (proyectado)
+  - Presets de periodo (mes / mes anterior / trimestre / trimestre anterior) en `reportes/page.tsx` y util `src/lib/utils/reports-period.ts`.
 - UI de reportes actualizada para mostrar ambos bloques y ambas tendencias:
   - `src/app/(dashboard)/reportes/page.tsx`
 
 ### Razon
-- Evitar mezclar caja contable cerrada con operaciones aun en tramite.
+- Evitar mezclar caja contable cerrada con movimientos aun en tramite.
 - Mejorar toma de decisiones del usuario con doble lectura (real y proyeccion).
 
 ## 8) Creacion de operacion y estado inicial del flujo
@@ -175,7 +177,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 - No obstante, el esquema SQL no debe copiar nombres literales del PDF si ello dificulta mantenimiento o multiempresa.
 
 ### Decision
-- La unidad de negocio sigue siendo `transactions` (operación en producto).
+- La unidad de negocio sigue siendo `transactions` (movimiento en producto).
 - El desglose obligatorio de cobro/pago vive en `operation_components` (tipos `operative_cash`, `operative_bank`, `client_receivable`, `supplier_payable`).
 - El libro diario automático es `journal_entries` + `journal_entry_lines`; el usuario no arma asientos manuales.
 - Al pasar a `posted`, `fn_post_journal_for_transaction` genera el asiento y `update_account_balance` recalcula saldos de carteras desde líneas con `operative_account_id`.
@@ -281,3 +283,107 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ### Razon
 - UX mas predecible cuando la sesion caduca.
 - Menos clics y mayor claridad en operaciones frecuentes de cuentas.
+
+## 14) UX movimientos, aprobacion y contactos (feedback socio, Mayo 2026)
+
+### Contexto
+- Se refino la propuesta de producto con el socio: lenguaje de pantalla, factura opcional con adjunto, datos de cliente y reglas de aprobacion.
+
+### Decision
+
+**Aprobacion**
+- Movimiento creado/enviado por **colaborador** (`responsable`, `vendedor`): debe quedar **pendiente** hasta que un **administrador** (`admin_finanzas`, `superadmin`) lo apruebe.
+- Movimiento creado por **administrador**: puede **autoaprobarse** o ser aprobado por **otro** administrador de la misma empresa.
+
+**Factura en cuenta corriente**
+- La factura oficial es **opcional** (operativa mayoritaria sin factura formal).
+- Debe existir opcion de marcar factura oficial y **adjuntar PDF** cuando el usuario la tenga.
+
+**Contactos**
+- Permitir **crear cliente/proveedor inline** desde el formulario de movimiento sin abandonar el flujo.
+- En ficha de contacto: **tipo de cliente** (al menos: cliente final particular / cliente corporativo; extensible).
+- En ficha de contacto: **servicios asociados** (texto libre o lista; ejemplos de negocio: honorarios por diseno, direccion de obra, ejecucion, administracion financiera del presupuesto).
+
+**Terminologia de producto (pantalla)**
+- Agrupacion o panel izquierdo: **Ventas y cobros** y **Compras y pagos** (sustituye la percepcion de "Ingreso / Egreso" como bloques de navegacion).
+- Selector al crear movimiento: **Venta/Cobro**, **Compra/Pago**, y **Pasaje entre cuentas** cuando aplique (movimiento entre cuentas propias; nombre de producto ya acordado como "Pasaje entre cuentas" en propuesta).
+
+### Implementacion (parcial — 2026-05)
+- Navegacion: sidebar con bloque **Flujo de caja** (Ventas y cobros, Compras y pagos, Todos los movimientos con filtro `?flujo=`); contador de pendientes en sidebar y badge en bottom nav.
+- Reglas de rol: `finalizeMovementSubmission` y `updateMovementStatus` en `src/lib/actions/movements.ts` (aprobar/rechazar/anular solo `admin_finanzas` / `superadmin`).
+- Contactos: alta rapida inline en `operation-form` + `createContact` en `src/lib/actions/contacts.ts` con `client_segment` y `associated_services`; falta ficha/listado dedicado y PDF en Storage.
+- Pendiente: adjunto PDF factura, refinamiento de copy total vs `PROPUESTA_SOCIO.md`, opcion admin “solo enviar a otro admin” sin auto‑aprobar, RPC adicional si se centraliza todo en base.
+
+### Razon
+- Alinear UX con lenguaje natural del negocio (ventas/compras vs jerga contable).
+- Control sin rigidez excesiva: factura opcional pero trazable cuando existe.
+- Datos de cliente utiles para servicios y segmentacion sin salir del flujo de carga.
+
+## 15) Analisis por proyecto: presupuestado vs real
+
+### Contexto
+- El negocio necesita ver **resultado por proyecto** (no solo vista global de todos los proyectos).
+- Debe poder compararse lo **presupuestado / estimado** frente a lo **real aplicado** (movimientos aprobados u otro criterio acordado en reportes).
+
+### Decision
+- Incluir una **seccion o pantalla dedicada** (o pestaña dentro de **Proyectos** / **Informes**) que permita:
+  - **Seleccionar un proyecto** (y opcionalmente subproyecto si aplica la jerarquia existente).
+  - **Seleccionar periodo de analisis** al menos como **mes calendario** y como **trimestre** (alineado a la filosofia de control de gestion mensual/trimestral; ver decision 16).
+  - Mostrar **indicadores de resultado** del proyecto en el periodo elegido.
+  - Mostrar **comparacion presupuesto vs real**: ingresos/gastos o ventas/cobros y compras/pagos segun el modelo de agregacion definido en reportes, alineado a `project_id` en operaciones.
+- La vista **global** de empresa se mantiene; esta capacidad es **complementaria y obligatoria** para analisis por obra o por contrato.
+
+### Implementacion (parcial — 2026-05)
+- Pantalla `src/app/(dashboard)/proyectos/[id]/page.tsx` con `getProjectFinancialAnalysis` filtrando por periodo (mismos presets que informes globales) y totales **approved** por `project_id`.
+- Lista de proyectos enlaza a analisis por fila.
+- Pendiente: tabla explícita Presupuestado / Real / Diferencia %, selector de subproyecto dedicado si hace falta mas alla del arbol en lista.
+
+### Razon
+- Control de margen y desviaciones por obra/cliente es requisito operativo tipico en PYMEs de servicios.
+- Evita que el usuario tenga que exportar y cruzar datos fuera de la app para saber si un proyecto se fue al aire.
+
+## 16) Filosofia de producto: control de gestion y periodicidad
+
+### Contexto
+- El software no es solo registro contable: es **control de gestion** para la direccion del negocio.
+- Ese control debe poder ejercerse con **cadencia clara**: revision **mensual** y **trimestral**, ademas del seguimiento operativo diario/semanal cuando aplique.
+
+### Decision
+- Mantener explicita la filosofia de **control de gestion** en copy y diseno de **Informes** y vistas de resultado (empresa y por proyecto).
+- Las vistas de analisis y comparacion (presupuesto vs real, resultados, flujo) deben permitir al menos:
+  - **Agregacion por mes** (mes calendario o rango mensual acotado).
+  - **Agregacion por trimestre** (trimestre civil o rango trimestral acotado).
+- El criterio de numeros (p. ej. solo movimientos **aprobados** para cierre “duro”) se documenta en UI para que el usuario sepa que lectura esta viendo.
+
+### Implementacion (parcial — 2026-05)
+- Presets de periodo en **Informes** (`reportes/page.tsx`) y en **Analisis por proyecto** (`proyectos/[id]`), reutilizando `src/lib/utils/reports-period.ts`.
+- Pendiente: rango personalizado (fechas libres) y copy unificado “gestion vs proyeccion” en todas las pantallas de resultado.
+
+### Razon
+- Direccion de PYMEs suele cerrar numeros en mes y trimestre; el producto debe hablar ese idioma.
+- Sin periodicidad clara, el usuario percibe la app como registro aislado y no como herramienta de decision.
+
+## 17) Alineacion FE/BE con la vision y refactor estructural
+
+### Contexto
+- La vision de producto (control de gestion, movimientos con aprobacion, informes por periodo, analisis por proyecto, contactos, etc.) evoluciono en `docs/PROPUESTA_SOCIO.md` y en decisiones de este documento.
+- El codigo actual (Next.js, acciones server, Supabase/PostgreSQL, RLS, RPCs) puede tener **desalineacion** respecto a esa vision: nombres, flujos de estado, duplicacion, acoplamientos o deuda tecnica acumulada.
+
+### Decision
+- Tratar el trabajo como **dos fases complementarias** (no solo “features sueltas”):
+  1. **Auditoria de alineacion** — inventario explicito de **gap** entre vision y realidad en **frontend** (rutas, componentes, copy, permisos de UI) y **backend** (esquema, RPCs, RLS, consistencia de estados, reportes). Salida: lista priorizada de brechas y riesgos.
+  2. **Refactor orientado a vision** — cambios incrementales que acerquen el sistema a: **alineado**, **organizado**, **escalable**, **mantenible** y **bien estructurado** (capas claras, dominio en servidor, tipos compartidos, menos duplicacion entre pantallas).
+- Criterios de calidad del refactor:
+  - **Una sola fuente de verdad** para reglas de negocio criticas (estados, montos, permisos) en backend; UI que refleja esas reglas sin reimplementarlas.
+  - **Contratos estables** entre app y base (RPCs o acciones con validacion explicita); migraciones versionadas y reversibles cuando sea posible.
+  - **Modularidad**: dominios separables (movimientos, proyectos, informes, contactos, cuentas) con limites de dependencia razonables.
+  - **Observabilidad minima**: errores y estados de carga predecibles; evitar comportamiento silencioso en flujos financieros.
+
+### Implementacion (pendiente de desarrollo)
+- Documento de brechas: [`docs/CHECKLIST_ALINEACION_FE_BE.md`](./CHECKLIST_ALINEACION_FE_BE.md) (tabla revisable; actualizar al cerrar ítems).
+- Orden sugerido: migraciones y RPCs que fijen el modelo de datos y estados → acciones server y validaciones → UI (navegacion, formularios, informes) → limpieza de codigo muerto y tests donde existan.
+- No expandir alcance funcional nuevo hasta cerrar brechas criticas de alineacion si bloquean consistencia (salvo hotfix).
+
+### Razon
+- Sin paso de alineacion, cada pantalla nueva refuerza el desorden.
+- Un sistema **robusto** para gestion financiera exige coherencia FE/BE y estructura que aguante mas usuarios, mas empresas y mas reglas sin reescritura constante.

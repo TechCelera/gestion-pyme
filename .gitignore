@@ -14,3 +14,9 @@ tmp/
 # Sensitive setup files
 setup-database.sql
 SECURITY.md.playwright-mcp/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

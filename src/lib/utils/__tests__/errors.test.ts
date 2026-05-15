@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { categorizeError } from '../errors'
-import { ZodError, z } from 'zod'
+import { z } from 'zod'
 
 describe('categorizeError', () => {
   describe('auth errors', () => {

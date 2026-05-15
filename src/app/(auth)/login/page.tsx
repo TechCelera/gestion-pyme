@@ -41,9 +41,8 @@ export default function LoginPage() {
         clearDemoCookie().catch(() => {})
         toast.success('Inicio de sesión exitoso')
         router.push('/dashboard')
-        router.refresh()
       }
-    } catch (error) {
+    } catch {
       toast.error('Error al iniciar sesión')
     } finally {
       setLoading(false)
@@ -63,8 +62,7 @@ export default function LoginPage() {
       setDemoCookie().catch(() => {})
       toast.success('Modo Demo activado — Explora con datos de prueba')
       router.push('/dashboard')
-      router.refresh()
-    } catch (error) {
+    } catch {
       toast.error('Error al activar el modo demo')
     } finally {
       setLoading(false)

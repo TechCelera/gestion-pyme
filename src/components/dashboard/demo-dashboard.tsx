@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Info, ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, BarChart3, PieChart, Activity, Target, Zap } from 'lucide-react'
+import { Info, ArrowDownRight, TrendingUp, DollarSign, BarChart3, PieChart, Activity, Target, Zap } from 'lucide-react'
 import {
-  AreaChart, Area, BarChart, Bar, PieChart as RePieChart, Pie, Cell,
+  AreaChart, Area, Bar, PieChart as RePieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart, Line
 } from 'recharts'
@@ -28,7 +28,7 @@ const revenueData = [
 
 const expenseData = [
   { name: 'Personal', value: 35, color: '#7B68EE' },
-  { name: 'Operaciones', value: 25, color: '#00C9FF' },
+  { name: 'Movimientos', value: 25, color: '#00C9FF' },
   { name: 'Marketing', value: 15, color: '#92FE9D' },
   { name: 'Infraestructura', value: 12, color: '#FF6B6B' },
   { name: 'Otros', value: 13, color: '#FFE66D' },

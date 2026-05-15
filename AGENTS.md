@@ -14,8 +14,8 @@ Este repositorio maneja una sola guia de agente: `AGENTS.md`.
 
 ## Idioma: código vs producto
 
-- **En código** (TypeScript, nombres de archivos de dominio, props internas, stores, acciones server, tests, tipos Zod exportados): **inglés** — por ejemplo `Operation`, `createOperation`, `listOperations`, `ROUTES.OPERATIONS` apuntando a `'/operaciones'`.
-- **En producto** (textos de UI, toasts, labels, títulos, rutas URL visibles al usuario): **español** cuando la app va en español — por ejemplo la ruta `/operaciones`, el menú "Operaciones", mensajes "Operación creada".
+- **En código** (TypeScript, nombres de archivos de dominio, props internas, stores, acciones server, tests, tipos Zod exportados): **inglés** — por ejemplo `Movement`, `createMovement`, `listMovements`, `ROUTES.MOVEMENTS` apuntando a `'/operaciones'` (URL en español; dominio en código = *movement*).
+- **En producto** (textos de UI, toasts, labels, títulos, rutas URL visibles al usuario): **español** cuando la app va en español — por ejemplo la ruta `/operaciones`, el menú "Movimientos", mensajes "Movimiento creado" (véase `docs/PROPUESTA_SOCIO.md`).
 - **No mezclar** los dos en el mismo nivel: evitar `crearOperacion` junto a `fetchUser`; si el dominio en codigo es `operation`, los simbolos siguen ese hilo.
 
 Toda decision operativa del agente debe mantenerse en este archivo o en `docs/DECISIONES.md`.

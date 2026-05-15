@@ -1,27 +1,27 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
-function AuthCallbackContent() {
+export default function AuthCallbackPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('Verificando tu cuenta...')
 
-  const supabase = createSafeBrowserClient()
-
   useEffect(() => {
+    const supabase = createSafeBrowserClient()
+
     const handleCallback = async () => {
       try {
-        // Supabase automatically handles the token in the URL
-        // Check if we have a session after the redirect
-        const { data: { session }, error } = await supabase.auth.getSession()
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
 
         if (error) {
           setStatus('error')
@@ -31,34 +31,31 @@ function AuthCallbackContent() {
         }
 
         if (session) {
-          // Email confirmed and logged in
           setStatus('success')
           setMessage('Cuenta verificada exitosamente')
           toast.success('Cuenta confirmada. Bienvenido!')
-          
-          // Redirect to dashboard after short delay
+
           setTimeout(() => {
             router.push('/dashboard')
           }, 2000)
         } else {
-          // No session but might be confirmed - redirect to login
           setStatus('success')
           setMessage('Cuenta verificada. Inicia sesión para continuar.')
           toast.success('Cuenta confirmada')
-          
+
           setTimeout(() => {
             router.push('/login')
           }, 2000)
         }
-      } catch (err) {
+      } catch {
         setStatus('error')
         setMessage('Error inesperado al verificar cuenta')
         toast.error('Error en verificación')
       }
     }
 
-    handleCallback()
-  }, [router, supabase.auth])
+    void handleCallback()
+  }, [router])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -100,7 +97,7 @@ function AuthCallbackContent() {
         </CardHeader>
         <CardContent className="space-y-4">
           {status === 'error' && (
-            <Button 
+            <Button
               onClick={() => router.push('/login')}
               className="w-full"
             >
@@ -115,26 +112,5 @@ function AuthCallbackContent() {
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-export default function AuthCallbackPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-4">
-              <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-primary">
-              Cargando...
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
-    }>
-      <AuthCallbackContent />
-    </Suspense>
   )
 }

@@ -1,33 +1,33 @@
 'use server'
 
-import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import {
-  createOperationSchema,
-  updateOperationSchema,
-  operationFiltersSchema,
-  updateOperationStatusSchema,
-  mapOperationComponentsToRpcJson,
-  type CreateOperationInput,
-  type UpdateOperationInput,
-  type OperationFilters,
-  type UpdateOperationStatusInput,
-  type OperationStatus,
+  createMovementSchema,
+  updateMovementSchema,
+  movementFiltersSchema,
+  updateMovementStatusSchema,
+  mapMovementComponentsToRpcJson,
+  type CreateMovementInput,
+  type UpdateMovementInput,
+  type MovementFilters,
+  type UpdateMovementStatusInput,
+  type MovementStatus,
   type FundOwner,
-  type OperationComponentRow,
-} from '@/lib/validations/operation'
+  type MovementComponentRow,
+} from '@/lib/validations/movement'
 import { evaluateBudgetStatus } from '@/lib/utils/budget'
 import { errorMessageForUser } from '@/lib/utils/errors'
+import { formatReportsPeriodLabel, resolveReportsPeriod, type ReportsRangeKey } from '@/lib/utils/reports-period'
 
 // Types
-export interface Operation {
+export interface Movement {
   id: string
   accountId: string
   accountName: string
   categoryId: string | null
   categoryName: string | null
   type: 'income' | 'expense' | 'transfer' | 'adjustment'
-  status: OperationStatus
+  status: MovementStatus
   method: string
   amount: number
   currency: string
@@ -48,13 +48,13 @@ interface ActionResult<T = unknown> {
   error?: string
 }
 
-export interface OperationComponentDTO extends OperationComponentRow {
+export interface MovementComponentDTO extends MovementComponentRow {
   id?: string
 }
 
-export async function getOperationComponents(
-  operationId: string
-): Promise<ActionResult<OperationComponentDTO[]>> {
+export async function getMovementComponents(
+  movementId: string
+): Promise<ActionResult<MovementComponentDTO[]>> {
   try {
     const companyId = await getCurrentUserCompany()
     if (!companyId) {
@@ -65,27 +65,27 @@ export async function getOperationComponents(
     const { data: tx, error: txErr } = await supabase
       .from('transactions')
       .select('id')
-      .eq('id', operationId)
+      .eq('id', movementId)
       .eq('company_id', companyId)
       .maybeSingle()
 
     if (txErr || !tx) {
-      return { success: false, error: txErr?.message ?? 'Operación no encontrada' }
+      return { success: false, error: txErr?.message ?? 'Movimiento no encontrado' }
     }
 
     const { data: rows, error } = await supabase
       .from('operation_components')
       .select('id, component_type, account_id, contact_id, amount, currency')
-      .eq('transaction_id', operationId)
+      .eq('transaction_id', movementId)
       .order('created_at', { ascending: true })
 
     if (error) {
       return { success: false, error: error.message }
     }
 
-    const mapped: OperationComponentDTO[] = (rows ?? []).map((r: Record<string, unknown>) => ({
+    const mapped: MovementComponentDTO[] = (rows ?? []).map((r: Record<string, unknown>) => ({
       id: r.id as string | undefined,
-      componentType: r.component_type as OperationComponentDTO['componentType'],
+      componentType: r.component_type as MovementComponentDTO['componentType'],
       accountId: (r.account_id as string | null) ?? undefined,
       contactId: (r.contact_id as string | null) ?? undefined,
       amount: Number(r.amount ?? 0),
@@ -167,6 +167,26 @@ async function getCurrentUserId(): Promise<string | null> {
   }
 }
 
+/** Roles con permiso de aprobar / rechazar / anular movimientos (§14 DECISIONES + RLS). */
+function isFinanceApproverRole(role: string | null | undefined): boolean {
+  return role === 'superadmin' || role === 'admin_finanzas'
+}
+
+async function getCurrentUserRole(): Promise<string | null> {
+  const userId = await getCurrentUserId()
+  if (!userId) return null
+
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
+
+    if (error || !data) return null
+    return (data as { role: string }).role ?? null
+  } catch {
+    return null
+  }
+}
+
 async function getProjectBudgetContext(
   supabase: Awaited<ReturnType<typeof createClient>>,
   companyId: string,
@@ -190,7 +210,7 @@ async function getProjectBudgetContext(
     .eq('company_id', companyId)
     .eq('project_id', projectId)
     .eq('type', 'expense')
-    .eq('status', 'posted')
+    .eq('status', 'approved')
     .is('deleted_at', null)
 
   if (txError) {
@@ -211,11 +231,11 @@ async function getProjectBudgetContext(
 }
 
 // CREATE
-export async function createOperation(
-  input: CreateOperationInput
-): Promise<ActionResult<Operation>> {
+export async function createMovement(
+  input: CreateMovementInput
+): Promise<ActionResult<Movement>> {
   try {
-    const validated = createOperationSchema.parse(input)
+    const validated = createMovementSchema.parse(input)
     const companyId = await getCurrentUserCompany()
     
     if (!companyId) {
@@ -239,7 +259,7 @@ export async function createOperation(
           spentAmount: budgetContext.spentAmount,
           newExpenseAmount: validated.amount,
           endDate: budgetContext.endDate,
-          operationDate: validated.date,
+          movementDate: validated.date,
         })
         requiresBudgetApproval = budgetState.requiresBudgetApproval
       }
@@ -290,7 +310,7 @@ export async function createOperation(
         .eq('company_id', companyId)
 
       if (patchError) {
-        console.error('Error patching operation extra fields:', patchError)
+        console.error('Error patching movement extra fields:', patchError)
       }
     }
 
@@ -298,13 +318,13 @@ export async function createOperation(
       const tid = typeof data === 'string' ? data : String(data)
       const { error: compError } = await supabase.rpc('set_operation_components', {
         p_transaction_id: tid,
-        p_components: mapOperationComponentsToRpcJson(
-          validated.operationComponents,
+        p_components: mapMovementComponentsToRpcJson(
+          validated.movementComponents,
           validated.currency ?? 'ARS'
         ),
       })
       if (compError) {
-        console.error('Error definición de componentes de operación:', compError)
+        console.error('Error definición de componentes del movimiento:', compError)
         return { success: false, error: compError.message }
       }
     }
@@ -336,68 +356,84 @@ export async function createOperation(
       .single()
 
     if (fetchError || !createdRow) {
-      console.error('Error fetching created operación:', fetchError)
+      console.error('Error fetching created movimiento:', fetchError)
       return { success: true }
     }
 
-    const mapped = mapOperation(createdRow)
+    const mapped = mapMovement(createdRow)
 
     return { 
       success: true, 
       data: mapped 
     }
   } catch (error) {
-    return { success: false, error: errorMessageForUser(error, 'Error al crear operación') }
+    return { success: false, error: errorMessageForUser(error, 'Error al crear el movimiento') }
   }
 }
 
 // UPDATE
-export async function updateOperation(
+export async function updateMovement(
   id: string,
-  input: Omit<UpdateOperationInput, 'id'>
-): Promise<ActionResult<Operation>> {
+  input: Omit<UpdateMovementInput, 'id'>
+): Promise<ActionResult<Movement>> {
   try {
-    updateOperationSchema.parse({ ...input, id })
+    updateMovementSchema.parse({ ...input, id })
     return {
       success: false,
-      error: 'No se permite editar operaciones registradas. Usa anulación o reversión.',
+      error: 'No se permite editar movimientos registrados. Usa anulación o reversión.',
     }
   } catch (error) {
-    return { success: false, error: errorMessageForUser(error, 'Error al actualizar operación') }
+    return { success: false, error: errorMessageForUser(error, 'Error al actualizar el movimiento') }
   }
 }
 
 // UPDATE STATUS
-export async function updateOperationStatus(
-  input: UpdateOperationStatusInput
+export async function updateMovementStatus(
+  input: UpdateMovementStatusInput
 ): Promise<ActionResult> {
   try {
-    const validated = updateOperationStatusSchema.parse(input)
-    
+    const validated = updateMovementStatusSchema.parse(input)
+
+    if (
+      validated.status === 'approved' ||
+      validated.status === 'rejected' ||
+      validated.status === 'cancelled'
+    ) {
+      const role = await getCurrentUserRole()
+      if (!isFinanceApproverRole(role)) {
+        return {
+          success: false,
+          error:
+            'No tenés permiso para esta acción. Solo administración financiera puede aprobar, rechazar o anular.',
+        }
+      }
+    }
+
     const supabase = await createClient()
-    if (validated.status === 'posted') {
-      const { data: operation, error: operationError } = await supabase
+    if (validated.status === 'approved') {
+      const { data: txn, error: txnError } = await supabase
         .from('transactions')
         .select('requires_budget_approval, budget_approved_by')
         .eq('id', validated.id)
         .single()
 
-      if (operationError) {
-        return { success: false, error: operationError.message }
+      if (txnError) {
+        return { success: false, error: txnError.message }
       }
 
       if (
-        operation?.requires_budget_approval === true &&
-        !operation?.budget_approved_by
+        txn?.requires_budget_approval === true &&
+        !txn?.budget_approved_by
       ) {
         return {
           success: false,
-          error: 'Operación con sobrepresupuesto: requiere aprobación adicional antes de contabilizar',
+          error:
+            'Movimiento con sobrepresupuesto: requiere aprobación adicional antes de aprobar',
         }
       }
     }
 
-    const { data, error } = await supabase.rpc('update_transaction_status', {
+    const { error } = await supabase.rpc('update_transaction_status', {
       p_transaction_id: validated.id,
       p_new_status: validated.status,
       p_reason: validated.reason ?? null,
@@ -415,8 +451,25 @@ export async function updateOperationStatus(
   }
 }
 
+/**
+ * Tras crear un movimiento: colaborador → pending; admin/superadmin → pending + approved (auto-registro §14).
+ */
+export async function finalizeMovementSubmission(movementId: string): Promise<ActionResult> {
+  try {
+    const role = await getCurrentUserRole()
+    if (isFinanceApproverRole(role)) {
+      const pendingRes = await updateMovementStatus({ id: movementId, status: 'pending' })
+      if (!pendingRes.success) return pendingRes
+      return updateMovementStatus({ id: movementId, status: 'approved' })
+    }
+    return updateMovementStatus({ id: movementId, status: 'pending' })
+  } catch (error) {
+    return { success: false, error: errorMessageForUser(error, 'Error al enviar el movimiento') }
+  }
+}
+
 // DELETE
-export async function deleteOperation(id: string): Promise<ActionResult> {
+export async function deleteMovement(id: string): Promise<ActionResult> {
   try {
     const companyId = await getCurrentUserCompany()
     
@@ -439,20 +492,20 @@ export async function deleteOperation(id: string): Promise<ActionResult> {
     // revalidateTag('transactions')
     return { success: true }
   } catch (error) {
-    return { success: false, error: errorMessageForUser(error, 'Error al eliminar operación') }
+    return { success: false, error: errorMessageForUser(error, 'Error al eliminar el movimiento') }
   }
 }
 
-// LIST OPERATIONS (RPC get_transactions)
-export async function listOperations(
-  filters: OperationFilters
-): Promise<ActionResult<{ operations: Operation[]; total: number }>> {
+// LIST MOVEMENTS (RPC get_transactions)
+export async function listMovements(
+  filters: MovementFilters
+): Promise<ActionResult<{ movements: Movement[]; total: number }>> {
   try {
     if (!filters || typeof filters !== 'object') {
       return { success: false, error: 'Filtros inválidos' }
     }
 
-    const validated = operationFiltersSchema.parse(filters)
+    const validated = movementFiltersSchema.parse(filters)
 
     const companyId = await getCurrentUserCompany()
 
@@ -480,7 +533,7 @@ export async function listOperations(
       p_offset: (validated.page - 1) * validated.pageSize,
     })
 
-    console.log('listOperations RPC result:', { error, dataLength: data?.length })
+    console.log('listMovements RPC result:', { error, dataLength: data?.length })
 
     if (error) {
       console.error('get_transactions RPC error:', error)
@@ -491,26 +544,26 @@ export async function listOperations(
     const total = rows.length > 0 
       ? Number(rows[0].total_count ?? 0) 
       : 0
-    const operations = rows.map(mapOperation)
+    const movements = rows.map(mapMovement)
 
     return { 
       success: true, 
       data: { 
-        operations, 
+        movements, 
         total 
       } 
     }
   } catch (error) {
-    console.error('listOperations CATCH:', error)
+    console.error('listMovements CATCH:', error)
     return {
       success: false,
-      error: errorMessageForUser(error, 'Error desconocido al cargar operaciones'),
+      error: errorMessageForUser(error, 'Error desconocido al cargar movimientos'),
     }
   }
 }
 
-/** Mapea fila del RPC `get_transactions` al tipo `Operation` de la app */
-function mapOperation(raw: unknown): Operation {
+/** Mapea fila del RPC `get_transactions` al tipo `Movement` de la app */
+function mapMovement(raw: unknown): Movement {
   const t = raw as Record<string, unknown>
   return {
     id: t.id as string,
@@ -519,7 +572,7 @@ function mapOperation(raw: unknown): Operation {
     categoryId: t.category_id as string | null,
     categoryName: (t.categories as Record<string, string>)?.name ?? (t.category_name as string) ?? null,
     type: t.type as 'income' | 'expense' | 'transfer' | 'adjustment',
-    status: t.status as OperationStatus,
+    status: t.status as MovementStatus,
     method: (t.method as string) || 'cash',
     amount: Number(t.amount),
     currency: t.currency as string,
@@ -536,7 +589,7 @@ function mapOperation(raw: unknown): Operation {
 }
 
 export async function approveBudgetException(
-  operationId: string,
+  movementId: string,
   note: string
 ): Promise<ActionResult> {
   try {
@@ -555,7 +608,7 @@ export async function approveBudgetException(
         updated_by: userId,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', operationId)
+      .eq('id', movementId)
       .eq('requires_budget_approval', true)
 
     if (error) {
@@ -570,12 +623,11 @@ export async function approveBudgetException(
 
 // DASHBOARD STATS
 export interface DashboardStats {
-  totalOperations: number
+  totalMovements: number
   totalIncome: number
   totalExpenses: number
   pendingCount: number
   approvedCount: number
-  postedCount: number
   netBalance: number
 }
 
@@ -598,25 +650,50 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
       return { success: false, error: error.message }
     }
 
-    const operationRows = data || []
+    const movementRows = data || []
 
     const stats: DashboardStats = {
-      totalOperations: operationRows.length,
-      totalIncome: operationRows
-        .filter((t: Record<string, unknown>) => t.type === 'income' && t.status === 'posted')
+      totalMovements: movementRows.length,
+      totalIncome: movementRows
+        .filter((t: Record<string, unknown>) => t.type === 'income' && t.status === 'approved')
         .reduce((sum: number, t: Record<string, unknown>) => sum + (t.amount as number), 0),
-      totalExpenses: operationRows
-        .filter((t: Record<string, unknown>) => t.type === 'expense' && t.status === 'posted')
+      totalExpenses: movementRows
+        .filter((t: Record<string, unknown>) => t.type === 'expense' && t.status === 'approved')
         .reduce((sum: number, t: Record<string, unknown>) => sum + (t.amount as number), 0),
-      pendingCount: operationRows.filter((t: Record<string, unknown>) => t.status === 'pending').length,
-      approvedCount: operationRows.filter((t: Record<string, unknown>) => t.status === 'approved').length,
-      postedCount: operationRows.filter((t: Record<string, unknown>) => t.status === 'posted').length,
+      pendingCount: movementRows.filter((t: Record<string, unknown>) => t.status === 'pending').length,
+      approvedCount: movementRows.filter((t: Record<string, unknown>) => t.status === 'approved').length,
       netBalance: 0,
     }
 
     stats.netBalance = stats.totalIncome - stats.totalExpenses
 
     return { success: true, data: stats }
+  } catch (error) {
+    return { success: false, error: errorMessageForUser(error) }
+  }
+}
+
+/** Conteo de movimientos pendientes de aprobación (sidebar / layout). */
+export async function getPendingMovementsCount(): Promise<ActionResult<number>> {
+  try {
+    const companyId = await getCurrentUserCompany()
+    if (!companyId) {
+      return { success: true, data: 0 }
+    }
+
+    const supabase = await createClient()
+    const { count, error } = await supabase
+      .from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+      .eq('status', 'pending')
+      .is('deleted_at', null)
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data: count ?? 0 }
   } catch (error) {
     return { success: false, error: errorMessageForUser(error) }
   }
@@ -664,6 +741,7 @@ export interface BalanceSheetReport {
 }
 
 export interface ReportsData {
+  rangeKey: ReportsRangeKey
   incomeStatement: IncomeStatementReport
   cashFlow: CashFlowReport
   balanceSheet: BalanceSheetReport
@@ -676,14 +754,9 @@ function numFromJson(v: unknown): number {
   return Number.isNaN(n) ? 0 : n
 }
 
-function getCurrentMonthDateRange() {
-  const now = new Date()
-  const start = new Date(now.getFullYear(), now.getMonth(), 1)
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  return { start, end }
-}
-
-export async function getReportsData(): Promise<ActionResult<ReportsData>> {
+export async function getReportsData(
+  rangePreset?: string | null
+): Promise<ActionResult<ReportsData>> {
   try {
     const companyId = await getCurrentUserCompany()
     if (!companyId) {
@@ -691,11 +764,10 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
     }
 
     const supabase = await createClient()
-    const { start, end } = getCurrentMonthDateRange()
-    const now = new Date()
+    const { start, end, key: rangeKey } = resolveReportsPeriod(rangePreset)
     const startStr = start.toISOString().split('T')[0]
     const endStr = end.toISOString().split('T')[0]
-    const trendStart = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+    const trendStart = new Date(end.getFullYear(), end.getMonth() - 5, 1)
     const trendStartStr = trendStart.toISOString().split('T')[0]
 
     const [
@@ -768,7 +840,7 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
     const monthMapReal = new Map<string, { inflow: number; outflow: number }>()
     const monthMapProjected = new Map<string, { inflow: number; outflow: number }>()
     for (let i = 5; i >= 0; i -= 1) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const d = new Date(end.getFullYear(), end.getMonth() - i, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       monthMapReal.set(key, { inflow: 0, outflow: 0 })
       monthMapProjected.set(key, { inflow: 0, outflow: 0 })
@@ -798,7 +870,9 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
       const isExpense = type === 'expense'
       if (!isIncome && !isExpense) continue
 
-      if (status === 'posted' || status === 'approved' || status === 'pending') {
+      // Tras unificar aprobación con asiento: lo aprobado ya entra en el bloque "real" (RPC diario).
+      // Proyectado = pipeline operativo pendiente de aprobación (sin duplicar montos contabilizados).
+      if (status === 'pending') {
         if (isIncome) currentProjected.inflow += amount
         if (isExpense) currentProjected.outflow += amount
       }
@@ -817,24 +891,32 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
       net: values.inflow - values.outflow,
     }))
 
-    const currentMonthTrendReal = monthlyTrend[monthlyTrend.length - 1] ?? {
-      month: '',
-      inflow: 0,
-      outflow: 0,
-      net: 0,
-    }
-    const currentMonthTrendProjected = monthlyTrendProjected[monthlyTrendProjected.length - 1] ?? {
-      month: '',
-      inflow: 0,
-      outflow: 0,
-      net: 0,
-    }
+    const periodEndKey = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}`
+    const currentMonthTrendReal =
+      monthlyTrend.find((m) => m.month === periodEndKey) ??
+      monthlyTrend[monthlyTrend.length - 1] ?? {
+        month: '',
+        inflow: 0,
+        outflow: 0,
+        net: 0,
+      }
+    const currentMonthTrendProjected =
+      monthlyTrendProjected.find((m) => m.month === periodEndKey) ??
+      monthlyTrendProjected[monthlyTrendProjected.length - 1] ?? {
+        month: '',
+        inflow: 0,
+        outflow: 0,
+        net: 0,
+      }
+
+    const periodLabel = formatReportsPeriodLabel(start, end)
 
     return {
       success: true,
       data: {
+        rangeKey,
         incomeStatement: {
-          periodLabel: start.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }),
+          periodLabel,
           totalIncome,
           totalExpenses,
           netProfit,
@@ -842,7 +924,7 @@ export async function getReportsData(): Promise<ActionResult<ReportsData>> {
           expenseBreakdown,
         },
         cashFlow: {
-          periodLabel: start.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }),
+          periodLabel,
           cashInReal: currentMonthTrendReal.inflow,
           cashOutReal: currentMonthTrendReal.outflow,
           netCashFlowReal: currentMonthTrendReal.net,

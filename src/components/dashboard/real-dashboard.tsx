@@ -3,7 +3,7 @@
 import { KpiCard } from './kpi-card'
 import { TrendingUp, ArrowDownRight, DollarSign, Wallet } from 'lucide-react'
 import { ReportsCharts } from '@/components/reports/reports-charts'
-import type { DashboardStats, ReportsData } from '@/lib/actions/operations'
+import type { DashboardStats, ReportsData } from '@/lib/actions/movements'
 
 interface RealDashboardProps {
   stats: DashboardStats
@@ -49,8 +49,8 @@ export function RealDashboard({ stats, reportsData, reportsError }: RealDashboar
           gradient="from-[#00C9FF] to-[#92FE9D]"
         />
         <KpiCard
-          title="Operaciones"
-          value={String(stats.totalOperations)}
+          title="Movimientos"
+          value={String(stats.totalMovements)}
           icon={Wallet}
           gradient="from-[#FF9F43] to-[#FF6B6B]"
         />

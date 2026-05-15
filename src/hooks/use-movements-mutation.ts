@@ -1,23 +1,23 @@
 import { useState } from 'react'
-import { useOperationStore } from '@/stores/operation-store'
+import { useMovementStore } from '@/stores/movement-store'
 import { toast } from 'sonner'
-import type { CreateOperationInput } from '@/lib/validations/operation'
+import type { CreateMovementInput } from '@/lib/validations/movement'
 
-export function useUpdateOperation() {
+export function useUpdateMovement() {
   const [isLoading, setIsLoading] = useState(false)
-  const editOperation = useOperationStore((state) => state.editOperation)
+  const editMovement = useMovementStore((state) => state.editMovement)
 
-  const update = async (id: string, data: CreateOperationInput) => {
+  const update = async (id: string, data: CreateMovementInput) => {
     setIsLoading(true)
 
     try {
-      const result = await editOperation(id, data)
+      const result = await editMovement(id, data)
 
       if (result) {
-        toast.success('Operación actualizada exitosamente')
+        toast.success('Movimiento actualizado exitosamente')
         return true
       }
-      toast.error('Error al actualizar la operación')
+      toast.error('Error al actualizar el movimiento')
       return false
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error desconocido')
@@ -33,9 +33,9 @@ export function useUpdateOperation() {
   }
 }
 
-export function useOperationStatusActions() {
+export function useMovementStatusActions() {
   const [isLoading, setIsLoading] = useState(false)
-  const changeStatus = useOperationStore((state) => state.changeStatus)
+  const changeStatus = useMovementStore((state) => state.changeStatus)
 
   const approve = async (id: string) => {
     setIsLoading(true)
@@ -44,10 +44,10 @@ export function useOperationStatusActions() {
       const result = await changeStatus(id, 'approved')
 
       if (result) {
-        toast.success('Operación aprobada')
+        toast.success('Movimiento aprobado y registrado')
         return true
       }
-      toast.error('Error al aprobar la operación')
+      toast.error('Error al aprobar el movimiento')
       return false
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error desconocido')
@@ -64,30 +64,10 @@ export function useOperationStatusActions() {
       const result = await changeStatus(id, 'rejected', reason)
 
       if (result) {
-        toast.success('Operación rechazada')
+        toast.success('Movimiento rechazado')
         return true
       }
-      toast.error('Error al rechazar la operación')
-      return false
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error desconocido')
-      return false
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const post = async (id: string) => {
-    setIsLoading(true)
-
-    try {
-      const result = await changeStatus(id, 'posted')
-
-      if (result) {
-        toast.success('Operación contabilizada')
-        return true
-      }
-      toast.error('Error al contabilizar la operación')
+      toast.error('Error al rechazar el movimiento')
       return false
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error desconocido')
@@ -104,10 +84,10 @@ export function useOperationStatusActions() {
       const result = await changeStatus(id, 'pending')
 
       if (result) {
-        toast.success('Operación enviada a aprobación')
+        toast.success('Movimiento enviado a aprobación')
         return true
       }
-      toast.error('Error al enviar a aprobación')
+      toast.error('Error al enviar el movimiento a aprobación')
       return false
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error desconocido')
@@ -120,27 +100,26 @@ export function useOperationStatusActions() {
   return {
     approve,
     reject,
-    post,
     sendToApproval,
     isLoading,
   }
 }
 
-export function useDeleteOperation() {
+export function useDeleteMovement() {
   const [isLoading, setIsLoading] = useState(false)
-  const removeOperation = useOperationStore((state) => state.removeOperation)
+  const removeMovement = useMovementStore((state) => state.removeMovement)
 
   const remove = async (id: string) => {
     setIsLoading(true)
 
     try {
-      const result = await removeOperation(id)
+      const result = await removeMovement(id)
 
       if (result) {
-        toast.success('Operación eliminada')
+        toast.success('Movimiento eliminado')
         return true
       }
-      toast.error('Error al eliminar la operación')
+      toast.error('Error al eliminar el movimiento')
       return false
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error desconocido')

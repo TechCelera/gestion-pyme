@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
-  listOperations,
+  listMovements,
   getReportsData,
-  updateOperationStatus,
-  createOperation,
-  updateOperation,
-  getOperationComponents,
-} from '../operations'
-import { DEFAULT_TRANSFER_DESCRIPTION } from '@/lib/validations/operation'
+  updateMovementStatus,
+  createMovement,
+  updateMovement,
+  getMovementComponents,
+} from '../movements'
+import { DEFAULT_TRANSFER_DESCRIPTION } from '@/lib/validations/movement'
 import { evaluateBudgetStatus } from '@/lib/utils/budget'
 
 // Mock the Supabase client
@@ -18,7 +18,7 @@ vi.mock('@/lib/supabase/server', () => ({
 // Import the mocked module
 import { createClient } from '@/lib/supabase/server'
 
-describe('listOperations', () => {
+describe('listMovements', () => {
   let mockRpc: ReturnType<typeof vi.fn>
   let mockAuthGetUser: ReturnType<typeof vi.fn>
   let mockFrom: ReturnType<typeof vi.fn>
@@ -67,7 +67,7 @@ describe('listOperations', () => {
           category_id: 'cat-1',
           category_name: 'Ventas',
           type: 'income',
-          status: 'posted',
+          status: 'approved',
           method: 'cash',
           amount: 1000,
           currency: 'USD',
@@ -83,7 +83,7 @@ describe('listOperations', () => {
       error: null,
     })
 
-    const result = await listOperations({
+    const result = await listMovements({
       page: 1,
       pageSize: 50,
       search: '100%_complete',
@@ -116,7 +116,7 @@ describe('listOperations', () => {
     })
     mockFrom.mockReturnValue({ select: mockSelectNoCompany })
 
-    const result = await listOperations({
+    const result = await listMovements({
       page: 1,
       pageSize: 50,
     })
@@ -127,7 +127,7 @@ describe('listOperations', () => {
     }
   })
 
-  it('mapea fila RPC al tipo Operation', async () => {
+  it('mapea fila RPC al tipo Movement', async () => {
     const rpcRow = {
       id: 'tx-456',
       company_id: 'company-123',
@@ -160,8 +160,6 @@ describe('listOperations', () => {
       updated_at: null,
       approved_by: null,
       approved_at: null,
-      posted_by: null,
-      posted_at: null,
       rejected_by: null,
       rejected_at: null,
       rejection_reason: null,
@@ -173,14 +171,14 @@ describe('listOperations', () => {
       error: null,
     })
 
-    const result = await listOperations({
+    const result = await listMovements({
       page: 1,
       pageSize: 50,
     })
 
     expect(result.success).toBe(true)
     if (result.success && result.data) {
-      const op = result.data.operations[0]
+      const op = result.data.movements[0]
       expect(op.id).toBe('tx-456')
       expect(op.accountId).toBe('acc-1')
       expect(op.accountName).toBe('Caja')
@@ -202,14 +200,14 @@ describe('listOperations', () => {
       error: null,
     })
 
-    const result = await listOperations({
+    const result = await listMovements({
       page: 1,
       pageSize: 50,
     })
 
     expect(result.success).toBe(true)
     if (result.success && result.data) {
-      expect(result.data.operations).toEqual([])
+      expect(result.data.movements).toEqual([])
       expect(result.data.total).toBe(0)
     }
   })
@@ -220,7 +218,7 @@ describe('listOperations', () => {
       error: { message: 'Function get_transactions not found' },
     })
 
-    const result = await listOperations({
+    const result = await listMovements({
       page: 1,
       pageSize: 50,
     })
@@ -237,7 +235,7 @@ describe('getReportsData server action', () => {
     vi.clearAllMocks()
   })
 
-  it('combina RPC del diario con tendencia proyectada desde transacciones', async () => {
+  it('combina RPC del diario con tendencia proyectada (solo pendientes)', async () => {
     const mockAuthGetUser = vi.fn().mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -471,7 +469,7 @@ describe('getReportsData server action', () => {
   })
 })
 
-describe('createOperation con operationComponents', () => {
+describe('createMovement con movementComponents', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -542,7 +540,7 @@ describe('createOperation con operationComponents', () => {
       rpc: mockRpc,
     } as unknown as Awaited<ReturnType<typeof createClient>>)
 
-    const result = await createOperation({
+    const result = await createMovement({
       type: 'income',
       date: new Date('2026-05-01'),
       amount: 150,
@@ -551,7 +549,7 @@ describe('createOperation con operationComponents', () => {
       method: 'cash',
       accountId,
       categoryId,
-      operationComponents: [
+      movementComponents: [
         { componentType: 'operative_cash', accountId, amount: 100 },
         { componentType: 'client_receivable', contactId, amount: 50 },
       ],
@@ -632,7 +630,7 @@ describe('createOperation con operationComponents', () => {
       rpc: mockRpc,
     } as unknown as Awaited<ReturnType<typeof createClient>>)
 
-    const result = await createOperation({
+    const result = await createMovement({
       type: 'transfer',
       date: new Date('2026-05-03'),
       amount: 200,
@@ -656,17 +654,17 @@ describe('createOperation con operationComponents', () => {
   })
 })
 
-describe('updateOperation', () => {
+describe('updateMovement', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('rechaza edición directa de operaciones', async () => {
+  it('rechaza edición directa de movimientos', async () => {
     const txId = '22222222-2222-4222-8222-222222222222'
     const accountId = '550e8400-e29b-41d4-a716-446655440001'
     const categoryId = '550e8400-e29b-41d4-a716-446655440002'
 
-    const result = await updateOperation(txId, {
+    const result = await updateMovement(txId, {
       accountId,
       categoryId,
       type: 'income',
@@ -675,17 +673,17 @@ describe('updateOperation', () => {
       description: 'Actualizado',
       method: 'cash',
       currency: 'ARS',
-      operationComponents: [{ componentType: 'operative_bank', accountId, amount: 200 }],
+      movementComponents: [{ componentType: 'operative_bank', accountId, amount: 200 }],
     })
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error).toContain('No se permite editar operaciones registradas')
+      expect(result.error).toContain('No se permite editar movimientos registrados')
     }
   })
 })
 
-describe('getOperationComponents', () => {
+describe('getMovementComponents', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -741,7 +739,7 @@ describe('getOperationComponents', () => {
       rpc: vi.fn(),
     } as unknown as Awaited<ReturnType<typeof createClient>>)
 
-    const result = await getOperationComponents(txId)
+    const result = await getMovementComponents(txId)
     expect(result.success).toBe(true)
     if (result.success && result.data) {
       expect(result.data).toHaveLength(1)
@@ -758,7 +756,7 @@ describe('budget flow rules', () => {
       spentAmount: 900,
       newExpenseAmount: 200,
       endDate: null,
-      operationDate: new Date('2026-05-02'),
+      movementDate: new Date('2026-05-02'),
     })
 
     expect(result.requiresBudgetApproval).toBe(true)
@@ -771,33 +769,51 @@ describe('budget flow rules', () => {
       spentAmount: 100,
       newExpenseAmount: 100,
       endDate: '2026-04-30',
-      operationDate: new Date('2026-05-02'),
+      movementDate: new Date('2026-05-02'),
     })
 
     expect(result.requiresBudgetApproval).toBe(true)
     expect(result.outOfTerm).toBe(true)
   })
 
-  it('should block posting when budget approval is missing', async () => {
-    const mockSingle = vi.fn().mockResolvedValue({
+  it('should block approval when budget approval is missing', async () => {
+    const mockTxSingle = vi.fn().mockResolvedValue({
       data: { requires_budget_approval: true, budget_approved_by: null },
       error: null,
     })
-    const mockSelect = vi.fn().mockReturnValue({
+    const mockTxSelect = vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
-        single: mockSingle,
+        single: mockTxSingle,
       }),
     })
-    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockUsersSelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({ data: { role: 'admin_finanzas' }, error: null }),
+      }),
+    })
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'users') {
+        return { select: mockUsersSelect }
+      }
+      if (table === 'transactions') {
+        return { select: mockTxSelect }
+      }
+      return { select: vi.fn() }
+    })
     const mockRpc = vi.fn()
 
     vi.mocked(createClient).mockResolvedValue({
       from: mockFrom,
       rpc: mockRpc,
-      auth: { getUser: vi.fn() },
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: 'user-123' } },
+          error: null,
+        }),
+      },
     } as unknown as Awaited<ReturnType<typeof createClient>>)
 
-    const result = await updateOperationStatus({ id: '11111111-1111-4111-8111-111111111111', status: 'posted' })
+    const result = await updateMovementStatus({ id: '11111111-1111-4111-8111-111111111111', status: 'approved' })
 
     expect(result.success).toBe(false)
     if (!result.success) {

@@ -24,7 +24,6 @@ import {
 import { createAccount, updateAccount } from '@/lib/actions/accounts'
 import type { Account } from '@/lib/actions/accounts'
 import { ACCOUNT_TYPE_LABELS } from '@/lib/constants'
-import { DEMO_ACCOUNTS } from '@/lib/demo-data'
 import { useAuthStore } from '@/stores/auth-store'
 
 interface AccountFormProps {
@@ -122,7 +121,7 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
           toast.error(result.error || 'Error al crear la cuenta')
         }
       }
-    } catch (error) {
+    } catch {
       toast.error('Error inesperado')
     } finally {
       setIsSaving(false)

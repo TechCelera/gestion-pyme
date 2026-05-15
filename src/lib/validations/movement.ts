@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
 /** Enums: valores alineados a columnas / RPC; nombres en inglés (código). */
-export const OperationTypeEnum = z.enum(['income', 'expense', 'transfer', 'adjustment'])
-export const OperationStatusEnum = z.enum(['draft', 'pending', 'approved', 'posted', 'rejected'])
-export const OperationMethodEnum = z.enum(['cash', 'transfer', 'card', 'digital', 'other'])
+export const MovementTypeEnum = z.enum(['income', 'expense', 'transfer', 'adjustment'])
+export const MovementStatusEnum = z.enum(['draft', 'pending', 'approved', 'rejected', 'cancelled'])
+export const MovementMethodEnum = z.enum(['cash', 'transfer', 'card', 'digital', 'other'])
 export const ContactTypeEnum = z.enum(['cliente', 'proveedor'])
 export const AdjustmentReasonEnum = z.enum(['reconciliation', 'correction', 'other'])
 export type AdjustmentReason = z.infer<typeof AdjustmentReasonEnum>
@@ -11,16 +11,16 @@ export const DocumentTypeEnum = z.enum(['invoice', 'receipt', 'ticket', 'other']
 export const FundOwnerEnum = z.enum(['company', 'client_advance'])
 
 /** Medios de cobro/pago — motor SQL `operation_components` */
-export const OperationComponentTypeEnum = z.enum([
+export const MovementComponentTypeEnum = z.enum([
   'operative_cash',
   'operative_bank',
   'client_receivable',
   'supplier_payable',
 ])
 
-export const operationComponentSchema = z
+export const movementComponentSchema = z
   .object({
-    componentType: OperationComponentTypeEnum,
+    componentType: MovementComponentTypeEnum,
     accountId: z.string().uuid().optional(),
     contactId: z.string().uuid().optional(),
     amount: z.number().positive(),
@@ -44,11 +44,11 @@ export const operationComponentSchema = z
     }
   })
 
-export type OperationComponentRow = z.infer<typeof operationComponentSchema>
+export type MovementComponentRow = z.infer<typeof movementComponentSchema>
 
 /** Payload snake_case para RPC `set_operation_components` */
-export function mapOperationComponentsToRpcJson(
-  rows: OperationComponentRow[],
+export function mapMovementComponentsToRpcJson(
+  rows: MovementComponentRow[],
   defaultCurrency: string
 ): Record<string, unknown>[] {
   return rows.map((c) => ({
@@ -63,15 +63,15 @@ export function mapOperationComponentsToRpcJson(
 /** Texto guardado cuando en transferencia no hay memo o es más corto que el mínimo general. */
 export const DEFAULT_TRANSFER_DESCRIPTION = 'Transferencia entre cuentas'
 
-const baseOperationSchemaObject = z.object({
-  type: OperationTypeEnum,
+const baseMovementSchemaObject = z.object({
+  type: MovementTypeEnum,
   date: z.coerce.date(),
   amount: z.number().positive('El monto debe ser mayor a 0'),
   currency: z.string().default('ARS'),
   description: z
     .string()
     .max(500, 'La descripción no puede exceder 500 caracteres'),
-  method: OperationMethodEnum.default('cash'),
+  method: MovementMethodEnum.default('cash'),
   accountId: z.string().uuid().optional(),
   categoryId: z.string().uuid().optional(),
   contactId: z.string().uuid().optional(),
@@ -84,10 +84,10 @@ const baseOperationSchemaObject = z.object({
   attachmentUrl: z.string().url().optional().or(z.literal('')),
   projectId: z.string().uuid().optional(),
   fundOwner: FundOwnerEnum.default('company'),
-  operationComponents: z.array(operationComponentSchema).optional(),
+  movementComponents: z.array(movementComponentSchema).optional(),
 })
 
-export const createOperationSchema = baseOperationSchemaObject
+export const createMovementSchema = baseMovementSchemaObject
   .superRefine((data, ctx) => {
   const descTrim = (data.description ?? '').trim()
   if (data.type !== 'transfer' && descTrim.length < 3) {
@@ -116,11 +116,11 @@ export const createOperationSchema = baseOperationSchemaObject
         path: ['categoryId'],
       })
     }
-    if (!data.operationComponents?.length) {
+    if (!data.movementComponents?.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'El desglose de medios de pago es obligatorio para ingresos y egresos',
-        path: ['operationComponents'],
+        path: ['movementComponents'],
       })
     }
   }
@@ -166,30 +166,30 @@ export const createOperationSchema = baseOperationSchemaObject
     }
   }
 }).superRefine((data, ctx) => {
-  if (!data.operationComponents?.length) return
+  if (!data.movementComponents?.length) return
 
-  const sum = data.operationComponents.reduce((acc, c) => acc + c.amount, 0)
+  const sum = data.movementComponents.reduce((acc, c) => acc + c.amount, 0)
   if (Math.round(sum * 100) !== Math.round(data.amount * 100)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'La suma de medios de pago debe ser igual al monto total de la operación',
-      path: ['operationComponents'],
+      message: 'La suma de medios de pago debe ser igual al monto total del movimiento',
+      path: ['movementComponents'],
     })
   }
 
-  data.operationComponents.forEach((c, i) => {
+  data.movementComponents.forEach((c, i) => {
     if (data.type === 'income' && c.componentType === 'supplier_payable') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'En ingresos no se usa cuenta corriente de proveedor',
-        path: ['operationComponents', i, 'componentType'],
+        path: ['movementComponents', i, 'componentType'],
       })
     }
     if (data.type === 'expense' && c.componentType === 'client_receivable') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'En egresos no se usa cuenta corriente de cliente',
-        path: ['operationComponents', i, 'componentType'],
+        path: ['movementComponents', i, 'componentType'],
       })
     }
   })
@@ -205,7 +205,7 @@ export const createOperationSchema = baseOperationSchemaObject
     return { ...data, description: data.description.trim() }
   })
 
-export const updateOperationSchema = baseOperationSchemaObject
+export const updateMovementSchema = baseMovementSchemaObject
   .partial()
   .extend({
     id: z.string().uuid(),
@@ -231,15 +231,15 @@ export const updateOperationSchema = baseOperationSchemaObject
     }
   })
   .superRefine((data, ctx) => {
-    if (!data.operationComponents?.length) return
+    if (!data.movementComponents?.length) return
     const amt = data.amount
     if (amt === undefined) return
-    const sum = data.operationComponents.reduce((acc, c) => acc + c.amount, 0)
+    const sum = data.movementComponents.reduce((acc, c) => acc + c.amount, 0)
     if (Math.round(sum * 100) !== Math.round(amt * 100)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'La suma de medios de pago debe ser igual al monto total',
-        path: ['operationComponents'],
+        path: ['movementComponents'],
       })
     }
   })
@@ -257,9 +257,9 @@ export const updateOperationSchema = baseOperationSchemaObject
     return data
   })
 
-export const operationFiltersSchema = z.object({
-  status: z.array(OperationStatusEnum).optional(),
-  type: z.array(OperationTypeEnum).optional(),
+export const movementFiltersSchema = z.object({
+  status: z.array(MovementStatusEnum).optional(),
+  type: z.array(MovementTypeEnum).optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   accountId: z.string().uuid().optional(),
@@ -269,18 +269,31 @@ export const operationFiltersSchema = z.object({
   pageSize: z.number().default(50),
 })
 
-export const updateOperationStatusSchema = z.object({
-  id: z.string().uuid(),
-  status: OperationStatusEnum,
-  reason: z.string().optional(),
-})
+export const updateMovementStatusSchema = z
+  .object({
+    id: z.string().uuid(),
+    status: MovementStatusEnum,
+    reason: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.status === 'rejected' || data.status === 'cancelled') {
+      const trimmed = (data.reason ?? '').trim()
+      if (!trimmed) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'El motivo es obligatorio',
+          path: ['reason'],
+        })
+      }
+    }
+  })
 
-export type CreateOperationInput = z.infer<typeof createOperationSchema>
-export type UpdateOperationInput = z.infer<typeof updateOperationSchema>
-export type OperationFilters = z.infer<typeof operationFiltersSchema>
-export type UpdateOperationStatusInput = z.infer<typeof updateOperationStatusSchema>
-export type OperationType = z.infer<typeof OperationTypeEnum>
-export type OperationStatus = z.infer<typeof OperationStatusEnum>
-export type OperationMethod = z.infer<typeof OperationMethodEnum>
+export type CreateMovementInput = z.infer<typeof createMovementSchema>
+export type UpdateMovementInput = z.infer<typeof updateMovementSchema>
+export type MovementFilters = z.infer<typeof movementFiltersSchema>
+export type UpdateMovementStatusInput = z.infer<typeof updateMovementStatusSchema>
+export type MovementType = z.infer<typeof MovementTypeEnum>
+export type MovementStatus = z.infer<typeof MovementStatusEnum>
+export type MovementMethod = z.infer<typeof MovementMethodEnum>
 export type FundOwner = z.infer<typeof FundOwnerEnum>
-export type OperationComponentType = z.infer<typeof OperationComponentTypeEnum>
+export type MovementComponentType = z.infer<typeof MovementComponentTypeEnum>

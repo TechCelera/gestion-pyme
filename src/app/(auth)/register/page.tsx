@@ -67,7 +67,7 @@ export default function RegisterPage() {
           toast.success('Cuenta creada. Revisa tu email para confirmar.')
         }
       }
-    } catch (error) {
+    } catch {
       toast.error('Error al crear cuenta')
     } finally {
       setLoading(false)
