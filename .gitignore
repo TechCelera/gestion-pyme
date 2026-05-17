@@ -1,4 +1,6 @@
 node_modules/
+package-lock.json
+yarn.lock
 dist/
 .next/
 .env
@@ -10,6 +12,9 @@ dist/
 supabase/.temp/
 supabase/config.toml
 tmp/
+
+# Artefactos JS compilados por error dentro de src/
+src/**/*.js
 
 # Sensitive setup files
 setup-database.sql

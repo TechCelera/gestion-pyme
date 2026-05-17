@@ -79,7 +79,7 @@
 |------|--------------|--------|-------------------|
 | 6.1 | Dependencias entre módulos razonables. | **PARCIAL** | Sin auditoría de ciclos; estructura típica app router + actions. |
 | 6.2 | Tipos compartidos validación ↔ acciones. | **PARCIAL** | `validations/movement.ts` + tipos en actions; mantener al refactorizar. |
-| 6.3 | Tests críticos en verde. | **OK** | `npm test` (Vitest): **122 tests, 13 archivos** pasando (2026-05-14). |
+| 6.3 | Tests críticos en verde. | **OK** | `pnpm test` (Vitest): **122 tests, 13 archivos** pasando (2026-05-14). |
 | 6.4 | Migraciones ordenadas y comentadas. | **OK** | Carpeta `supabase/migrations` con prefijos de fecha; comentarios en SQL legacy. |
 | 6.5 | Reglas de aprobación no solo en cliente. | **PARCIAL** | RLS fuerte en Supabase; falta cierre de brechas §14 en capa app si se exige duplicar validación defensiva. |
 

@@ -25,6 +25,28 @@ El contexto de negocio y arquitectura vigente esta en:
   - y se exige aprobacion adicional antes de aprobar (flujo financiero).
 - Terminologia de producto: **Movimiento** / **Movimientos** (codigo: `Movement`, `movements.ts`).
 
+## Requisitos y paquetes
+
+Este repo usa **[pnpm](https://pnpm.io)** (no npm ni yarn). Lockfile: `pnpm-lock.yaml`.
+
+**Arch / CachyOS (recomendado):** instalá pnpm del sistema; **no hace falta `corepack`** (muchas builds de Node en Arch no lo incluyen).
+
+```bash
+sudo pacman -S pnpm
+cd gestion-pyme
+pnpm install
+pnpm run dev
+```
+
+Si tenés `corepack` (probá `which corepack`), podés fijar la versión del repo:
+
+```bash
+corepack enable
+corepack prepare pnpm@10.12.4 --activate
+```
+
+`package.json` incluye `preinstall` con `only-allow pnpm` para evitar `npm install` accidental. Con `pnpm` del sistema (p. ej. 10.33) funciona igual que la versión pinneada en `packageManager`.
+
 ## Stack
 
 - Next.js 16
@@ -39,24 +61,24 @@ El contexto de negocio y arquitectura vigente esta en:
 
 | Comando | Que hace |
 |---------|----------|
-| `npm run verify` | ESLint + Vitest + `next build` |
-| `npm run test:e2e` | E2E asumiendo **`npm run dev` en 3000** (no arranca otro servidor; evita EADDRINUSE y el lock de Next). |
-| `npm run test:e2e:ci` | E2E levantando el dev con Playwright (CI o máquina sin servidor; **no** lo uses si ya tenés `next dev` en el mismo repo). |
-| `npm run verify:all` | `verify` + `test:e2e:ci` (CI / sin dev previo). |
-| `npm run verify:all:local` | `verify` + `test:e2e` (con `next dev` ya en marcha en el puerto de `PLAYWRIGHT_BASE_URL`, por defecto **127.0.0.1:3000**). |
-| `npm run playwright:install` | **Rápido (recomendado):** solo **chromium-headless-shell** + ffmpeg — alcanza para `test:e2e` en headless (sin el ZIP gigante de Chromium completo). |
-| `npm run playwright:install:full` | Chromium completo (~168 MiB + unzip largo). Usalo si vas a `test:e2e:ui` / headed o te falla algo raro. |
+| `pnpm run verify` | ESLint + Vitest + `next build` |
+| `pnpm run test:e2e` | E2E asumiendo **`pnpm run dev` en 3000** (no arranca otro servidor; evita EADDRINUSE y el lock de Next). |
+| `pnpm run test:e2e:ci` | E2E levantando el dev con Playwright (CI o máquina sin servidor; **no** lo uses si ya tenés `next dev` en el mismo repo). |
+| `pnpm run verify:all` | `verify` + `test:e2e:ci` (CI / sin dev previo). |
+| `pnpm run verify:all:local` | `verify` + `test:e2e` (con `next dev` ya en marcha en el puerto de `PLAYWRIGHT_BASE_URL`, por defecto **127.0.0.1:3000**). |
+| `pnpm run playwright:install` | **Rápido (recomendado):** solo **chromium-headless-shell** + ffmpeg — alcanza para `test:e2e` en headless (sin el ZIP gigante de Chromium completo). |
+| `pnpm run playwright:install:full` | Chromium completo (~168 MiB + unzip largo). Usalo si vas a `test:e2e:ui` / headed o te falla algo raro. |
 
 ## Scripts
 
 ```bash
-npm run dev
-npm run build
-npm run start
-npm run lint
-npm run test:run
-npm run verify
-npm run test:e2e
+pnpm run dev
+pnpm run build
+pnpm run start
+pnpm run lint
+pnpm run test:run
+pnpm run verify
+pnpm run test:e2e
 ```
 
 ## Estructura relevante

@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, ChevronDown, MoreHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -12,12 +11,27 @@ import { MovementTable } from '@/components/movements/movement-table'
 import { MovementForm } from '@/components/movements/movement-form'
 import { useMovementStore } from '@/stores/movement-store'
 import { useAuthStore } from '@/stores/auth-store'
-import type { CreateMovementInput } from '@/lib/validations/movement'
+import type { CreateMovementInput, MovementType } from '@/lib/validations/movement'
+import {
+  OPERACIONES_FLOW_TABS,
+  operacionesFlowHint,
+  operacionesFlowToTypeFilter,
+  parseOperacionesFlow,
+  type OperacionesFlowKey,
+} from '@/lib/movements/operaciones-flow'
+import { cn } from '@/lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export default function OperacionesPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [formMode, setFormMode] = useState<MovementType | null>(null)
 
   const {
     movements,
@@ -32,18 +46,29 @@ export default function OperacionesPage() {
     setFilters,
   } = useMovementStore()
 
-  const flujo = searchParams.get('flujo')
+  const flowKey = parseOperacionesFlow(searchParams.get('flujo'))
+
+  const setFlowFilter = useCallback(
+    (next: OperacionesFlowKey) => {
+      if (next === 'all') router.replace('/operaciones', { scroll: false })
+      else router.replace(`/operaciones?flujo=${next}`, { scroll: false })
+    },
+    [router]
+  )
 
   useEffect(() => {
-    if (flujo === 'ventas') setFilters({ type: ['income'] })
-    else if (flujo === 'compras') setFilters({ type: ['expense'] })
-    else setFilters({ type: undefined })
+    setFilters({ type: operacionesFlowToTypeFilter(flowKey) })
     void useMovementStore.getState().fetchMovements()
-  }, [flujo, setFilters])
+  }, [flowKey, setFilters])
 
-  const handleOpenModal = useCallback(() => {
+  const openForm = useCallback((mode: MovementType) => {
+    setFormMode(mode)
     setIsModalOpen(true)
   }, [])
+
+  const handleOpenModal = useCallback(() => {
+    openForm('income')
+  }, [openForm])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -60,15 +85,9 @@ export default function OperacionesPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleOpenModal])
 
-  const filterHint =
-    flujo === 'ventas'
-      ? 'Mostrando ventas y cobros (ingresos).'
-      : flujo === 'compras'
-        ? 'Mostrando compras y pagos (egresos).'
-        : null
-
   const handleCloseModal = () => {
     setIsModalOpen(false)
+    setFormMode(null)
   }
 
   const handleSubmit = async (data: CreateMovementInput, asDraft: boolean) => {
@@ -81,7 +100,8 @@ export default function OperacionesPage() {
       )
       handleCloseModal()
     } else {
-      toast.error('Error al crear el movimiento')
+      const msg = useMovementStore.getState().error
+      toast.error(msg ?? 'Error al crear el movimiento')
     }
   }
 
@@ -181,30 +201,82 @@ export default function OperacionesPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Movimientos</h1>
           <p className="text-muted-foreground">
-            Gestiona los ingresos, egresos y transferencias de tu empresa
+            Registrá ingresos y egresos de tu empresa
           </p>
         </div>
-        <Button
-          onClick={handleOpenModal}
-          className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo movimiento
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => openForm('income')}
+            className="bg-green-600 hover:bg-green-600/90"
+          >
+            <ArrowDownLeft className="mr-2 h-4 w-4" />
+            Registrar ingreso
+          </Button>
+          <Button
+            onClick={() => openForm('expense')}
+            variant="outline"
+            className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
+          >
+            <ArrowUpRight className="mr-2 h-4 w-4" />
+            Registrar egreso
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  <MoreHorizontal className="mr-1 h-4 w-4" />
+                  Otras operaciones
+                  <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openForm('transfer')}>
+                Transferencia entre cuentas
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openForm('adjustment')}>
+                Ajuste de saldo
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      {filterHint ? (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground -mt-2">
-          <span>{filterHint}</span>
-          <Button variant="link" className="h-auto p-0 text-primary" asChild>
-            <Link href="/operaciones">Ver todos</Link>
-          </Button>
+      <div className="rounded-xl border bg-muted/40 p-1.5 shadow-sm">
+        <p className="px-2 pb-1.5 text-xs text-muted-foreground sm:hidden">
+          Elegí qué querés ver
+        </p>
+        <div
+          role="tablist"
+          aria-label="Filtro de movimientos"
+          className="flex flex-col gap-1 sm:flex-row sm:items-stretch"
+        >
+          {OPERACIONES_FLOW_TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={flowKey === key}
+              onClick={() => setFlowFilter(key)}
+              className={cn(
+                'flex-1 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors sm:text-center',
+                flowKey === key
+                  ? 'bg-background text-foreground shadow-sm ring-1 ring-border'
+                  : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      ) : null}
+        <p className="hidden px-2 pt-1.5 text-xs text-muted-foreground sm:block">
+          {operacionesFlowHint(flowKey)}
+        </p>
+      </div>
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -295,6 +367,7 @@ export default function OperacionesPage() {
         onSubmit={handleSubmit}
         movement={null}
         isLoading={isLoading}
+        fixedType={formMode}
       />
     </div>
   )

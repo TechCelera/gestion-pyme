@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -12,8 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  TrendingUp,
-  Receipt,
 } from 'lucide-react'
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
@@ -29,17 +27,6 @@ type NavLink = {
   label: string
   icon: LucideIcon
   badge?: number
-}
-
-function isOperacionesHrefActive(pathname: string, searchParams: URLSearchParams, href: string): boolean {
-  if (!href.startsWith('/operaciones')) return false
-  if (pathname !== '/operaciones') return false
-  const want = new URL(href, 'http://local').searchParams.get('flujo')
-  const cur = searchParams.get('flujo')
-  if (want === null && href === '/operaciones') {
-    return cur !== 'ventas' && cur !== 'compras'
-  }
-  return cur === want
 }
 
 function NavRow({
@@ -79,7 +66,6 @@ function NavRow({
 export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const router = useRouter()
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const clearUser = useAuthStore((state) => state.clearUser)
@@ -106,16 +92,12 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
     }
   }
 
-  const cajaLinks: NavLink[] = [
-    { href: '/operaciones?flujo=ventas', label: 'Ventas y cobros', icon: TrendingUp },
-    { href: '/operaciones?flujo=compras', label: 'Compras y pagos', icon: Receipt },
-    {
-      href: '/operaciones',
-      label: 'Todos los movimientos',
-      icon: ArrowLeftRight,
-      badge: pendingCount,
-    },
-  ]
+  const movimientosNav: NavLink = {
+    href: '/operaciones',
+    label: 'Movimientos',
+    icon: ArrowLeftRight,
+    badge: pendingCount,
+  }
 
   const gestionLinks: NavLink[] = [
     { href: '/cuentas', label: 'Mis cuentas', icon: Wallet },
@@ -167,19 +149,13 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
           </Link>
         </div>
 
-        {!collapsed && (
-          <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Flujo de caja
-          </p>
-        )}
-        {cajaLinks.map((item) => (
+        <div className="px-3 pt-1">
           <NavRow
-            key={item.href}
-            item={item}
+            item={movimientosNav}
             collapsed={collapsed}
-            active={isOperacionesHrefActive(pathname, searchParams, item.href)}
+            active={pathname === '/operaciones'}
           />
-        ))}
+        </div>
 
         {!collapsed && (
           <p className="px-4 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

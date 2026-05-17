@@ -15,6 +15,7 @@ import {
   deleteMovement as deleteMovementRemote,
 } from '@/lib/actions/movements'
 import { DEMO_MOVEMENTS } from '@/lib/demo-data'
+import { createDemoMovementFromInput } from '@/lib/demo/create-demo-movement'
 import { useAuthStore } from './auth-store'
 
 interface Pagination {
@@ -25,6 +26,8 @@ interface Pagination {
 
 interface MovementStoreState {
   movements: Movement[]
+  /** Copia mutable de movimientos demo (sesión invitado). */
+  demoMovements: Movement[] | null
   filters: MovementFilters
   pagination: Pagination
   isLoading: boolean
@@ -56,6 +59,7 @@ export const useMovementStore = create<MovementStoreState>()(
   devtools(
     (set, get) => ({
       movements: [],
+      demoMovements: null,
       filters: defaultFilters,
       pagination: defaultPagination,
       isLoading: false,
@@ -88,7 +92,8 @@ export const useMovementStore = create<MovementStoreState>()(
 
           if (isDemoMode) {
             const { filters, pagination } = get()
-            let filtered = [...DEMO_MOVEMENTS]
+            const source = get().demoMovements ?? DEMO_MOVEMENTS
+            let filtered = [...source]
 
             if (filters.status && filters.status.length > 0) {
               filtered = filtered.filter((o) => filters.status?.includes(o.status))
@@ -155,8 +160,25 @@ export const useMovementStore = create<MovementStoreState>()(
           const isDemoMode = useAuthStore.getState().isDemoMode
 
           if (isDemoMode) {
-            await new Promise((resolve) => setTimeout(resolve, 500))
-            set({ isLoading: false })
+            await new Promise((resolve) => setTimeout(resolve, 400))
+            const status = asDraft ? 'draft' : 'pending'
+            const created = createDemoMovementFromInput(data, status)
+            const base = get().demoMovements ?? [...DEMO_MOVEMENTS]
+            const demoMovements = [created, ...base]
+            const { filters, pagination } = get()
+            let filtered = [...demoMovements]
+            if (filters.type?.length) {
+              filtered = filtered.filter((o) => filters.type?.includes(o.type))
+            }
+            const start = (pagination.page - 1) * pagination.pageSize
+            const pageRows = filtered.slice(start, start + pagination.pageSize)
+            set({
+              demoMovements,
+              movements: pageRows,
+              pagination: { ...pagination, total: filtered.length },
+              isLoading: false,
+              error: null,
+            })
             return true
           }
 
@@ -235,7 +257,13 @@ export const useMovementStore = create<MovementStoreState>()(
           const isDemoMode = useAuthStore.getState().isDemoMode
 
           if (isDemoMode) {
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            await new Promise((resolve) => setTimeout(resolve, 300))
+            const base = get().demoMovements ?? [...DEMO_MOVEMENTS]
+            const demoMovements = base.map((m) =>
+              m.id === id ? { ...m, status } : m
+            )
+            set({ demoMovements })
+            await get().fetchMovements()
             set({ isLoading: false })
             return true
           }
@@ -268,7 +296,11 @@ export const useMovementStore = create<MovementStoreState>()(
           const isDemoMode = useAuthStore.getState().isDemoMode
 
           if (isDemoMode) {
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            await new Promise((resolve) => setTimeout(resolve, 300))
+            const base = get().demoMovements ?? [...DEMO_MOVEMENTS]
+            const demoMovements = base.filter((m) => m.id !== id)
+            set({ demoMovements })
+            await get().fetchMovements()
             set({ isLoading: false })
             return true
           }

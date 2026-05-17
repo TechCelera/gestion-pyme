@@ -1,12 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { 
-  ArrowRightLeft, 
   Wallet, 
-  CreditCard, 
   Settings, 
   Calendar,
   DollarSign,
@@ -14,8 +12,6 @@ import {
   Tag,
   Loader2,
   ArrowRight,
-  Plus,
-  Trash2,
 } from 'lucide-react'
 
 import {
@@ -62,11 +58,28 @@ import type {
   CreateMovementInput,
   MovementType,
   MovementMethod,
-  MovementComponentType,
   MovementComponentRow,
   AdjustmentReason,
 } from '@/lib/validations/movement'
 import { toast } from 'sonner'
+import {
+  defaultComponentTypeForAccount,
+  resolveMovementDescription,
+} from '@/lib/movements/form-defaults'
+import {
+  MOVEMENT_CURRENCIES,
+  MOVEMENT_FORM_COPY,
+  MOVEMENT_METHODS,
+  MOVEMENT_TYPE_OPTIONS,
+} from '@/components/movements/movement-form.constants'
+import {
+  type ComponentLineDraft,
+  componentsSumMatchesTotal,
+  newComponentLine,
+} from '@/components/movements/movement-form.types'
+import { MovementGuidedFields } from '@/components/movements/movement-guided-fields'
+import { MovementComponentBreakdown } from '@/components/movements/movement-component-breakdown'
+import { flattenProjects } from '@/lib/movements/flatten-projects'
 
 interface MovementFormProps {
   isOpen: boolean
@@ -74,47 +87,9 @@ interface MovementFormProps {
   onSubmit: (data: CreateMovementInput, asDraft: boolean) => void
   movement?: Movement | null
   isLoading?: boolean
+  /** Al crear: fija el tipo y oculta el selector (ingreso/egreso/transferencia/ajuste). */
+  fixedType?: MovementType | null
 }
-
-type ComponentLineDraft = {
-  localId: string
-  componentType: MovementComponentType
-  accountId: string
-  contactId: string
-  amount: string
-}
-
-function newComponentLine(partial?: Partial<ComponentLineDraft>): ComponentLineDraft {
-  return {
-    localId: partial?.localId ?? crypto.randomUUID(),
-    componentType: partial?.componentType ?? 'operative_cash',
-    accountId: partial?.accountId ?? '',
-    contactId: partial?.contactId ?? '',
-    amount: partial?.amount ?? '',
-  }
-}
-
-const movementTypeOptions: { value: MovementType; label: string; icon: React.ElementType; color: string }[] = [
-  { value: 'income', label: 'Ingreso', icon: Wallet, color: 'bg-green-100 text-green-700 border-green-200' },
-  { value: 'expense', label: 'Egreso', icon: CreditCard, color: 'bg-red-100 text-red-700 border-red-200' },
-  { value: 'transfer', label: 'Transferencia', icon: ArrowRightLeft, color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  { value: 'adjustment', label: 'Ajuste', icon: Settings, color: 'bg-orange-100 text-orange-700 border-orange-200' },
-]
-
-const methods: { value: MovementMethod; label: string }[] = [
-  { value: 'cash', label: 'Efectivo' },
-  { value: 'transfer', label: 'Transferencia' },
-  { value: 'card', label: 'Tarjeta' },
-  { value: 'digital', label: 'Billetera Digital' },
-  { value: 'other', label: 'Otro' },
-]
-
-const currencies = [
-  { value: 'ARS', label: 'ARS ($)', flag: '🇦🇷' },
-  { value: 'USD', label: 'USD ($)', flag: '🇺🇸' },
-  { value: 'COP', label: 'COP ($)', flag: '🇨🇴' },
-  { value: 'EUR', label: 'EUR (€)', flag: '🇪🇺' },
-]
 
 export function MovementForm({
   isOpen,
@@ -122,7 +97,9 @@ export function MovementForm({
   onSubmit,
   movement,
   isLoading,
+  fixedType = null,
 }: MovementFormProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [type, setType] = useState<MovementType>('income')
   const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
   const [accountId, setAccountId] = useState('')
@@ -154,10 +131,15 @@ export function MovementForm({
 
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const isEditing = !!movement
-  const selectedType = movementTypeOptions.find((t) => t.value === type)
+  const selectedType = MOVEMENT_TYPE_OPTIONS.find((t) => t.value === type)
+  const isGuidedCreate =
+    !isEditing &&
+    !!fixedType &&
+    (fixedType === 'income' || fixedType === 'expense')
+  const formCopy = fixedType ? MOVEMENT_FORM_COPY[fixedType] : null
 
-  const resetForm = useCallback(() => {
-    setType('income')
+  const resetForm = useCallback((nextType: MovementType = 'income') => {
+    setType(nextType)
     setDate(format(new Date(), 'yyyy-MM-dd'))
     setAccountId('')
     setCategoryId('')
@@ -172,6 +154,7 @@ export function MovementForm({
     setProjectId('')
     setMovementScope('general')
     setComponentLines([newComponentLine()])
+    setShowAdvanced(false)
   }, [])
 
   // Fetch accounts and categories on open
@@ -219,6 +202,16 @@ export function MovementForm({
     })
   }, [isOpen, loadFormData])
 
+  useEffect(() => {
+    if (!isOpen || !fixedType || movement) return
+    queueMicrotask(() => {
+      setType(fixedType)
+      if (fixedType === 'income' || fixedType === 'expense') {
+        setShowAdvanced(false)
+      }
+    })
+  }, [isOpen, fixedType, movement])
+
   // Sync form when the movement being edited changes
   useEffect(() => {
     if (!isOpen) return
@@ -236,10 +229,10 @@ export function MovementForm({
         setProjectId(movement.projectId ?? '')
         setMovementScope(movement.projectId ? 'project' : 'general')
       } else {
-        resetForm()
+        resetForm(fixedType ?? 'income')
       }
     })
-  }, [movement, isOpen, resetForm])
+  }, [movement, isOpen, resetForm, fixedType])
 
   useEffect(() => {
     if (!isOpen || !movement || isDemoMode) return
@@ -264,10 +257,28 @@ export function MovementForm({
     }
   }, [isOpen, movement, isDemoMode])
 
+  const effectiveComponentLines = useMemo((): ComponentLineDraft[] => {
+    if (
+      showAdvanced ||
+      isEditing ||
+      (type !== 'income' && type !== 'expense')
+    ) {
+      return componentLines
+    }
+    const account = accounts.find((a) => a.id === accountId)
+    return [
+      newComponentLine({
+        componentType: defaultComponentTypeForAccount(account?.type),
+        accountId,
+        amount,
+      }),
+    ]
+  }, [showAdvanced, isEditing, type, accountId, amount, accounts, componentLines])
+
   const buildMovementComponents = (): MovementComponentRow[] => {
     const total = parseFloat(amount)
     const rows: MovementComponentRow[] = []
-    for (const line of componentLines) {
+    for (const line of effectiveComponentLines) {
       const amt = parseFloat(line.amount)
       if (!line.amount.trim() || Number.isNaN(amt) || amt <= 0) continue
       rows.push({
@@ -294,7 +305,30 @@ export function MovementForm({
   const handleSubmit = (asDraft: boolean) => {
     const parsedAmount = parseFloat(amount)
     if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Indica un monto válido')
+      toast.error('Indicá un monto mayor a cero')
+      return
+    }
+
+    if (type === 'income' || type === 'expense') {
+      if (!accountId) {
+        toast.error('Elegí la cuenta')
+        return
+      }
+      if (!categoryId) {
+        toast.error('Elegí una categoría')
+        return
+      }
+    }
+
+    const categoryName = categories.find((c) => c.id === categoryId)?.name
+    const finalDescription = resolveMovementDescription({
+      type,
+      description,
+      categoryName,
+    })
+
+    if (type !== 'transfer' && finalDescription.trim().length < 3) {
+      toast.error('Escribí una nota de al menos 3 caracteres o elegí una categoría')
       return
     }
 
@@ -302,7 +336,7 @@ export function MovementForm({
     if (type === 'income' || type === 'expense') {
       const built = buildMovementComponents()
       if (!built.length) {
-        toast.error('El desglose de medios de pago debe sumar exactamente el monto total')
+        toast.error('Revisá el monto y la cuenta: el desglose debe coincidir con el total')
         return
       }
       movementComponents = built
@@ -313,7 +347,7 @@ export function MovementForm({
       date: new Date(date),
       amount: parsedAmount,
       currency,
-      description,
+      description: finalDescription,
       method,
       ...(type === 'income' || type === 'expense'
         ? { accountId, categoryId: categoryId || undefined, movementComponents }
@@ -330,12 +364,13 @@ export function MovementForm({
 
     onSubmit(data, asDraft)
     if (!isEditing) {
-      resetForm()
+      resetForm(fixedType ?? 'income')
     }
   }
 
   const handleClose = () => {
-    resetForm()
+    resetForm(fixedType ?? 'income')
+    setShowAdvanced(false)
     onClose()
   }
 
@@ -352,7 +387,7 @@ export function MovementForm({
   })
 
   // Resolve display labels from current values (base-ui shows raw value, not label)
-  const methodLabel = methods.find(m => m.value === method)?.label ?? ''
+  const methodLabel = MOVEMENT_METHODS.find(m => m.value === method)?.label ?? ''
   const accountLabel = accountId ? (() => {
     const a = accounts.find(acc => acc.id === accountId)
     return a ? `${a.name} (${a.currency})` : ''
@@ -377,43 +412,18 @@ export function MovementForm({
   const adjustmentReasonLabel = adjustmentReason ? adjustmentReasonLabels[adjustmentReason] ?? adjustmentReason : ''
 
   const TypeIcon = selectedType?.icon || Wallet
-  const flattenProjects = (items: Project[], depth = 0): Array<{ id: string; name: string }> => {
-    return items.flatMap((item) => {
-      const prefix = depth > 0 ? `${'— '.repeat(depth)}` : ''
-      const current = { id: item.id, name: `${prefix}${item.name}` }
-      const children = item.children ? flattenProjects(item.children, depth + 1) : []
-      return [current, ...children]
-    })
-  }
   const flatProjects = flattenProjects(projects)
   const projectLabel = projectId ? flatProjects.find((p) => p.id === projectId)?.name ?? '' : ''
 
-  const incomeCompTypes: { value: MovementComponentType; label: string }[] = [
-    { value: 'operative_cash', label: 'Efectivo (caja)' },
-    { value: 'operative_bank', label: 'Banco / cuenta' },
-    { value: 'client_receivable', label: 'Cliente (cuenta corriente)' },
-  ]
-  const expenseCompTypes: { value: MovementComponentType; label: string }[] = [
-    { value: 'operative_cash', label: 'Efectivo (caja)' },
-    { value: 'operative_bank', label: 'Banco / cuenta' },
-    { value: 'supplier_payable', label: 'Proveedor (cuenta corriente)' },
-  ]
-  const activeCompTypes = type === 'income' ? incomeCompTypes : expenseCompTypes
   const filteredContacts =
     type === 'income'
       ? contacts.filter((c) => c.kind === 'client' || c.kind === 'both')
       : contacts.filter((c) => c.kind === 'provider' || c.kind === 'both')
 
-  const componentsSum = componentLines.reduce((acc, line) => {
-    const v = parseFloat(line.amount)
-    return acc + (Number.isNaN(v) ? 0 : v)
-  }, 0)
-  const parsedTotalAmt = parseFloat(amount)
   const sumMatchesComponents =
     type !== 'income' && type !== 'expense'
       ? true
-      : !Number.isNaN(parsedTotalAmt) &&
-        Math.round(componentsSum * 100) === Math.round(parsedTotalAmt * 100)
+      : componentsSumMatchesTotal(effectiveComponentLines, amount)
 
   function defaultQuickContactKind(): ContactRow['kind'] {
     if (type === 'income') return 'client'
@@ -475,24 +485,26 @@ export function MovementForm({
             </div>
             <div>
               <SheetTitle className="text-lg">
-                {isEditing ? 'Editar movimiento' : 'Nuevo movimiento'}
+                {isEditing
+                  ? 'Editar movimiento'
+                  : formCopy?.title ?? 'Nuevo movimiento'}
               </SheetTitle>
               <SheetDescription>
-                {isEditing 
-                  ? 'Modifica los datos del movimiento'
-                  : 'Completa los datos para registrar un nuevo movimiento'}
+                {isEditing
+                  ? 'Modificá los datos del movimiento'
+                  : formCopy?.subtitle ?? 'Completá los datos para registrar un movimiento'}
               </SheetDescription>
             </div>
           </div>
           
           {/* Type Selector - Pills */}
-          {!isEditing && (
+          {!isEditing && !fixedType && (
             <div className="pt-2">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Tipo de movimiento
               </p>
               <div className="flex flex-wrap gap-2">
-                {movementTypeOptions.map((t) => {
+                {MOVEMENT_TYPE_OPTIONS.map((t) => {
                 const Icon = t.icon
                 const isSelected = type === t.value
                 return (
@@ -526,8 +538,47 @@ export function MovementForm({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="space-y-6">
-            
-            {/* Section: Basic Info */}
+            {isGuidedCreate ? (
+              <MovementGuidedFields
+                type={type as 'income' | 'expense'}
+                amount={amount}
+                onAmountChange={setAmount}
+                currency={currency}
+                onCurrencyChange={setCurrency}
+                date={date}
+                onDateChange={setDate}
+                accountId={accountId}
+                onAccountIdChange={setAccountId}
+                categoryId={categoryId}
+                onCategoryIdChange={setCategoryId}
+                description={description}
+                onDescriptionChange={setDescription}
+                movementScope={movementScope}
+                onMovementScopeChange={setMovementScope}
+                fundOwner={fundOwner}
+                onFundOwnerChange={setFundOwner}
+                projectId={projectId}
+                onProjectIdChange={setProjectId}
+                componentLines={componentLines}
+                onComponentLinesChange={setComponentLines}
+                accounts={accounts}
+                categories={filteredCategories}
+                filteredContacts={filteredContacts}
+                flatProjects={flatProjects}
+                accountLabel={accountLabel}
+                categoryLabel={categoryLabel}
+                projectLabel={projectLabel}
+                showAdvanced={showAdvanced}
+                onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+                isLoading={isLoading}
+                isLoadingData={isLoadingData}
+                isDemoMode={isDemoMode}
+                onNavigateToConfig={handleClose}
+                onQuickContact={openQuickContact}
+              />
+            ) : (
+              <>
+            {/* Formulario completo (transferencia, ajuste, edición) */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Calendar className="h-4 w-4" />
@@ -561,7 +612,7 @@ export function MovementForm({
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {methods.map((m) => (
+                        {MOVEMENT_METHODS.map((m) => (
                           <SelectItem key={m.value} value={m.value}>
                             {m.label}
                           </SelectItem>
@@ -874,7 +925,7 @@ export function MovementForm({
                     <SelectTrigger id="currency" className="w-full">
                       <SelectValue>
                         {(() => {
-                          const c = currencies.find(cur => cur.value === currency)
+                          const c = MOVEMENT_CURRENCIES.find(cur => cur.value === currency)
                           return c ? (
                             <span className="block truncate">{c.flag} {c.value}</span>
                           ) : (
@@ -884,7 +935,7 @@ export function MovementForm({
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {currencies.map((c) => (
+                      {MOVEMENT_CURRENCIES.map((c) => (
                         <SelectItem key={c.value} value={c.value}>
                           <span className="mr-2">{c.flag}</span>
                           {c.value}
@@ -899,239 +950,22 @@ export function MovementForm({
             {(type === 'income' || type === 'expense') && (
               <>
                 <Separator />
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                      <Wallet className="h-4 w-4" />
-                      <span>Desglose de cobro/pago</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8"
-                      onClick={() =>
-                        setComponentLines((prev) => [...prev, newComponentLine()])
-                      }
-                      disabled={isLoading}
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Agregar línea
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    La suma debe coincidir con el monto total ({currency}). Es obligatorio para guardar.
-                  </p>
-                  <div
-                    className={`rounded-md border px-3 py-2 text-xs font-medium ${
-                      sumMatchesComponents
-                        ? 'border-green-200 bg-green-50 text-green-800'
-                        : 'border-amber-200 bg-amber-50 text-amber-900'
-                    }`}
-                  >
-                    Suma medios:{' '}
-                    {Number.isNaN(componentsSum) ? '—' : componentsSum.toFixed(2)} {currency} · Total:{' '}
-                    {Number.isNaN(parsedTotalAmt) ? '—' : parsedTotalAmt.toFixed(2)} {currency}
-                  </div>
-
-                  <div className="space-y-4">
-                    {componentLines.map((line, idx) => {
-                      const selectedTypeLabel =
-                        activeCompTypes.find((opt) => opt.value === line.componentType)?.label ??
-                        line.componentType
-                      const selectedAccount = accounts.find((account) => account.id === line.accountId)
-                      const selectedContact = filteredContacts.find((c) => c.id === line.contactId)
-
-                      return (
-                      <div
-                        key={line.localId}
-                        className="rounded-lg border border-muted p-3 space-y-3 bg-muted/20"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Línea {idx + 1}
-                          </span>
-                          {componentLines.length > 1 ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-destructive"
-                              onClick={() =>
-                                setComponentLines((prev) =>
-                                  prev.filter((l) => l.localId !== line.localId)
-                                )
-                              }
-                              disabled={isLoading}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          ) : null}
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Tipo</Label>
-                          <Select
-                            value={line.componentType}
-                            onValueChange={(v) =>
-                              setComponentLines((prev) =>
-                                prev.map((l) =>
-                                  l.localId === line.localId
-                                    ? {
-                                        ...l,
-                                        componentType: v as MovementComponentType,
-                                        accountId:
-                                          v === 'client_receivable' || v === 'supplier_payable'
-                                            ? ''
-                                            : l.accountId,
-                                        contactId:
-                                          v === 'operative_cash' || v === 'operative_bank'
-                                            ? ''
-                                            : l.contactId,
-                                      }
-                                    : l
-                                )
-                              )
-                            }
-                            disabled={isLoading}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue>
-                                <span className="block truncate" title={selectedTypeLabel}>
-                                  {selectedTypeLabel}
-                                </span>
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {activeCompTypes.map((opt) => (
-                                <SelectItem key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {line.componentType === 'operative_cash' ||
-                        line.componentType === 'operative_bank' ? (
-                          <div className="space-y-2">
-                            <Label>Cuenta</Label>
-                            <Select
-                              value={line.accountId}
-                              onValueChange={(v) =>
-                                setComponentLines((prev) =>
-                                  prev.map((l) =>
-                                    l.localId === line.localId ? { ...l, accountId: v ?? '' } : l
-                                  )
-                                )
-                              }
-                              disabled={isLoading || isLoadingData}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue>
-                                  <span
-                                    className="block truncate"
-                                    title={
-                                      selectedAccount
-                                        ? `${selectedAccount.name} (${selectedAccount.currency})`
-                                        : 'Seleccione cuenta'
-                                    }
-                                  >
-                                    {selectedAccount
-                                      ? `${selectedAccount.name} (${selectedAccount.currency})`
-                                      : 'Seleccione cuenta'}
-                                  </span>
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {accounts.map((account) => (
-                                  <SelectItem key={account.id} value={account.id}>
-                                    {account.name} ({account.currency})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <Label>Contacto</Label>
-                              {!isDemoMode ? (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 text-xs shrink-0"
-                                  onClick={() => openQuickContact(line.localId)}
-                                >
-                                  + Nuevo
-                                </Button>
-                              ) : null}
-                            </div>
-                            <Select
-                              value={line.contactId}
-                              onValueChange={(v) =>
-                                setComponentLines((prev) =>
-                                  prev.map((l) =>
-                                    l.localId === line.localId ? { ...l, contactId: v ?? '' } : l
-                                  )
-                                )
-                              }
-                              disabled={isLoading || isLoadingData}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue>
-                                  <span
-                                    className="block truncate"
-                                    title={
-                                      selectedContact?.name ??
-                                      (filteredContacts.length
-                                        ? 'Seleccione contacto'
-                                        : 'Sin contactos - crealos en Configuracion')
-                                    }
-                                  >
-                                    {selectedContact?.name ??
-                                      (filteredContacts.length
-                                        ? 'Seleccione contacto'
-                                        : 'Sin contactos - crealos en Configuracion')}
-                                  </span>
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {filteredContacts.map((c) => (
-                                  <SelectItem key={c.id} value={c.id}>
-                                    {c.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                        <div className="space-y-2">
-                          <Label>Monto línea</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={line.amount}
-                            onChange={(e) =>
-                              setComponentLines((prev) =>
-                                prev.map((l) =>
-                                  l.localId === line.localId
-                                    ? { ...l, amount: e.target.value }
-                                    : l
-                                )
-                              )
-                            }
-                            disabled={isLoading}
-                          />
-                        </div>
-                      </div>
-                    )})}
-                  </div>
-                </div>
+                <MovementComponentBreakdown
+                  movementType={type as 'income' | 'expense'}
+                  componentLines={componentLines}
+                  onComponentLinesChange={setComponentLines}
+                  accounts={accounts}
+                  filteredContacts={filteredContacts}
+                  currency={currency}
+                  totalAmount={amount}
+                  isLoading={isLoading}
+                  isLoadingData={isLoadingData}
+                  isDemoMode={isDemoMode}
+                  onQuickContact={openQuickContact}
+                />
               </>
             )}
 
-            <Separator />
 
             {/* Section: Description */}
             <div className="space-y-4">
@@ -1148,6 +982,8 @@ export function MovementForm({
                 />
               </div>
             </div>
+              </>
+            )}
 
           </div>
         </div>
@@ -1177,11 +1013,16 @@ export function MovementForm({
             disabled={
               isLoading ||
               (!isDemoMode && accounts.length === 0) ||
-              ((type === 'income' || type === 'expense') && !sumMatchesComponents)
+              ((type === 'income' || type === 'expense') &&
+                (!accountId || !categoryId || !sumMatchesComponents))
             }
             className="bg-[#7B68EE] hover:bg-[#7B68EE]/90 w-full"
           >
-            {isLoading ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Enviar Aprobación'}
+            {isLoading
+              ? 'Guardando...'
+              : isEditing
+                ? 'Guardar cambios'
+                : formCopy?.submitLabel ?? 'Enviar a aprobación'}
           </Button>
         </SheetFooter>
       </SheetContent>

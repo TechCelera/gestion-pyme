@@ -58,10 +58,15 @@ export default function LoginPage() {
       // Modo demo local directo — sin llamar a Supabase
       // (el usuario demo no existe en Supabase y causaría error 400)
       setDemoUser()
-      // Setear cookie de demo en background (no bloquea)
-      setDemoCookie().catch(() => {})
+      // La cookie debe existir antes de /dashboard (SSR redirige a login sin ella)
+      const cookieResult = await setDemoCookie()
+      if (!cookieResult.success) {
+        toast.error(cookieResult.error ?? 'Error al activar el modo demo')
+        return
+      }
       toast.success('Modo Demo activado — Explora con datos de prueba')
-      router.push('/dashboard')
+      // Navegación completa: el SSR de /dashboard debe ver la cookie recién seteada
+      window.location.assign('/dashboard')
     } catch {
       toast.error('Error al activar el modo demo')
     } finally {

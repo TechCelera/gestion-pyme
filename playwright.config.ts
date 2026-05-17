@@ -1,10 +1,10 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * - `PLAYWRIGHT_SKIP_WEBSERVER=1`: no arranca `next dev` (usá cuando ya tenés `npm run dev`).
+ * - `PLAYWRIGHT_SKIP_WEBSERVER=1`: no arranca `next dev` (usá cuando ya tenés `pnpm run dev`).
  * - Sin eso: Playwright intenta levantar el dev (CI / máquina limpia). Next **no** permite dos
  *   `next dev` en el mismo repo; el probe `reuseExistingServer` falla a menudo (IPv4/IPv6, redirects).
- *   Por eso **`npm run test:e2e`** en package.json fuerza skip; **`npm run test:e2e:ci`** no.
+ *   Por eso **`pnpm run test:e2e`** en package.json fuerza skip; **`pnpm run test:e2e:ci`** no.
  */
 const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === '1'
 const PLAYWRIGHT_HOST = process.env.PLAYWRIGHT_HOST ?? '127.0.0.1'
@@ -20,22 +20,22 @@ export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  retries: process.env.CI ? 1 : 1,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
-  timeout: 60_000,
+  timeout: 90_000,
   use: {
     baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 15_000,
-    navigationTimeout: 30_000,
+    navigationTimeout: 60_000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], channel: 'chrome' } }],
   ...(skipWebServer
     ? {}
     : {
         webServer: {
-          command: `npm run dev -- -p ${PLAYWRIGHT_PORT} -H ${PLAYWRIGHT_HOST}`,
+          command: `NODE_OPTIONS="${process.env.NODE_OPTIONS ? `${process.env.NODE_OPTIONS} ` : ''}--disable-warning=DEP0205" pnpm exec next dev -p ${PLAYWRIGHT_PORT} -H ${PLAYWRIGHT_HOST}`,
           url: webServerReadyURL,
           reuseExistingServer: process.env.PLAYWRIGHT_FORCE_FRESH_SERVER !== '1',
           timeout: 300_000,

@@ -4,6 +4,11 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## Gestor de paquetes
+
+- Usar **pnpm** exclusivamente (`pnpm-lock.yaml`, `packageManager` en `package.json`).
+- No usar `npm install` ni `yarn`; no commitear `package-lock.json` ni `yarn.lock`.
+
 ## Fuente Unica de Reglas
 
 Este repositorio maneja una sola guia de agente: `AGENTS.md`.

@@ -4,13 +4,27 @@ import { useEffect } from 'react'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { useAuthStore } from '@/stores/auth-store'
 
+function hasDemoModeCookie(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.cookie.split(';').some((c) => c.trim() === 'demo_mode=true')
+}
+
+function syncDemoFromCookie(): void {
+  if (hasDemoModeCookie() && !useAuthStore.getState().isDemoMode) {
+    useAuthStore.getState().setDemoUser()
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((state) => state.setUser)
+  const setDemoUser = useAuthStore((state) => state.setDemoUser)
   const clearUser = useAuthStore((state) => state.clearUser)
 
   const supabase = createSafeBrowserClient()
 
   useEffect(() => {
+    syncDemoFromCookie()
+
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -22,6 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: user.user_metadata?.role || 'vendedor',
           companyId: user.user_metadata?.company_id || '',
         })
+        return
+      }
+      if (hasDemoModeCookie()) {
+        setDemoUser()
       }
     })
 
@@ -38,13 +56,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: user.user_metadata?.role || 'vendedor',
           companyId: user.user_metadata?.company_id || '',
         })
+      } else if (hasDemoModeCookie() || useAuthStore.getState().isDemoMode) {
+        setDemoUser()
       } else {
         clearUser()
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [setUser, clearUser, supabase])
+  }, [setUser, setDemoUser, clearUser, supabase])
 
   return <>{children}</>
 }
