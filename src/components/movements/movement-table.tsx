@@ -24,6 +24,8 @@ interface MovementTableProps {
   onSendToApproval: (id: string) => void
   onApprove: (id: string) => void
   onCancel: (id: string) => void
+  /** Aprobar / anular: solo administración financiera */
+  canManageFinanceActions?: boolean
   isLoading?: boolean
 }
 
@@ -43,6 +45,7 @@ export function MovementTable({
   onSendToApproval,
   onApprove,
   onCancel,
+  canManageFinanceActions = false,
   isLoading,
 }: MovementTableProps) {
   const formatCurrency = (amount: number, currency: string) => {
@@ -156,7 +159,7 @@ export function MovementTable({
                       <CircleArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                  {canApprove(movement.status) && (
+                  {canManageFinanceActions && canApprove(movement.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"
@@ -167,7 +170,7 @@ export function MovementTable({
                       <CheckCircle className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                  {canCancel(movement.status) && (
+                  {canManageFinanceActions && canCancel(movement.status) && (
                     <Button
                       variant="ghost"
                       size="icon-xs"

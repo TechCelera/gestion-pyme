@@ -18,6 +18,7 @@ import {
 import { evaluateBudgetStatus } from '@/lib/utils/budget'
 import { errorMessageForUser } from '@/lib/utils/errors'
 import { formatReportsPeriodLabel, resolveReportsPeriod, type ReportsRangeKey } from '@/lib/utils/reports-period'
+import { isFinanceApproverRole } from '@/lib/constants'
 
 // Types
 export interface Movement {
@@ -167,11 +168,6 @@ async function getCurrentUserId(): Promise<string | null> {
   }
 }
 
-/** Roles con permiso de aprobar / rechazar / anular movimientos (§14 DECISIONES + RLS). */
-function isFinanceApproverRole(role: string | null | undefined): boolean {
-  return role === 'superadmin' || role === 'admin_finanzas'
-}
-
 async function getCurrentUserRole(): Promise<string | null> {
   const userId = await getCurrentUserId()
   if (!userId) return null
@@ -319,7 +315,7 @@ export async function createMovement(
       const { error: compError } = await supabase.rpc('set_operation_components', {
         p_transaction_id: tid,
         p_components: mapMovementComponentsToRpcJson(
-          validated.movementComponents,
+          validated.movementComponents ?? [],
           validated.currency ?? 'ARS'
         ),
       })

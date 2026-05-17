@@ -1,12 +1,17 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import {
+  createCategorySchema,
+  updateCategorySchema,
+  normalizeCategoryType,
+  type CategoryType,
+} from '@/lib/validations/category'
 
-// Types
 export interface Category {
   id: string
   name: string
-  type: string
+  type: CategoryType
 }
 
 interface ActionResult<T = unknown> {
@@ -86,7 +91,13 @@ export async function getCategories(
       return { success: false, error: error.message }
     }
 
-    return { success: true, data: data as Category[] }
+    const rows = (data ?? []).map((row) => ({
+      id: row.id as string,
+      name: row.name as string,
+      type: normalizeCategoryType(row.type as string),
+    }))
+
+    return { success: true, data: rows }
   } catch (error) {
     if (error instanceof Error) {
       return { success: false, error: error.message }
@@ -98,9 +109,14 @@ export async function getCategories(
 // CREATE CATEGORY
 export async function createCategory(input: {
   name: string
-  type: string
+  type: CategoryType
 }): Promise<ActionResult<Category>> {
   try {
+    const parsed = createCategorySchema.safeParse(input)
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+    }
+
     const companyId = await getCurrentUserCompany()
 
     if (!companyId) {
@@ -113,8 +129,8 @@ export async function createCategory(input: {
       .from('categories')
       .insert({
         company_id: companyId,
-        name: input.name,
-        type: input.type,
+        name: parsed.data.name,
+        type: parsed.data.type,
       })
       .select('id, name, type')
       .single()
@@ -139,10 +155,15 @@ export async function updateCategory(
   id: string,
   input: {
     name?: string
-    type?: string
+    type?: CategoryType
   }
 ): Promise<ActionResult<Category>> {
   try {
+    const parsed = updateCategorySchema.safeParse(input)
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+    }
+
     const companyId = await getCurrentUserCompany()
 
     if (!companyId) {
@@ -154,8 +175,8 @@ export async function updateCategory(
     const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     }
-    if (input.name !== undefined) updateData.name = input.name
-    if (input.type !== undefined) updateData.type = input.type
+    if (parsed.data.name !== undefined) updateData.name = parsed.data.name
+    if (parsed.data.type !== undefined) updateData.type = parsed.data.type
 
     const { data, error } = await supabase
       .from('categories')

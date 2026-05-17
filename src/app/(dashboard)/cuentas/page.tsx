@@ -19,9 +19,13 @@ import {
 import { AccountForm } from '@/components/settings/account-form'
 import { ChartOfAccountsTree } from '@/components/accounts/chart-of-accounts-tree'
 import { getAccounts, deleteAccount, type Account } from '@/lib/actions/accounts'
-import { listChartOfAccounts, type ChartAccountRow } from '@/lib/actions/chart-of-accounts'
+import {
+  listChartOfAccountsWithBalances,
+  type ChartOfAccountsSnapshot,
+} from '@/lib/actions/chart-of-accounts'
+import type { ChartAccountWithBalance } from '@/lib/chart-of-accounts-balances'
 import { ACCOUNT_TYPE_LABELS } from '@/lib/constants'
-import { DEMO_ACCOUNTS } from '@/lib/demo-data'
+import { DEMO_ACCOUNTS, DEMO_CHART_SNAPSHOT } from '@/lib/demo-data'
 import { useAuthStore } from '@/stores/auth-store'
 
 function formatBalance(amount: number, currency: string): string {
@@ -48,7 +52,9 @@ export default function AccountsPage() {
   const [isAccountFormOpen, setIsAccountFormOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [tab, setTab] = useState('accounts')
-  const [chartRows, setChartRows] = useState<ChartAccountRow[]>([])
+  const [chartRows, setChartRows] = useState<ChartAccountWithBalance[]>([])
+  const [chartCurrency, setChartCurrency] = useState('ARS')
+  const [chartAsOf, setChartAsOf] = useState(() => new Date().toISOString().slice(0, 10))
   const [chartLoading, setChartLoading] = useState(false)
   const [chartError, setChartError] = useState<string | null>(null)
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
@@ -81,18 +87,25 @@ export default function AccountsPage() {
     })
   }, [fetchAccounts])
 
+  const applyChartSnapshot = useCallback((snapshot: ChartOfAccountsSnapshot) => {
+    setChartRows(snapshot.rows)
+    setChartCurrency(snapshot.currency)
+    setChartAsOf(snapshot.asOf)
+  }, [])
+
   const loadChartOfAccounts = useCallback(async () => {
     if (isDemoMode) {
-      setChartRows([])
+      applyChartSnapshot(DEMO_CHART_SNAPSHOT)
       setChartError(null)
+      setChartLoading(false)
       return
     }
     setChartLoading(true)
     setChartError(null)
     try {
-      const res = await listChartOfAccounts()
+      const res = await listChartOfAccountsWithBalances()
       if (res.success && res.data) {
-        setChartRows(res.data)
+        applyChartSnapshot(res.data)
       } else {
         setChartError(res.error ?? 'No se pudo cargar el plan de cuentas')
       }
@@ -102,7 +115,7 @@ export default function AccountsPage() {
     } finally {
       setChartLoading(false)
     }
-  }, [isDemoMode])
+  }, [isDemoMode, applyChartSnapshot])
 
   useEffect(() => {
     if (tab === 'chart') {
@@ -153,7 +166,7 @@ export default function AccountsPage() {
 
       <PageHeader
         title="Mis cuentas"
-        description="Administra tus cuentas financieras y consulta el plan de cuentas de la empresa."
+        description="Cuentas del día a día (caja, bancos) y el mapa contable de referencia de la empresa."
       />
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
@@ -189,8 +202,8 @@ export default function AccountsPage() {
           ) : accounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Wallet className="h-12 w-12 mb-3 opacity-30" />
-              <p className="text-sm">No hay cuentas registradas</p>
-              <p className="text-xs mt-1">Crea tu primera cuenta para comenzar</p>
+              <p className="text-sm">Todavía no tenés cuentas</p>
+              <p className="text-xs mt-1">Agregá caja, banco u otra cuenta cuando quieras empezar</p>
             </div>
           ) : (
             <Table>
@@ -247,15 +260,7 @@ export default function AccountsPage() {
         </TabsContent>
 
         <TabsContent value="chart" className="space-y-4">
-          {isDemoMode ? (
-            <Card>
-              <CardContent className="py-8">
-                <p className="text-sm text-muted-foreground text-center">
-                  En modo demo no hay plan de cuentas cargado desde el servidor.
-                </p>
-              </CardContent>
-            </Card>
-          ) : chartLoading ? (
+          {chartLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
@@ -266,7 +271,12 @@ export default function AccountsPage() {
               </CardContent>
             </Card>
           ) : (
-            <ChartOfAccountsTree rows={chartRows} />
+            <ChartOfAccountsTree
+              rows={chartRows}
+              currency={chartCurrency}
+              asOf={chartAsOf}
+              isDemo={isDemoMode}
+            />
           )}
         </TabsContent>
       </Tabs>

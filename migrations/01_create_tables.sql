@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS categories (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   company_id uuid NOT NULL REFERENCES companies(id),
   name varchar(100) NOT NULL,
-  type varchar(25) NOT NULL CHECK (type IN ('income', 'cost', 'admin_expense', 'commercial_expense', 'financial_expense')),
+  type varchar(10) NOT NULL CHECK (type IN ('income', 'expense')),
   created_at timestamptz DEFAULT now() NOT NULL,
   updated_at timestamptz DEFAULT now() NOT NULL,
   deleted_at timestamptz,

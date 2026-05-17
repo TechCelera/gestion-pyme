@@ -1,9 +1,11 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { MoneyInput } from '@/components/ui/money-input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -21,6 +23,10 @@ import { MOVEMENT_CURRENCIES } from '@/components/movements/movement-form.consta
 import { MovementComponentBreakdown } from '@/components/movements/movement-component-breakdown'
 import { MovementScopeFields } from '@/components/movements/movement-scope-fields'
 import type { ComponentLineDraft } from '@/components/movements/movement-form.types'
+import { cn } from '@/lib/utils'
+
+const fieldLabel = 'text-sm font-medium leading-tight'
+const controlH = 'h-10'
 
 export type MovementGuidedFieldsProps = {
   type: 'income' | 'expense'
@@ -62,6 +68,27 @@ export type MovementGuidedFieldsProps = {
   onQuickContact: (lineLocalId: string) => void
 }
 
+function FieldGroup({
+  label,
+  htmlFor,
+  children,
+  className,
+}: {
+  label: ReactNode
+  htmlFor?: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn('space-y-1.5 min-w-0', className)}>
+      <Label htmlFor={htmlFor} className={fieldLabel}>
+        {label}
+      </Label>
+      {children}
+    </div>
+  )
+}
+
 export function MovementGuidedFields({
   type,
   amount,
@@ -99,34 +126,29 @@ export function MovementGuidedFields({
   onNavigateToConfig,
   onQuickContact,
 }: MovementGuidedFieldsProps) {
-  const accountQuestion =
-    type === 'income' ? '¿En qué cuenta entró?' : '¿De qué cuenta salió?'
+  const accountLabelText = type === 'income' ? '¿Dónde entró?' : '¿De dónde salió?'
 
   return (
-    <>
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="amount-guided" className="text-base">
-            ¿Cuánto?
-          </Label>
-          <div className="grid grid-cols-[1fr,auto] gap-3">
-            <Input
+    <div className="space-y-3">
+      <section className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-3">
+        <div className="grid grid-cols-[1fr,5.25rem] gap-2.5">
+          <FieldGroup label="¿Cuánto?" htmlFor="amount-guided">
+            <MoneyInput
               id="amount-guided"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0,00"
               value={amount}
-              onChange={(e) => onAmountChange(e.target.value)}
+              onValueChange={onAmountChange}
+              currency={currency}
               disabled={isLoading}
-              className="text-xl h-12"
+              className={cn('text-lg font-medium', controlH)}
             />
+          </FieldGroup>
+          <FieldGroup label="Moneda" htmlFor="currency-guided">
             <Select
               value={currency}
               onValueChange={(value) => onCurrencyChange(value ?? 'ARS')}
               disabled={isLoading}
             >
-              <SelectTrigger id="currency-guided" className="w-24 h-12">
+              <SelectTrigger id="currency-guided" className={cn('w-full', controlH)}>
                 <SelectValue>
                   {MOVEMENT_CURRENCIES.find((c) => c.value === currency)?.value ?? currency}
                 </SelectValue>
@@ -139,66 +161,67 @@ export function MovementGuidedFields({
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </FieldGroup>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="date-guided">¿Cuándo?</Label>
-          <Input
-            id="date-guided"
-            type="date"
-            value={date}
-            onChange={(e) => onDateChange(e.target.value)}
-            disabled={isLoading}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="account-guided">{accountQuestion}</Label>
-          {!isDemoMode && !isLoadingData && accounts.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-              <p className="mb-2">Primero creá una cuenta en Configuración.</p>
-              <Link
-                href="/configuracion"
-                onClick={onNavigateToConfig}
-                className="text-[#7B68EE] font-medium hover:underline"
+        <div className="grid grid-cols-[minmax(0,8.75rem)_1fr] gap-2.5">
+          <FieldGroup label="¿Cuándo?" htmlFor="date-guided">
+            <Input
+              id="date-guided"
+              type="date"
+              value={date}
+              onChange={(e) => onDateChange(e.target.value)}
+              disabled={isLoading}
+              className={controlH}
+            />
+          </FieldGroup>
+          <FieldGroup label={accountLabelText} htmlFor="account-guided">
+            {!isDemoMode && !isLoadingData && accounts.length === 0 ? (
+              <div className="flex h-10 items-center justify-center rounded-lg border border-dashed px-2 text-center text-xs text-muted-foreground">
+                <Link
+                  href="/cuentas"
+                  onClick={onNavigateToConfig}
+                  className="text-[#7B68EE] font-medium hover:underline"
+                >
+                  Crear cuenta
+                </Link>
+              </div>
+            ) : (
+              <Select
+                value={accountId}
+                onValueChange={(v) => onAccountIdChange(v ?? '')}
+                disabled={isLoading || isLoadingData}
               >
-                Ir a Configuración
-              </Link>
-            </div>
-          ) : (
-            <Select
-              value={accountId}
-              onValueChange={(v) => onAccountIdChange(v ?? '')}
-              disabled={isLoading || isLoadingData}
-            >
-              <SelectTrigger id="account-guided" className="w-full">
-                <SelectValue>
-                  <span className="block truncate" title={accountLabel}>
-                    {accountLabel || 'Elegí una cuenta'}
-                  </span>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.name} ({account.currency})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+                <SelectTrigger id="account-guided" className={cn('w-full', controlH)}>
+                  <SelectValue>
+                    <span className="block truncate" title={accountLabel}>
+                      {accountLabel || 'Elegí cuenta'}
+                    </span>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name} ({account.currency})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </FieldGroup>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="category-guided">Categoría (obligatoria)</Label>
+        <FieldGroup label="Categoría" htmlFor="category-guided">
           {!isLoadingData && categories.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No hay categorías.{' '}
-              <Link href="/configuracion" onClick={onNavigateToConfig} className="text-[#7B68EE] hover:underline">
-                Creá una en Configuración
+            <p className="text-xs text-muted-foreground py-2">
+              Sin categorías.{' '}
+              <Link
+                href="/categorias"
+                onClick={onNavigateToConfig}
+                className="text-[#7B68EE] hover:underline"
+              >
+                Crear en Categorías
               </Link>
-              .
             </p>
           ) : (
             <Select
@@ -206,10 +229,10 @@ export function MovementGuidedFields({
               onValueChange={(v) => onCategoryIdChange(v ?? '')}
               disabled={isLoading || isLoadingData}
             >
-              <SelectTrigger id="category-guided" className="w-full">
+              <SelectTrigger id="category-guided" className={cn('w-full', controlH)}>
                 <SelectValue>
                   <span className="block truncate" title={categoryLabel}>
-                    {categoryLabel || 'Elegí una categoría'}
+                    {categoryLabel || 'Elegí categoría'}
                   </span>
                 </SelectValue>
               </SelectTrigger>
@@ -222,36 +245,43 @@ export function MovementGuidedFields({
               </SelectContent>
             </Select>
           )}
-        </div>
+        </FieldGroup>
 
-        <div className="space-y-2">
-          <Label htmlFor="description-guided">
-            Nota <span className="text-muted-foreground font-normal">(opcional)</span>
-          </Label>
+        <FieldGroup
+          label={
+            <>
+              Nota{' '}
+              <span className="font-normal text-muted-foreground">(opcional)</span>
+            </>
+          }
+          htmlFor="description-guided"
+        >
           <Input
             id="description-guided"
             placeholder="Ej: cobro cliente Juan"
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
             disabled={isLoading}
+            className={controlH}
           />
-        </div>
-      </div>
+        </FieldGroup>
+      </section>
 
       <Button
         type="button"
         variant="outline"
-        className="w-full justify-between"
+        size="sm"
+        className="h-9 w-full justify-between text-muted-foreground"
         onClick={onToggleAdvanced}
       >
         Más opciones
         {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </Button>
 
-      {showAdvanced && (
-        <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
-          <p className="text-xs text-muted-foreground">
-            Proyecto, anticipos de cliente o desglose en varios medios de pago.
+      {showAdvanced ? (
+        <section className="space-y-3 rounded-lg border bg-muted/30 p-3">
+          <p className="text-xs text-muted-foreground leading-snug">
+            Proyecto, anticipos o desglose por medios de pago.
           </p>
           <MovementScopeFields
             idPrefix="guided-"
@@ -281,8 +311,8 @@ export function MovementGuidedFields({
             onQuickContact={onQuickContact}
             compact
           />
-        </div>
-      )}
-    </>
+        </section>
+      ) : null}
+    </div>
   )
 }

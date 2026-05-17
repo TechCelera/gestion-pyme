@@ -42,3 +42,12 @@ export async function enterDemoAsGuest(page: Page, baseURL: string) {
   await page.goto('/dashboard', { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT })
   await expect(page.getByText(/Estás en modo demo/i)).toBeVisible({ timeout: VISIBLE_TIMEOUT })
 }
+
+/** Sesión limpia para probar el botón de login sin estado demo precargado. */
+export async function clearDemoSession(page: Page, baseURL: string) {
+  await page.context().clearCookies()
+  await page.goto(`${baseURL}/login`, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT })
+  await page.evaluate(() => {
+    localStorage.removeItem('gestion-pyme-auth')
+  })
+}

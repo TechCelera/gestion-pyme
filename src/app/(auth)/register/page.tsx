@@ -143,7 +143,12 @@ export default function RegisterPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="country">País</Label>
-              <Select value={country} onValueChange={setCountry}>
+              <Select
+                value={country}
+                onValueChange={(value) => {
+                  if (value) setCountry(value)
+                }}
+              >
                 <SelectTrigger id="country" className="w-full">
                   <div className="flex items-center gap-2">
                     <Globe className="h-4 w-4 text-muted-foreground" />

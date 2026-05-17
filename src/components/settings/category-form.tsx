@@ -23,7 +23,8 @@ import {
 } from '@/components/ui/select'
 import { createCategory, updateCategory } from '@/lib/actions/categories'
 import type { Category } from '@/lib/actions/categories'
-import { CATEGORY_TYPE_LABELS } from '@/lib/constants'
+import { CATEGORY_TYPE_OPTIONS } from '@/lib/constants'
+import { normalizeCategoryType, type CategoryType } from '@/lib/validations/category'
 import { useAuthStore } from '@/stores/auth-store'
 
 interface CategoryFormProps {
@@ -33,14 +34,9 @@ interface CategoryFormProps {
   category?: Category | null
 }
 
-const categoryTypes = Object.entries(CATEGORY_TYPE_LABELS).map(([value, label]) => ({
-  value,
-  label,
-}))
-
 export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFormProps) {
   const [name, setName] = useState('')
-  const [type, setType] = useState('income')
+  const [categoryType, setCategoryType] = useState<CategoryType>('income')
   const [isSaving, setIsSaving] = useState(false)
 
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
@@ -48,7 +44,7 @@ export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFor
 
   const resetForm = useCallback(() => {
     setName('')
-    setType('income')
+    setCategoryType('income')
   }, [])
 
   // Pre-fill form when editing
@@ -56,7 +52,7 @@ export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFor
     queueMicrotask(() => {
       if (category) {
         setName(category.name)
-        setType(category.type)
+        setCategoryType(normalizeCategoryType(category.type))
       } else if (isOpen) {
         resetForm()
       }
@@ -86,7 +82,7 @@ export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFor
       if (isEditing && category) {
         const result = await updateCategory(category.id, {
           name: name.trim(),
-          type,
+          type: categoryType,
         })
         if (result.success) {
           toast.success('Categoría actualizada exitosamente')
@@ -98,7 +94,7 @@ export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFor
       } else {
         const result = await createCategory({
           name: name.trim(),
-          type,
+          type: categoryType,
         })
         if (result.success) {
           toast.success('Categoría creada exitosamente')
@@ -115,7 +111,7 @@ export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFor
     }
   }
 
-  const typeLabel = categoryTypes.find(t => t.value === type)?.label ?? ''
+  const typeLabel = CATEGORY_TYPE_OPTIONS.find((t) => t.value === categoryType)?.label ?? ''
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -145,21 +141,24 @@ export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFor
             <div className="space-y-2">
               <Label htmlFor="categoryType">Tipo</Label>
               <Select
-                value={type}
-                onValueChange={(v) => setType(v ?? 'income')}
+                value={categoryType}
+                onValueChange={(v) => setCategoryType((v as CategoryType) ?? 'income')}
                 disabled={isSaving}
               >
                 <SelectTrigger id="categoryType" className="w-full">
-                  {typeLabel || <span className="text-muted-foreground">Seleccione tipo</span>}
+                  {typeLabel || <span className="text-muted-foreground">Elegí un tipo</span>}
                 </SelectTrigger>
                 <SelectContent>
-                  {categoryTypes.map((t) => (
+                  {CATEGORY_TYPE_OPTIONS.map((t) => (
                     <SelectItem key={t.value} value={t.value}>
                       {t.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Ingreso o gasto, según cómo clasifiques el movimiento.
+              </p>
             </div>
           </div>
         </div>

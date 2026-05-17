@@ -288,8 +288,8 @@ export const updateMovementStatusSchema = z
     }
   })
 
-export type CreateMovementInput = z.infer<typeof createMovementSchema>
-export type UpdateMovementInput = z.infer<typeof updateMovementSchema>
+export type CreateMovementInput = z.input<typeof createMovementSchema>
+export type UpdateMovementInput = z.input<typeof updateMovementSchema>
 export type MovementFilters = z.infer<typeof movementFiltersSchema>
 export type UpdateMovementStatusInput = z.infer<typeof updateMovementStatusSchema>
 export type MovementType = z.infer<typeof MovementTypeEnum>

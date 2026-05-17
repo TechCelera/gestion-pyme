@@ -13,6 +13,9 @@ supabase/.temp/
 supabase/config.toml
 tmp/
 
+# Reglas duplicadas del agente (fuente única: AGENTS.md)
+.cursorrules
+
 # Artefactos JS compilados por error dentro de src/
 src/**/*.js
 

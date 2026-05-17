@@ -1,7 +1,9 @@
 /**
  * Configuraciones por defecto por país.
- * Cada país tiene sus propias cuentas, categorías y moneda predeterminada.
+ * Cada país define moneda, cuentas típicas (caja, banco) y categorías para arrancar.
  */
+
+import type { CategoryType } from '@/lib/validations/category'
 
 export interface CountryConfig {
   code: string
@@ -10,7 +12,7 @@ export interface CountryConfig {
   currency: string
   currencySymbol: string
   accounts: { name: string; type: string; currency: string }[]
-  categories: { name: string; type: string }[]
+  categories: { name: string; type: CategoryType }[]
 }
 
 export const COUNTRY_CONFIGS: Record<string, CountryConfig> = {
@@ -26,22 +28,17 @@ export const COUNTRY_CONFIGS: Record<string, CountryConfig> = {
       { name: 'Cuenta de Ahorros', type: 'bank', currency: 'ARS' },
     ],
     categories: [
-      // Ingresos
       { name: 'Ventas de Productos', type: 'income' },
       { name: 'Ventas de Servicios', type: 'income' },
       { name: 'Otros Ingresos', type: 'income' },
-      // Costos
-      { name: 'Costo de Mercadería', type: 'cost' },
-      // Gastos Administrativos
-      { name: 'Sueldos y Jornales', type: 'admin_expense' },
-      { name: 'Servicios Públicos', type: 'admin_expense' },
-      { name: 'Alquiler', type: 'admin_expense' },
-      // Gastos Comerciales
-      { name: 'Publicidad y Marketing', type: 'commercial_expense' },
-      { name: 'Transporte y Logística', type: 'commercial_expense' },
-      // Gastos Financieros
-      { name: 'Intereses Bancarios', type: 'financial_expense' },
-      { name: 'Comisiones Bancarias', type: 'financial_expense' },
+      { name: 'Costo de Mercadería', type: 'expense' },
+      { name: 'Sueldos y Jornales', type: 'expense' },
+      { name: 'Servicios Públicos', type: 'expense' },
+      { name: 'Alquiler', type: 'expense' },
+      { name: 'Publicidad y Marketing', type: 'expense' },
+      { name: 'Transporte y Logística', type: 'expense' },
+      { name: 'Intereses Bancarios', type: 'expense' },
+      { name: 'Comisiones Bancarias', type: 'expense' },
     ],
   },
   CO: {
@@ -56,22 +53,17 @@ export const COUNTRY_CONFIGS: Record<string, CountryConfig> = {
       { name: 'Cuenta de Ahorros', type: 'bank', currency: 'COP' },
     ],
     categories: [
-      // Ingresos
       { name: 'Ventas de Productos', type: 'income' },
       { name: 'Ventas de Servicios', type: 'income' },
       { name: 'Otros Ingresos', type: 'income' },
-      // Costos
-      { name: 'Costo de Mercancía', type: 'cost' },
-      // Gastos Administrativos
-      { name: 'Sueldos y Salarios', type: 'admin_expense' },
-      { name: 'Servicios Públicos', type: 'admin_expense' },
-      { name: 'Arriendo', type: 'admin_expense' },
-      // Gastos Comerciales
-      { name: 'Publicidad y Marketing', type: 'commercial_expense' },
-      { name: 'Transporte y Logística', type: 'commercial_expense' },
-      // Gastos Financieros
-      { name: 'Intereses Bancarios', type: 'financial_expense' },
-      { name: 'Comisiones Bancarias', type: 'financial_expense' },
+      { name: 'Costo de Mercancía', type: 'expense' },
+      { name: 'Sueldos y Salarios', type: 'expense' },
+      { name: 'Servicios Públicos', type: 'expense' },
+      { name: 'Arriendo', type: 'expense' },
+      { name: 'Publicidad y Marketing', type: 'expense' },
+      { name: 'Transporte y Logística', type: 'expense' },
+      { name: 'Intereses Bancarios', type: 'expense' },
+      { name: 'Comisiones Bancarias', type: 'expense' },
     ],
   },
 }

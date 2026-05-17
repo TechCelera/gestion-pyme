@@ -3,6 +3,7 @@
 -- Fecha: 2026-04-24
 -- Descripción: crea categorías faltantes para todas las empresas existentes
 --   según su país. Es idempotente y no duplica categorías activas.
+-- Tipos: income | expense (véase 20260517120000_categories_income_expense_only.sql)
 -- ============================================================================
 
 WITH default_categories AS (
@@ -12,25 +13,25 @@ WITH default_categories AS (
       ('AR', 'Ventas de Productos', 'income'),
       ('AR', 'Ventas de Servicios', 'income'),
       ('AR', 'Otros Ingresos', 'income'),
-      ('AR', 'Costo de Mercadería', 'cost'),
-      ('AR', 'Sueldos y Jornales', 'admin_expense'),
-      ('AR', 'Servicios Públicos', 'admin_expense'),
-      ('AR', 'Alquiler', 'admin_expense'),
-      ('AR', 'Publicidad y Marketing', 'commercial_expense'),
-      ('AR', 'Transporte y Logística', 'commercial_expense'),
-      ('AR', 'Intereses Bancarios', 'financial_expense'),
-      ('AR', 'Comisiones Bancarias', 'financial_expense'),
+      ('AR', 'Costo de Mercadería', 'expense'),
+      ('AR', 'Sueldos y Jornales', 'expense'),
+      ('AR', 'Servicios Públicos', 'expense'),
+      ('AR', 'Alquiler', 'expense'),
+      ('AR', 'Publicidad y Marketing', 'expense'),
+      ('AR', 'Transporte y Logística', 'expense'),
+      ('AR', 'Intereses Bancarios', 'expense'),
+      ('AR', 'Comisiones Bancarias', 'expense'),
       ('CO', 'Ventas de Productos', 'income'),
       ('CO', 'Ventas de Servicios', 'income'),
       ('CO', 'Otros Ingresos', 'income'),
-      ('CO', 'Costo de Mercancía', 'cost'),
-      ('CO', 'Sueldos y Salarios', 'admin_expense'),
-      ('CO', 'Servicios Públicos', 'admin_expense'),
-      ('CO', 'Arriendo', 'admin_expense'),
-      ('CO', 'Publicidad y Marketing', 'commercial_expense'),
-      ('CO', 'Transporte y Logística', 'commercial_expense'),
-      ('CO', 'Intereses Bancarios', 'financial_expense'),
-      ('CO', 'Comisiones Bancarias', 'financial_expense')
+      ('CO', 'Costo de Mercancía', 'expense'),
+      ('CO', 'Sueldos y Salarios', 'expense'),
+      ('CO', 'Servicios Públicos', 'expense'),
+      ('CO', 'Arriendo', 'expense'),
+      ('CO', 'Publicidad y Marketing', 'expense'),
+      ('CO', 'Transporte y Logística', 'expense'),
+      ('CO', 'Intereses Bancarios', 'expense'),
+      ('CO', 'Comisiones Bancarias', 'expense')
   ) AS t(country, name, type)
 )
 INSERT INTO categories (company_id, name, type)
@@ -50,4 +51,4 @@ WHERE NOT EXISTS (
 );
 
 COMMENT ON TABLE categories IS
-  'Categorías financieras por empresa. Backfill aplicado el 2026-04-24 para empresas existentes.';
+  'Categorías financieras por empresa. Tipos: income (ingreso) o expense (gasto).';

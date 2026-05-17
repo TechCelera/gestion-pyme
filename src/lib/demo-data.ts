@@ -1,4 +1,6 @@
 import type { Movement } from '@/lib/actions/movements'
+import type { ChartAccountWithBalance } from '@/lib/chart-of-accounts-balances'
+import type { ChartOfAccountsSnapshot } from '@/lib/actions/chart-of-accounts'
 
 // Tipos compartidos para demo data
 export interface DemoAccount {
@@ -12,7 +14,36 @@ export interface DemoAccount {
 export interface DemoCategory {
   id: string
   name: string
-  type: string
+  type: 'income' | 'expense'
+}
+
+// ============================================================================
+// PLAN DE CUENTAS DEMO
+// ============================================================================
+const DEMO_CHART_ROWS: ChartAccountWithBalance[] = [
+  { id: 'demo-coa-1', parentId: null, code: '1', name: 'Activo', accountType: 'asset', isPostable: false, sortOrder: 10, balance: 0 },
+  { id: 'demo-coa-11', parentId: 'demo-coa-1', code: '1.1', name: 'Activos Corrientes', accountType: 'asset', isPostable: false, sortOrder: 20, balance: 0 },
+  { id: 'demo-coa-111', parentId: 'demo-coa-11', code: '1.1.1', name: 'Caja ARS', accountType: 'asset', isPostable: true, sortOrder: 101, balance: 850_000 },
+  { id: 'demo-coa-112', parentId: 'demo-coa-11', code: '1.1.3', name: 'Bancos', accountType: 'asset', isPostable: true, sortOrder: 103, balance: 16_380_000 },
+  { id: 'demo-coa-12', parentId: 'demo-coa-1', code: '1.2', name: 'Créditos', accountType: 'asset', isPostable: false, sortOrder: 30, balance: 0 },
+  { id: 'demo-coa-121', parentId: 'demo-coa-12', code: '1.2.1', name: 'Clientes', accountType: 'asset', isPostable: true, sortOrder: 201, balance: 2_450_000 },
+  { id: 'demo-coa-2', parentId: null, code: '2', name: 'Pasivo', accountType: 'liability', isPostable: false, sortOrder: 50, balance: 0 },
+  { id: 'demo-coa-21', parentId: 'demo-coa-2', code: '2.1', name: 'Pasivos Corrientes', accountType: 'liability', isPostable: false, sortOrder: 60, balance: 0 },
+  { id: 'demo-coa-211', parentId: 'demo-coa-21', code: '2.1.1', name: 'Proveedores', accountType: 'liability', isPostable: true, sortOrder: 601, balance: 980_000 },
+  { id: 'demo-coa-3', parentId: null, code: '3', name: 'Patrimonio Neto', accountType: 'equity', isPostable: false, sortOrder: 70, balance: 0 },
+  { id: 'demo-coa-31', parentId: 'demo-coa-3', code: '3.2', name: 'Resultados Acumulados', accountType: 'equity', isPostable: true, sortOrder: 702, balance: 18_700_000 },
+  { id: 'demo-coa-4', parentId: null, code: '4', name: 'Ingresos', accountType: 'income', isPostable: false, sortOrder: 80, balance: 0 },
+  { id: 'demo-coa-41', parentId: 'demo-coa-4', code: '4.1', name: 'Ingresos por servicios', accountType: 'income', isPostable: true, sortOrder: 801, balance: 24_500_000 },
+  { id: 'demo-coa-5', parentId: null, code: '5', name: 'Egresos', accountType: 'expense', isPostable: false, sortOrder: 90, balance: 0 },
+  { id: 'demo-coa-51', parentId: 'demo-coa-5', code: '5.1', name: 'Gastos operativos', accountType: 'expense', isPostable: true, sortOrder: 901, balance: 5_800_000 },
+]
+
+export const DEMO_CHART_OF_ACCOUNTS = DEMO_CHART_ROWS
+
+export const DEMO_CHART_SNAPSHOT: ChartOfAccountsSnapshot = {
+  asOf: new Date().toISOString().slice(0, 10),
+  currency: 'ARS',
+  rows: DEMO_CHART_ROWS,
 }
 
 // ============================================================================
@@ -46,53 +77,15 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
 // CATEGORÍAS DEMO
 // ============================================================================
 export const DEMO_CATEGORIES: DemoCategory[] = [
-  // Ingresos
-  {
-    id: 'demo-cat-1',
-    name: 'Ventas',
-    type: 'income',
-  },
-  {
-    id: 'demo-cat-4',
-    name: 'Servicios',
-    type: 'income',
-  },
-  {
-    id: 'demo-cat-5',
-    name: 'Otros Ingresos',
-    type: 'income',
-  },
-  // Costos
-  {
-    id: 'demo-cat-2',
-    name: 'Sueldos y Salarios',
-    type: 'admin_expense',
-  },
-  {
-    id: 'demo-cat-3',
-    name: 'Materiales y Suministros',
-    type: 'cost',
-  },
-  {
-    id: 'demo-cat-6',
-    name: 'Transporte y Logística',
-    type: 'commercial_expense',
-  },
-  {
-    id: 'demo-cat-7',
-    name: 'Intereses Bancarios',
-    type: 'financial_expense',
-  },
-  {
-    id: 'demo-cat-8',
-    name: 'Servicios Públicos',
-    type: 'admin_expense',
-  },
-  {
-    id: 'demo-cat-9',
-    name: 'Publicidad y Marketing',
-    type: 'commercial_expense',
-  },
+  { id: 'demo-cat-1', name: 'Ventas', type: 'income' },
+  { id: 'demo-cat-4', name: 'Servicios', type: 'income' },
+  { id: 'demo-cat-5', name: 'Otros Ingresos', type: 'income' },
+  { id: 'demo-cat-2', name: 'Sueldos y Salarios', type: 'expense' },
+  { id: 'demo-cat-3', name: 'Materiales y Suministros', type: 'expense' },
+  { id: 'demo-cat-6', name: 'Transporte y Logística', type: 'expense' },
+  { id: 'demo-cat-7', name: 'Intereses Bancarios', type: 'expense' },
+  { id: 'demo-cat-8', name: 'Servicios Públicos', type: 'expense' },
+  { id: 'demo-cat-9', name: 'Publicidad y Marketing', type: 'expense' },
 ]
 
 // ============================================================================
@@ -186,9 +179,6 @@ export const DEMO_MOVEMENTS: Movement[] = [
   },
 ]
 
-// ============================================================================
-// ESTADÍSTICAS DEMO
-// ============================================================================
 export const DEMO_STATS = {
   totalMovements: DEMO_MOVEMENTS.length,
   pendingCount: DEMO_MOVEMENTS.filter((t) => t.status === 'pending').length,

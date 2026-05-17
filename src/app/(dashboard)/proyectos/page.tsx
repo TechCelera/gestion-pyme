@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { BarChart3, Pencil, Plus } from 'lucide-react'
@@ -51,7 +51,7 @@ export default function ProjectsPage() {
     setIsProjectFormOpen(true)
   }
 
-  const renderRows = (items: Project[], depth = 0): JSX.Element[] => {
+  const renderRows = (items: Project[], depth = 0): ReactElement[] => {
     return items.flatMap((project) => {
       const usage = project.budgetAmount > 0
         ? ((project.spentAmount ?? 0) / project.budgetAmount) * 100

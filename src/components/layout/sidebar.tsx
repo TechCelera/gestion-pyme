@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -12,21 +12,23 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Tag,
 } from 'lucide-react'
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { useAuthStore } from '@/stores/auth-store'
-import { clearDemoCookie } from '@/lib/actions/demo-cookie'
-import { toast } from 'sonner'
+import { useLogout } from '@/hooks/use-logout'
 import { Badge } from '@/components/ui/badge'
+import { ROUTES } from '@/lib/constants'
+import { UserRoleBadge } from '@/components/layout/user-role-badge'
 
 type NavLink = {
   href: string
   label: string
   icon: LucideIcon
   badge?: number
+  match?: (pathname: string) => boolean
 }
 
 function NavRow({
@@ -42,7 +44,7 @@ function NavRow({
     <Link
       href={item.href}
       className={cn(
-        'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors rounded-md mx-1',
+        'flex items-center gap-3 px-3 py-2.5 text-sm transition-colors rounded-md',
         active
           ? 'bg-primary text-primary-foreground font-medium'
           : 'text-sidebar-foreground hover:bg-sidebar-accent'
@@ -66,44 +68,51 @@ function NavRow({
 export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
-  const router = useRouter()
   const isDemoMode = useAuthStore((state) => state.isDemoMode)
-  const clearUser = useAuthStore((state) => state.clearUser)
+  const { logout } = useLogout()
 
-  const supabase = createSafeBrowserClient()
-
-  async function handleLogout() {
-    try {
-      if (isDemoMode) {
-        clearDemoCookie().catch(() => {})
-        clearUser()
-        toast.success('Sesión demo cerrada')
-        router.push('/login')
-        router.refresh()
-        return
-      }
-
-      await supabase.auth.signOut()
-      toast.success('Sesión cerrada')
-      router.push('/login')
-      router.refresh()
-    } catch {
-      toast.error('Error al cerrar sesión')
-    }
-  }
-
-  const movimientosNav: NavLink = {
-    href: '/operaciones',
-    label: 'Movimientos',
-    icon: ArrowLeftRight,
-    badge: pendingCount,
-  }
-
-  const gestionLinks: NavLink[] = [
-    { href: '/cuentas', label: 'Mis cuentas', icon: Wallet },
-    { href: '/reportes', label: 'Informes', icon: FileText },
-    { href: '/proyectos', label: 'Proyectos', icon: FolderKanban },
+  const mainNavItems: NavLink[] = [
+    {
+      href: ROUTES.DASHBOARD,
+      label: 'Inicio',
+      icon: LayoutDashboard,
+      match: (p) => p === ROUTES.DASHBOARD,
+    },
+    {
+      href: ROUTES.MOVEMENTS,
+      label: 'Movimientos',
+      icon: ArrowLeftRight,
+      badge: pendingCount,
+      match: (p) => p === ROUTES.MOVEMENTS || p.startsWith(`${ROUTES.MOVEMENTS}/`),
+    },
+    {
+      href: '/cuentas',
+      label: 'Mis cuentas',
+      icon: Wallet,
+      match: (p) => p === '/cuentas' || p.startsWith('/cuentas/'),
+    },
+    {
+      href: ROUTES.CATEGORIES,
+      label: 'Categorías',
+      icon: Tag,
+      match: (p) => p === ROUTES.CATEGORIES || p.startsWith(`${ROUTES.CATEGORIES}/`),
+    },
+    {
+      href: ROUTES.REPORTS,
+      label: 'Informes',
+      icon: FileText,
+      match: (p) => p === ROUTES.REPORTS || p.startsWith(`${ROUTES.REPORTS}/`),
+    },
+    {
+      href: '/proyectos',
+      label: 'Proyectos',
+      icon: FolderKanban,
+      match: (p) => p === '/proyectos' || p.startsWith('/proyectos/'),
+    },
   ]
+
+  const isActive = (item: NavLink) =>
+    item.match ? item.match(pathname) : pathname === item.href
 
   return (
     <aside
@@ -121,6 +130,7 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
                 Modo Demo
               </span>
             )}
+            <UserRoleBadge variant="compact" className="mt-1" />
           </div>
         )}
         <button
@@ -133,51 +143,23 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
         </button>
       </div>
 
-      <nav className="flex-1 py-2 overflow-y-auto">
-        <div className="px-3 py-1">
-          <Link
-            href="/dashboard"
-            className={cn(
-              'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors rounded-md',
-              pathname === '/dashboard'
-                ? 'bg-primary text-primary-foreground font-medium'
-                : 'text-sidebar-foreground hover:bg-sidebar-accent'
-            )}
-          >
-            <LayoutDashboard className="h-5 w-5 shrink-0" />
-            {!collapsed && <span>Inicio</span>}
-          </Link>
-        </div>
-
-        <div className="px-3 pt-1">
-          <NavRow
-            item={movimientosNav}
-            collapsed={collapsed}
-            active={pathname === '/operaciones'}
-          />
-        </div>
-
-        {!collapsed && (
-          <p className="px-4 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Gestión
-          </p>
-        )}
-        {gestionLinks.map((item) => (
+      <nav className="flex-1 py-2 overflow-y-auto px-2 space-y-0.5">
+        {mainNavItems.map((item) => (
           <NavRow
             key={item.href}
             item={item}
             collapsed={collapsed}
-            active={pathname === item.href}
+            active={isActive(item)}
           />
         ))}
       </nav>
 
-      <div className="p-2 border-t border-border">
+      <div className="p-2 border-t border-border space-y-0.5">
         <Link
-          href="/configuracion"
+          href={ROUTES.SETTINGS}
           className={cn(
-            'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors rounded-md',
-            pathname === '/configuracion'
+            'flex items-center gap-3 px-3 py-2.5 text-sm transition-colors rounded-md',
+            pathname === ROUTES.SETTINGS
               ? 'bg-primary text-primary-foreground font-medium'
               : 'text-sidebar-foreground hover:bg-sidebar-accent'
           )}
@@ -187,9 +169,9 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
         </Link>
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={() => void logout()}
           className={cn(
-            'flex items-center gap-3 px-4 py-2.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors w-full rounded-md',
+            'flex items-center gap-3 px-3 py-2.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors w-full rounded-md',
             collapsed && 'justify-center'
           )}
         >

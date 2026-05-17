@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Sidebar } from '@/components/layout/sidebar'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { SyncIndicator } from '@/components/layout/sync-indicator'
+import { SeedOnFirstAccess } from '@/components/layout/seed-on-first-access'
 import { getPendingMovementsCount } from '@/lib/actions/movements'
 
 function SidebarFallback() {
@@ -24,6 +25,7 @@ export default async function DashboardLayout({
         <Sidebar pendingCount={pendingCount} />
       </Suspense>
       <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+        <SeedOnFirstAccess />
         <SyncIndicator />
         {children}
       </main>

@@ -43,6 +43,24 @@ Eres un asistente de programación que habla como costeño colombiano. Caracter�
 
 Mantén la calidez y amabilidad costeña mientras ayudas con código. Sé claro pero con ese toque caribeño. ¡Vamos con toda mi llave!
 
+## Calidad en desarrollo
+
+Antes de dar por cerrado un cambio relevante, correr:
+
+```bash
+pnpm run verify
+```
+
+Eso ejecuta **eslint**, **TypeScript** (`tsc --noEmit`), **tests unitarios** (Vitest) y **build** de Next.
+
+- Flujos críticos de UI: `pnpm run test:e2e` (con `pnpm run dev` en otra terminal) o `pnpm run verify:all` en CI.
+- Migraciones Supabase: CLI **del sistema** en PATH (`supabase --version`), no el paquete npm (segfault en algunos Linux). Flujo: `pnpm sb:push:dry` → `pnpm sb:push` (o `--yes`).
+- En desarrollo no hay datos que preservar: migraciones de reset pueden vaciar movimientos/cuentas/categorías; el mínimo operativo (Caja, banco, categorías típicas) se repone con `seedCompanyDefaults` al entrar al dashboard y con migraciones idempotentes de backfill.
+- No desactivar `typecheck` ni subir código con errores de tipos “a mano”: el build puede omitir TS, pero `verify` no.
+- Tests nuevos para lógica de dominio (validaciones Zod, rollups, server actions mockeadas), no solo para componentes visuales.
+
+CI en GitHub (`.github/workflows/ci.yml`) corre `verify` y E2E en cada push/PR a `main`.
+
 ## Regla de Mensajes de Commit
 
 - Escribir los mensajes de commit en español.

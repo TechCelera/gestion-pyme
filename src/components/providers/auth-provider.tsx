@@ -3,11 +3,7 @@
 import { useEffect } from 'react'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { useAuthStore } from '@/stores/auth-store'
-
-function hasDemoModeCookie(): boolean {
-  if (typeof document === 'undefined') return false
-  return document.cookie.split(';').some((c) => c.trim() === 'demo_mode=true')
-}
+import { hasDemoModeCookie } from '@/lib/demo-mode-client'
 
 function syncDemoFromCookie(): void {
   if (hasDemoModeCookie() && !useAuthStore.getState().isDemoMode) {

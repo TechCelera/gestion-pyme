@@ -30,6 +30,11 @@ const nextConfig: NextConfig = {
         destination: '/configuracion',
         permanent: true,
       },
+      {
+        source: '/categories',
+        destination: '/categorias',
+        permanent: true,
+      },
     ]
   },
 

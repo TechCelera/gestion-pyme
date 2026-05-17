@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { useAuthStore } from '@/stores/auth-store'
 import { setDemoCookie, clearDemoCookie } from '@/lib/actions/demo-cookie'
+import { hasDemoModeCookie } from '@/lib/demo-mode-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -59,10 +60,12 @@ export default function LoginPage() {
       // (el usuario demo no existe en Supabase y causaría error 400)
       setDemoUser()
       // La cookie debe existir antes de /dashboard (SSR redirige a login sin ella)
-      const cookieResult = await setDemoCookie()
-      if (!cookieResult.success) {
-        toast.error(cookieResult.error ?? 'Error al activar el modo demo')
-        return
+      if (!hasDemoModeCookie()) {
+        const cookieResult = await setDemoCookie()
+        if (!cookieResult.success) {
+          toast.error(cookieResult.error ?? 'Error al activar el modo demo')
+          return
+        }
       }
       toast.success('Modo Demo activado — Explora con datos de prueba')
       // Navegación completa: el SSR de /dashboard debe ver la cookie recién seteada

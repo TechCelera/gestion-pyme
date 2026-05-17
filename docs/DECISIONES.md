@@ -387,3 +387,39 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ### Razon
 - Sin paso de alineacion, cada pantalla nueva refuerza el desorden.
 - Un sistema **robusto** para gestion financiera exige coherencia FE/BE y estructura que aguante mas usuarios, mas empresas y mas reglas sin reescritura constante.
+
+## 18) Navegacion: sidebar plano, categorias y configuracion de cuenta (Mayo 2026)
+
+### Contexto
+- El sidebar agrupaba items bajo la etiqueta "Gestion" con padding inconsistente.
+- `/configuracion` mezclaba CRUD de categorias con ajustes de cuenta del usuario.
+
+### Decision
+- **Sidebar**: lista plana (Inicio, Movimientos, Mis cuentas, Categorias, Informes, Proyectos); Configuracion y Cerrar sesion en el pie.
+- **Categorias**: ruta `/categorias` (`ROUTES.CATEGORIES`); redirect `/categories` -> `/categorias`.
+- **Configuracion**: perfil, contraseña, cambio de correo (Supabase Auth), desactivar cuenta (`users.is_active` + signOut).
+- **Movil**: enlace a Categorias en `/operaciones` (`md:hidden`); bottom nav sin item extra.
+
+### Implementacion
+- `src/components/layout/sidebar.tsx`, `src/app/(dashboard)/categorias/page.tsx`
+- `src/app/(dashboard)/configuracion/page.tsx`, `src/lib/actions/profile.ts`, componentes en `src/components/settings/`
+- Formularios de movimientos: cuentas -> `/cuentas`, categorias -> `/categorias`
+
+### Razon
+- Separar datos de empresa (categorias) de datos personales (cuenta).
+- Menu lateral mas claro y menos ruido visual.
+
+## 19) Categorías: solo income y expense (Mayo 2026)
+
+### Contexto
+- La UI ya mostraba Ingreso/Gasto, pero la BD aceptaba subtipos contables (cost, admin_expense, …) heredados del modelo inicial.
+
+### Decision
+- `categories.type` canónico: **`income` | `expense`** (alineado con `transactions.type` para ingresos/egresos).
+- Migración `20260517120000_categories_income_expense_only.sql`: convierte subtipos legacy a `expense` y actualiza el CHECK.
+- Semillas por país (`country-config`, backfill) y demo usan solo esos dos tipos.
+- Validación Zod en server actions (`src/lib/validations/category.ts`).
+
+### Razon
+- Modelo mental PYME: clasificar movimientos en ingreso o gasto; el desglose contable fino vive en el plan de cuentas / diario, no en la etiqueta de categoría del usuario.
+

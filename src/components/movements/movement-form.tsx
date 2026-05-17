@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { MoneyInput } from '@/components/ui/money-input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -377,12 +378,7 @@ export function MovementForm({
   // Filter categories by movement type
   const filteredCategories = categories.filter((c) => {
     if (type === 'income') return c.type === CATEGORY_TYPES.INCOME
-    if (type === 'expense') return ([
-      CATEGORY_TYPES.COST,
-      CATEGORY_TYPES.ADMIN_EXPENSE,
-      CATEGORY_TYPES.COMMERCIAL_EXPENSE,
-      CATEGORY_TYPES.FINANCIAL_EXPENSE,
-    ] as string[]).includes(c.type)
+    if (type === 'expense') return c.type === CATEGORY_TYPES.EXPENSE
     return false // No categories for transfer/adjustment
   })
 
@@ -478,25 +474,33 @@ export function MovementForm({
         className="data-[side=right]:w-full data-[side=right]:sm:max-w-md data-[side=right]:lg:max-w-lg p-0 flex flex-col"
       >
         {/* Header */}
-        <SheetHeader className="px-6 py-4 border-b space-y-3">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${selectedType?.color || ''}`}>
-              <TypeIcon className="h-5 w-5" />
+        <SheetHeader
+          className={
+            isGuidedCreate
+              ? 'shrink-0 space-y-0 border-b px-4 py-3'
+              : 'space-y-3 border-b px-6 py-4'
+          }
+        >
+          <div className="flex items-center gap-2.5 pr-8">
+            <div className={`shrink-0 rounded-md p-1.5 ${selectedType?.color || ''}`}>
+              <TypeIcon className={isGuidedCreate ? 'h-4 w-4' : 'h-5 w-5'} />
             </div>
-            <div>
-              <SheetTitle className="text-lg">
+            <div className="min-w-0">
+              <SheetTitle className={isGuidedCreate ? 'text-base leading-tight' : 'text-lg'}>
                 {isEditing
                   ? 'Editar movimiento'
                   : formCopy?.title ?? 'Nuevo movimiento'}
               </SheetTitle>
-              <SheetDescription>
-                {isEditing
-                  ? 'Modificá los datos del movimiento'
-                  : formCopy?.subtitle ?? 'Completá los datos para registrar un movimiento'}
-              </SheetDescription>
+              {!isGuidedCreate ? (
+                <SheetDescription>
+                  {isEditing
+                    ? 'Modificá los datos del movimiento'
+                    : formCopy?.subtitle ?? 'Completá los datos para registrar un movimiento'}
+                </SheetDescription>
+              ) : null}
             </div>
           </div>
-          
+
           {/* Type Selector - Pills */}
           {!isEditing && !fixedType && (
             <div className="pt-2">
@@ -536,8 +540,14 @@ export function MovementForm({
         </SheetHeader>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="space-y-6">
+        <div
+          className={
+            isGuidedCreate
+              ? 'flex-1 overflow-y-auto px-4 py-3'
+              : 'flex-1 overflow-y-auto px-6 py-4'
+          }
+        >
+          <div className={isGuidedCreate ? 'space-y-3' : 'space-y-6'}>
             {isGuidedCreate ? (
               <MovementGuidedFields
                 type={type as 'income' | 'expense'}
@@ -712,14 +722,14 @@ export function MovementForm({
                   <Wallet className="h-10 w-10 text-muted-foreground/40" />
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">No tienes cuentas registradas</p>
-                    <p className="text-xs text-muted-foreground">Crea una cuenta en Configuración para poder registrar movimientos.</p>
+                    <p className="text-xs text-muted-foreground">Creá una cuenta en Mis cuentas para poder registrar movimientos.</p>
                   </div>
                   <Link
-                    href="/configuracion"
+                    href="/cuentas"
                     onClick={handleClose}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#7B68EE] text-white hover:bg-[#7B68EE]/90 transition-colors"
                   >
-                    Ir a Configuración
+                    Ir a Mis cuentas
                     <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
@@ -819,15 +829,15 @@ export function MovementForm({
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-muted-foreground">No hay categorías disponibles</p>
                           <p className="text-xs text-muted-foreground">
-                            Crea categorías en Configuración para registrar {type === 'income' ? 'ingresos' : 'egresos'}.
+                            Creá categorías para registrar {type === 'income' ? 'ingresos' : 'egresos'}.
                           </p>
                         </div>
                         <Link
-                          href="/configuracion"
+                          href="/categorias"
                           onClick={handleClose}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#7B68EE] text-white hover:bg-[#7B68EE]/90 transition-colors"
                         >
-                          Ir a Configuración
+                          Ir a Categorías
                           <ArrowRight className="h-3 w-3" />
                         </Link>
                       </div>
@@ -903,14 +913,11 @@ export function MovementForm({
               <div className="grid grid-cols-[1fr,auto] gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="amount">Valor</Label>
-                  <Input
+                  <MoneyInput
                     id="amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onValueChange={setAmount}
+                    currency={currency}
                     disabled={isLoading}
                     className="text-lg"
                   />
@@ -989,7 +996,13 @@ export function MovementForm({
         </div>
 
         {/* Footer */}
-        <SheetFooter className="border-t bg-muted/50 px-6 py-4 shrink-0 flex-col-reverse gap-2 md:grid md:grid-cols-3 md:items-center md:gap-3">
+        <SheetFooter
+          className={
+            isGuidedCreate
+              ? 'shrink-0 flex-col-reverse gap-2 border-t bg-muted/50 px-4 py-3 sm:grid sm:grid-cols-3 sm:items-center sm:gap-2'
+              : 'shrink-0 flex-col-reverse gap-2 border-t bg-muted/50 px-6 py-4 md:grid md:grid-cols-3 md:items-center md:gap-3'
+          }
+        >
           <Button 
             variant="outline" 
             onClick={handleClose} 

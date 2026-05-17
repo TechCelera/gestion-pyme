@@ -14,60 +14,36 @@ interface SeedSummary {
   categoriesCreated: number
 }
 
-// Helper: obtener companyId del usuario actual
 async function getCurrentUserCompany(): Promise<string | null> {
   try {
     const supabase = await createClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
 
-    if (error || !user) {
-      return null
-    }
+    if (error || !user) return null
 
-    // 1. Try app_metadata.company_id (from JWT, set by trigger)
     const appMeta = user.app_metadata as Record<string, unknown>
-    if (appMeta?.company_id) {
-      return appMeta.company_id as string
-    }
+    if (appMeta?.company_id) return appMeta.company_id as string
+    if (user.user_metadata?.company_id) return user.user_metadata.company_id as string
 
-    // 2. Try user_metadata.company_id (set during signup)
-    if (user.user_metadata?.company_id) {
-      return user.user_metadata.company_id as string
-    }
-
-    // 3. Fallback: query public.users table
-    const { data, error: queryError } = await supabase
-      .from('users')
-      .select('company_id')
-      .eq('id', user.id)
-      .single()
-
-    if (queryError) {
-      return null
-    }
-
+    const { data } = await supabase.from('users').select('company_id').eq('id', user.id).single()
     return data?.company_id ?? null
   } catch {
     return null
   }
 }
 
-// Helper: obtener país de la empresa
 async function getCompanyCountry(companyId: string): Promise<string | null> {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('companies')
-    .select('country')
-    .eq('id', companyId)
-    .single()
-
+  const { data } = await supabase.from('companies').select('country').eq('id', companyId).single()
   return data?.country ?? null
 }
 
 /**
- * Siembra cuentas y categorías por defecto según el país de la empresa.
- * Es idempotente: solo crea faltantes para evitar duplicados.
- * Se llama después del registro o desde el dashboard en primer acceso.
+ * Crea cuentas y categorías mínimas por país si faltan (idempotente por nombre).
+ * Pensado para empresas nuevas o tablero vacío tras desarrollo.
  */
 export async function seedCompanyDefaults(): Promise<ActionResult<SeedSummary>> {
   try {
@@ -78,9 +54,8 @@ export async function seedCompanyDefaults(): Promise<ActionResult<SeedSummary>> 
       return { success: false, error: 'Usuario no autenticado o sin empresa' }
     }
 
-    // Obtener país de la empresa
     const country = await getCompanyCountry(companyId)
-    const config = COUNTRY_CONFIGS[country ?? 'AR'] // Default Argentina si no hay país
+    const config = COUNTRY_CONFIGS[country ?? 'AR']
 
     if (!config) {
       return { success: false, error: `Configuración no disponible para país: ${country}` }
@@ -93,7 +68,7 @@ export async function seedCompanyDefaults(): Promise<ActionResult<SeedSummary>> 
       .is('deleted_at', null)
 
     if (accountsQueryError) {
-      return { success: false, error: `Error consultando cuentas existentes: ${accountsQueryError.message}` }
+      return { success: false, error: `Error consultando cuentas: ${accountsQueryError.message}` }
     }
 
     const { data: existingCategories, error: categoriesQueryError } = await supabase
@@ -103,45 +78,39 @@ export async function seedCompanyDefaults(): Promise<ActionResult<SeedSummary>> 
       .is('deleted_at', null)
 
     if (categoriesQueryError) {
-      return { success: false, error: `Error consultando categorías existentes: ${categoriesQueryError.message}` }
+      return { success: false, error: `Error consultando categorías: ${categoriesQueryError.message}` }
     }
 
-    const existingAccountNames = new Set((existingAccounts ?? []).map((account) => account.name))
-    const existingCategoryNames = new Set((existingCategories ?? []).map((category) => category.name))
+    const existingAccountNames = new Set((existingAccounts ?? []).map((a) => a.name))
+    const existingCategoryNames = new Set((existingCategories ?? []).map((c) => c.name))
 
     const accountsToInsert = config.accounts
-      .filter((account) => !existingAccountNames.has(account.name))
-      .map((account) => ({
+      .filter((a) => !existingAccountNames.has(a.name))
+      .map((a) => ({
         company_id: companyId,
-        name: account.name,
-        type: account.type,
-        currency: account.currency,
+        name: a.name,
+        type: a.type,
+        currency: a.currency,
         balance: 0,
       }))
 
     const categoriesToInsert = config.categories
-      .filter((category) => !existingCategoryNames.has(category.name))
-      .map((cat) => ({
-      company_id: companyId,
-      name: cat.name,
-      type: cat.type,
-    }))
+      .filter((c) => !existingCategoryNames.has(c.name))
+      .map((c) => ({
+        company_id: companyId,
+        name: c.name,
+        type: c.type,
+      }))
 
     if (accountsToInsert.length > 0) {
-      const { error: accountsError } = await supabase
-        .from('accounts')
-        .insert(accountsToInsert)
-
+      const { error: accountsError } = await supabase.from('accounts').insert(accountsToInsert)
       if (accountsError) {
         return { success: false, error: `Error al crear cuentas: ${accountsError.message}` }
       }
     }
 
     if (categoriesToInsert.length > 0) {
-      const { error: categoriesError } = await supabase
-        .from('categories')
-        .insert(categoriesToInsert)
-
+      const { error: categoriesError } = await supabase.from('categories').insert(categoriesToInsert)
       if (categoriesError) {
         return { success: false, error: `Error al crear categorías: ${categoriesError.message}` }
       }
@@ -157,7 +126,7 @@ export async function seedCompanyDefaults(): Promise<ActionResult<SeedSummary>> 
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido al sembrar datos',
+      error: error instanceof Error ? error.message : 'Error al sembrar datos',
     }
   }
 }
