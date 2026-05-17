@@ -17,7 +17,7 @@ const DEMO_PROFILE: UserProfile = {
   id: 'demo-user-001',
   email: 'demo@gestionpyme.com',
   fullName: 'Usuario Demo',
-  role: 'superadmin',
+  role: 'admin',
   companyId: 'demo-company-001',
   companyName: 'Empresa Demo',
   isActive: true,

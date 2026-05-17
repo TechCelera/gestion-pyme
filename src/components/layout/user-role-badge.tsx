@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth-store'
-import { isFinanceApproverRole, USER_ROLE_LABELS } from '@/lib/constants'
+import { getUserRoleLabel, isAdminRole } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 interface UserRoleBadgeProps {
@@ -17,8 +17,8 @@ export function UserRoleBadge({ className, variant = 'default' }: UserRoleBadgeP
 
   if (!role) return null
 
-  const label = USER_ROLE_LABELS[role] ?? role
-  const isApprover = isFinanceApproverRole(role)
+  const label = getUserRoleLabel(role)
+  const isApprover = isAdminRole(role)
 
   if (variant === 'compact') {
     return (

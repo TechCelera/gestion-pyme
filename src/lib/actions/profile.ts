@@ -1,5 +1,6 @@
 'use server'
 
+import { normalizeRole, USER_ROLES } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/server'
 
 export interface UserProfile {
@@ -56,7 +57,7 @@ export async function getProfile(): Promise<ActionResult<UserProfile>> {
         id: row.id,
         email: row.email ?? user.email ?? '',
         fullName: row.full_name ?? '',
-        role: row.role ?? 'vendedor',
+        role: normalizeRole(row.role) ?? USER_ROLES.ADMIN,
         companyId: row.company_id,
         companyName,
         isActive: row.is_active ?? true,

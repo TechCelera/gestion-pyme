@@ -9,11 +9,22 @@ export const ROUTES = {
   SETTINGS: '/configuracion',
 } as const
 
+export {
+  getUserRoleLabel,
+  isAdminRole,
+  isFinanceApproverRole,
+  normalizeRole,
+  USER_ROLES,
+} from '@/lib/auth/roles'
+
+/** Product labels for role slugs (canonical + legacy DB values). */
 export const USER_ROLE_LABELS: Record<string, string> = {
-  superadmin: 'Superadministrador',
-  admin_finanzas: 'Administrador de finanzas',
-  responsable: 'Responsable',
-  vendedor: 'Vendedor',
+  admin: 'Administrador',
+  collaborator: 'Colaborador',
+  superadmin: 'Administrador',
+  admin_finanzas: 'Administrador',
+  responsable: 'Colaborador',
+  vendedor: 'Colaborador',
 }
 
 export const MOVEMENT_TYPES = {
@@ -35,17 +46,6 @@ export const MOVEMENT_METHODS_LABELS: Record<string, string> = {
   card: 'Tarjeta',
   digital: 'Billetera Digital',
   other: 'Otro',
-}
-
-export const USER_ROLES = {
-  SUPERADMIN: 'superadmin',
-  ADMIN_FINANZAS: 'admin_finanzas',
-  RESPONSABLE: 'responsable',
-  VENDEDOR: 'vendedor',
-} as const
-
-export function isFinanceApproverRole(role: string | null | undefined): boolean {
-  return role === USER_ROLES.SUPERADMIN || role === USER_ROLES.ADMIN_FINANZAS
 }
 
 /** Tipos de categoría en BD — mismo criterio que movimientos income/expense */

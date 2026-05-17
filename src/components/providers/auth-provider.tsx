@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
+import { hydrateAuthStoreUser } from '@/lib/auth/hydrate-auth-user'
 import { useAuthStore } from '@/stores/auth-store'
 import { hasDemoModeCookie } from '@/lib/demo-mode-client'
 
@@ -21,45 +22,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     syncDemoFromCookie()
 
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let cancelled = false
+
+    async function applySession(session: Awaited<
+      ReturnType<typeof supabase.auth.getSession>
+    >['data']['session']) {
+      if (cancelled) return
+
       if (session?.user) {
-        const user = session.user
-        setUser({
-          id: user.id,
-          email: user.email!,
-          fullName: user.user_metadata?.full_name || '',
-          role: user.user_metadata?.role || 'vendedor',
-          companyId: user.user_metadata?.company_id || '',
-        })
+        try {
+          const storeUser = await hydrateAuthStoreUser(session)
+          if (!cancelled) setUser(storeUser)
+        } catch {
+          if (!cancelled) clearUser()
+        }
         return
       }
-      if (hasDemoModeCookie()) {
-        setDemoUser()
-      }
-    })
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const user = session.user
-        setUser({
-          id: user.id,
-          email: user.email!,
-          fullName: user.user_metadata?.full_name || '',
-          role: user.user_metadata?.role || 'vendedor',
-          companyId: user.user_metadata?.company_id || '',
-        })
-      } else if (hasDemoModeCookie() || useAuthStore.getState().isDemoMode) {
+      if (hasDemoModeCookie()) {
         setDemoUser()
       } else {
         clearUser()
       }
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      void applySession(session)
     })
 
-    return () => subscription.unsubscribe()
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      void applySession(session)
+    })
+
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [setUser, setDemoUser, clearUser, supabase])
 
   return <>{children}</>

@@ -26,7 +26,7 @@ const DEMO_USER = {
   id: 'demo-user-001',
   email: 'demo@gestionpyme.com',
   companyId: 'demo-company-001',
-  role: 'superadmin',
+  role: 'admin',
   fullName: 'Usuario Demo',
 }
 

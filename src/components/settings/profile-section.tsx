@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { updateProfile } from '@/lib/actions/profile'
-import { USER_ROLE_LABELS } from '@/lib/constants'
+import { getUserRoleLabel } from '@/lib/constants'
 import type { UserProfile } from '@/lib/actions/profile'
 
 interface ProfileSectionProps {
@@ -72,7 +72,7 @@ export function ProfileSection({ profile, isDemoMode, onUpdated }: ProfileSectio
             <div className="space-y-2">
               <Label>Rol</Label>
               <Input
-                value={USER_ROLE_LABELS[profile.role] ?? profile.role}
+                value={getUserRoleLabel(profile.role)}
                 disabled
                 className="bg-muted"
               />
