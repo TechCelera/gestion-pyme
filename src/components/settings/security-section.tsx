@@ -12,10 +12,9 @@ import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 
 interface SecuritySectionProps {
   currentEmail: string
-  isDemoMode: boolean
 }
 
-export function SecuritySection({ currentEmail, isDemoMode }: SecuritySectionProps) {
+export function SecuritySection({ currentEmail }: SecuritySectionProps) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -27,11 +26,6 @@ export function SecuritySection({ currentEmail, isDemoMode }: SecuritySectionPro
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault()
-    if (isDemoMode) {
-      toast.info('En modo demo los cambios no se guardan')
-      return
-    }
-
     if (newPassword.length < 8) {
       toast.error('La contraseña debe tener al menos 8 caracteres')
       return
@@ -71,11 +65,6 @@ export function SecuritySection({ currentEmail, isDemoMode }: SecuritySectionPro
 
   async function handleChangeEmail(e: React.FormEvent) {
     e.preventDefault()
-    if (isDemoMode) {
-      toast.info('En modo demo los cambios no se guardan')
-      return
-    }
-
     const trimmed = newEmail.trim()
     if (!trimmed) {
       toast.error('Ingresá un correo válido')
@@ -118,7 +107,7 @@ export function SecuritySection({ currentEmail, isDemoMode }: SecuritySectionPro
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              disabled={isSavingPassword || isDemoMode}
+              disabled={isSavingPassword}
               required
             />
           </div>
@@ -130,7 +119,7 @@ export function SecuritySection({ currentEmail, isDemoMode }: SecuritySectionPro
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              disabled={isSavingPassword || isDemoMode}
+              disabled={isSavingPassword}
               required
               minLength={8}
             />
@@ -143,14 +132,14 @@ export function SecuritySection({ currentEmail, isDemoMode }: SecuritySectionPro
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={isSavingPassword || isDemoMode}
+              disabled={isSavingPassword}
               required
               minLength={8}
             />
           </div>
           <Button
             type="submit"
-            disabled={isSavingPassword || isDemoMode}
+            disabled={isSavingPassword}
             className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
           >
             {isSavingPassword ? (
@@ -183,14 +172,14 @@ export function SecuritySection({ currentEmail, isDemoMode }: SecuritySectionPro
               autoComplete="email"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              disabled={isSavingEmail || isDemoMode}
+              disabled={isSavingEmail}
               required
             />
           </div>
           <Button
             type="submit"
             variant="outline"
-            disabled={isSavingEmail || isDemoMode}
+            disabled={isSavingEmail}
           >
             {isSavingEmail ? (
               <>

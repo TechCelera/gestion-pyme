@@ -57,17 +57,23 @@ corepack prepare pnpm@10.12.4 --activate
 - Vitest + Testing Library (unit / integracion ligera en jsdom)
 - Playwright (E2E en Chromium; carpeta `e2e/`)
 
-## Pruebas
+## Pruebas y robustez
+
+Copiá `.env.example` → `.env.local` y completá Supabase. Para E2E autenticado, creá un usuario de prueba (email confirmado) y definí `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD`.
 
 | Comando | Que hace |
 |---------|----------|
-| `pnpm run verify` | ESLint + Vitest + `next build` |
-| `pnpm run test:e2e` | E2E asumiendo **`pnpm run dev` en 3000** (no arranca otro servidor; evita EADDRINUSE y el lock de Next). |
-| `pnpm run test:e2e:ci` | E2E levantando el dev con Playwright (CI o máquina sin servidor; **no** lo uses si ya tenés `next dev` en el mismo repo). |
+| `pnpm run verify` | ESLint + `tsc` + Vitest + `next build` (obligatorio antes de merge) |
+| `pnpm run test:e2e` | E2E asumiendo **`pnpm run dev` en 3000** (público + autenticado si hay credenciales E2E). |
+| `pnpm run test:e2e:ci` | E2E levantando el dev con Playwright (CI o máquina sin servidor). |
 | `pnpm run verify:all` | `verify` + `test:e2e:ci` (CI / sin dev previo). |
-| `pnpm run verify:all:local` | `verify` + `test:e2e` (con `next dev` ya en marcha en el puerto de `PLAYWRIGHT_BASE_URL`, por defecto **127.0.0.1:3000**). |
-| `pnpm run playwright:install` | **Rápido (recomendado):** solo **chromium-headless-shell** + ffmpeg — alcanza para `test:e2e` en headless (sin el ZIP gigante de Chromium completo). |
-| `pnpm run playwright:install:full` | Chromium completo (~168 MiB + unzip largo). Usalo si vas a `test:e2e:ui` / headed o te falla algo raro. |
+| `pnpm run verify:all:local` | `verify` + `test:e2e` (con `next dev` ya en marcha). |
+| `pnpm run playwright:install` | **Rápido:** chromium-headless-shell + ffmpeg. |
+| `pnpm run playwright:install:full` | Chromium completo (headed / UI mode). |
+
+**CI (GitHub):** secrets `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`. Sin ellos, CI sigue pasando con specs públicos.
+
+**Migraciones:** `pnpm sb:push:dry` → `pnpm sb:push`. Roles canónicos: `20260518140000_canonical_user_roles_rls.sql` (ver `docs/DECISIONES.md` §20–22).
 
 ## Scripts
 

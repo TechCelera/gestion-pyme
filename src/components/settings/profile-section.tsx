@@ -14,21 +14,15 @@ import type { UserProfile } from '@/lib/actions/profile'
 
 interface ProfileSectionProps {
   profile: UserProfile
-  isDemoMode: boolean
   onUpdated: (fullName: string) => void
 }
 
-export function ProfileSection({ profile, isDemoMode, onUpdated }: ProfileSectionProps) {
+export function ProfileSection({ profile, onUpdated }: ProfileSectionProps) {
   const [fullName, setFullName] = useState(profile.fullName)
   const [isSaving, setIsSaving] = useState(false)
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (isDemoMode) {
-      toast.info('En modo demo los cambios no se guardan')
-      return
-    }
-
     setIsSaving(true)
     try {
       const result = await updateProfile(fullName)
@@ -57,7 +51,7 @@ export function ProfileSection({ profile, isDemoMode, onUpdated }: ProfileSectio
               id="fullName"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              disabled={isSaving || isDemoMode}
+              disabled={isSaving}
               required
             />
           </div>
@@ -84,7 +78,7 @@ export function ProfileSection({ profile, isDemoMode, onUpdated }: ProfileSectio
           </div>
           <Button
             type="submit"
-            disabled={isSaving || isDemoMode}
+            disabled={isSaving}
             className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
           >
             {isSaving ? (

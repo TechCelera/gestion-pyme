@@ -17,7 +17,6 @@ import {
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/stores/auth-store'
 import { useLogout } from '@/hooks/use-logout'
 import { Badge } from '@/components/ui/badge'
 import { ROUTES } from '@/lib/constants'
@@ -68,7 +67,6 @@ function NavRow({
 export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
-  const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const { logout } = useLogout()
 
   const mainNavItems: NavLink[] = [
@@ -125,11 +123,6 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
         {!collapsed && (
           <div>
             <h1 className="text-lg font-bold text-primary">Gestion PYME</h1>
-            {isDemoMode && (
-              <span className="text-xs bg-yellow-500/20 text-yellow-600 px-2 py-0.5 rounded-full">
-                Modo Demo
-              </span>
-            )}
             <UserRoleBadge variant="compact" className="mt-1" />
           </div>
         )}

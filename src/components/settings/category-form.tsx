@@ -25,8 +25,6 @@ import { createCategory, updateCategory } from '@/lib/actions/categories'
 import type { Category } from '@/lib/actions/categories'
 import { CATEGORY_TYPE_OPTIONS } from '@/lib/constants'
 import { normalizeCategoryType, type CategoryType } from '@/lib/validations/category'
-import { useAuthStore } from '@/stores/auth-store'
-
 interface CategoryFormProps {
   isOpen: boolean
   onClose: () => void
@@ -39,7 +37,6 @@ export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFor
   const [categoryType, setCategoryType] = useState<CategoryType>('income')
   const [isSaving, setIsSaving] = useState(false)
 
-  const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const isEditing = !!category
 
   const resetForm = useCallback(() => {
@@ -67,13 +64,6 @@ export function CategoryForm({ isOpen, onClose, onSaved, category }: CategoryFor
   const handleSubmit = async () => {
     if (!name.trim()) {
       toast.error('El nombre es obligatorio')
-      return
-    }
-
-    if (isDemoMode) {
-      toast.success(isEditing ? 'Categoría actualizada (demo)' : 'Categoría creada (demo)')
-      handleClose()
-      onSaved()
       return
     }
 

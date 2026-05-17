@@ -18,6 +18,7 @@ import {
 import { evaluateBudgetStatus } from '@/lib/utils/budget'
 import { errorMessageForUser } from '@/lib/utils/errors'
 import { formatReportsPeriodLabel, resolveReportsPeriod, type ReportsRangeKey } from '@/lib/utils/reports-period'
+import { normalizeRole } from '@/lib/auth/roles'
 import { isFinanceApproverRole } from '@/lib/constants'
 
 // Types
@@ -177,7 +178,8 @@ async function getCurrentUserRole(): Promise<string | null> {
     const { data, error } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
 
     if (error || !data) return null
-    return (data as { role: string }).role ?? null
+    const slug = (data as { role: string }).role ?? null
+    return normalizeRole(slug) ?? slug
   } catch {
     return null
   }

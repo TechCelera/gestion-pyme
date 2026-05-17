@@ -8,9 +8,11 @@ import {
   ArrowLeftRight,
   ArrowUpRight,
   ChevronDown,
+  LayoutList,
   SlidersHorizontal,
   Tag,
 } from 'lucide-react'
+import { PageTabsBar } from '@/components/ui/page-tabs'
 import { ROUTES, isFinanceApproverRole } from '@/lib/constants'
 import { toast } from 'sonner'
 
@@ -24,13 +26,11 @@ import { useMovementStore } from '@/stores/movement-store'
 import { useAuthStore } from '@/stores/auth-store'
 import type { CreateMovementInput, MovementType } from '@/lib/validations/movement'
 import {
-  OPERACIONES_FLOW_TABS,
   operacionesFlowHint,
   operacionesFlowToTypeFilter,
   parseOperacionesFlow,
   type OperacionesFlowKey,
 } from '@/lib/movements/operaciones-flow'
-import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -173,21 +173,18 @@ export default function OperacionesPage() {
     setPagination({ page })
   }
 
-  const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const clearUser = useAuthStore((state) => state.clearUser)
   const role = useAuthStore((state) => state.role)
   const canManageFinanceActions = isFinanceApproverRole(role)
   const isAuthError = !!error && (error.includes('no autenticado') || error.includes('sin empresa'))
 
   useEffect(() => {
-    if (isDemoMode || !isAuthError) return
+    if (!isAuthError) return
     clearUser()
     router.replace('/login')
-  }, [isDemoMode, isAuthError, clearUser, router])
+  }, [isAuthError, clearUser, router])
 
-  // Solo ocultar errores de auth en modo demo
-  const isDemoError = isDemoMode && (error?.includes('no autenticado') || error?.includes('demo'))
-  const showError = !!error && !isDemoError
+  const showError = !!error
 
   return (
     <div className="space-y-6 p-6">
@@ -289,36 +286,17 @@ export default function OperacionesPage() {
         <UserRoleBadge className="w-full items-center rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5" />
       </header>
 
-      <div className="rounded-xl border bg-muted/40 p-1.5 shadow-sm">
-        <p className="px-2 pb-1.5 text-xs text-muted-foreground sm:hidden">
-          Elegí qué querés ver
-        </p>
-        <div
-          role="tablist"
-          aria-label="Filtro de movimientos"
-          className="flex flex-col gap-1 sm:flex-row sm:items-stretch"
-        >
-          {OPERACIONES_FLOW_TABS.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={flowKey === key}
-              onClick={() => setFlowFilter(key)}
-              className={cn(
-                'flex-1 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors sm:text-center',
-                flowKey === key
-                  ? 'bg-background text-foreground shadow-sm ring-1 ring-border'
-                  : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <p className="hidden px-2 pt-1.5 text-xs text-muted-foreground sm:block">
-          {operacionesFlowHint(flowKey)}
-        </p>
+      <div className="space-y-2">
+        <PageTabsBar
+          value={flowKey}
+          onValueChange={(next) => setFlowFilter(next as OperacionesFlowKey)}
+          tabs={[
+            { value: 'all', label: 'Todo', icon: LayoutList },
+            { value: 'ingresos', label: 'Ingresos', icon: ArrowDownLeft },
+            { value: 'egresos', label: 'Egresos', icon: ArrowUpRight },
+          ]}
+        />
+        <p className="text-xs text-muted-foreground">{operacionesFlowHint(flowKey)}</p>
       </div>
 
       {/* Stats */}

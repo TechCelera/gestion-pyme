@@ -24,8 +24,6 @@ import {
 import { createAccount, updateAccount } from '@/lib/actions/accounts'
 import type { Account } from '@/lib/actions/accounts'
 import { ACCOUNT_TYPE_LABELS } from '@/lib/constants'
-import { useAuthStore } from '@/stores/auth-store'
-
 interface AccountFormProps {
   isOpen: boolean
   onClose: () => void
@@ -51,7 +49,6 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
   const [currency, setCurrency] = useState('ARS')
   const [isSaving, setIsSaving] = useState(false)
 
-  const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const isEditing = !!account
 
   const resetForm = useCallback(() => {
@@ -81,13 +78,6 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
   const handleSubmit = async () => {
     if (!name.trim()) {
       toast.error('El nombre es obligatorio')
-      return
-    }
-
-    if (isDemoMode) {
-      toast.success(isEditing ? 'Cuenta actualizada (demo)' : 'Cuenta creada (demo)')
-      handleClose()
-      onSaved()
       return
     }
 

@@ -14,9 +14,6 @@ import {
   finalizeMovementSubmission,
   deleteMovement as deleteMovementRemote,
 } from '@/lib/actions/movements'
-import { DEMO_MOVEMENTS } from '@/lib/demo-data'
-import { createDemoMovementFromInput } from '@/lib/demo/create-demo-movement'
-import { useAuthStore } from './auth-store'
 
 interface Pagination {
   page: number
@@ -26,8 +23,6 @@ interface Pagination {
 
 interface MovementStoreState {
   movements: Movement[]
-  /** Copia mutable de movimientos demo (sesión invitado). */
-  demoMovements: Movement[] | null
   filters: MovementFilters
   pagination: Pagination
   isLoading: boolean
@@ -59,7 +54,6 @@ export const useMovementStore = create<MovementStoreState>()(
   devtools(
     (set, get) => ({
       movements: [],
-      demoMovements: null,
       filters: defaultFilters,
       pagination: defaultPagination,
       isLoading: false,
@@ -88,41 +82,6 @@ export const useMovementStore = create<MovementStoreState>()(
         set({ isLoading: true, error: null })
 
         try {
-          const isDemoMode = useAuthStore.getState().isDemoMode
-
-          if (isDemoMode) {
-            const { filters, pagination } = get()
-            const source = get().demoMovements ?? DEMO_MOVEMENTS
-            let filtered = [...source]
-
-            if (filters.status && filters.status.length > 0) {
-              filtered = filtered.filter((o) => filters.status?.includes(o.status))
-            }
-            if (filters.type && filters.type.length > 0) {
-              filtered = filtered.filter((o) => filters.type?.includes(o.type))
-            }
-            if (filters.search) {
-              const searchLower = filters.search.toLowerCase()
-              filtered = filtered.filter((o) =>
-                o.description.toLowerCase().includes(searchLower)
-              )
-            }
-
-            const start = (pagination.page - 1) * pagination.pageSize
-            const end = start + pagination.pageSize
-            const pageRows = filtered.slice(start, end)
-
-            set({
-              movements: pageRows,
-              pagination: {
-                ...pagination,
-                total: filtered.length,
-              },
-              isLoading: false,
-            })
-            return
-          }
-
           const { filters, pagination } = get()
           const result = await listMovements({
             ...filters,
@@ -157,31 +116,6 @@ export const useMovementStore = create<MovementStoreState>()(
         set({ isLoading: true, error: null })
 
         try {
-          const isDemoMode = useAuthStore.getState().isDemoMode
-
-          if (isDemoMode) {
-            await new Promise((resolve) => setTimeout(resolve, 400))
-            const status = asDraft ? 'draft' : 'pending'
-            const created = createDemoMovementFromInput(data, status)
-            const base = get().demoMovements ?? [...DEMO_MOVEMENTS]
-            const demoMovements = [created, ...base]
-            const { filters, pagination } = get()
-            let filtered = [...demoMovements]
-            if (filters.type?.length) {
-              filtered = filtered.filter((o) => filters.type?.includes(o.type))
-            }
-            const start = (pagination.page - 1) * pagination.pageSize
-            const pageRows = filtered.slice(start, start + pagination.pageSize)
-            set({
-              demoMovements,
-              movements: pageRows,
-              pagination: { ...pagination, total: filtered.length },
-              isLoading: false,
-              error: null,
-            })
-            return true
-          }
-
           const result = await createMovement(data)
 
           if (result.success) {
@@ -221,14 +155,6 @@ export const useMovementStore = create<MovementStoreState>()(
         set({ isLoading: true, error: null })
 
         try {
-          const isDemoMode = useAuthStore.getState().isDemoMode
-
-          if (isDemoMode) {
-            await new Promise((resolve) => setTimeout(resolve, 500))
-            set({ isLoading: false })
-            return true
-          }
-
           const result = await updateMovement(id, data)
 
           if (result.success) {
@@ -254,20 +180,6 @@ export const useMovementStore = create<MovementStoreState>()(
         set({ isLoading: true, error: null })
 
         try {
-          const isDemoMode = useAuthStore.getState().isDemoMode
-
-          if (isDemoMode) {
-            await new Promise((resolve) => setTimeout(resolve, 300))
-            const base = get().demoMovements ?? [...DEMO_MOVEMENTS]
-            const demoMovements = base.map((m) =>
-              m.id === id ? { ...m, status } : m
-            )
-            set({ demoMovements })
-            await get().fetchMovements()
-            set({ isLoading: false })
-            return true
-          }
-
           const result = await updateMovementStatus({ id, status, reason })
 
           if (result.success) {
@@ -293,18 +205,6 @@ export const useMovementStore = create<MovementStoreState>()(
         set({ isLoading: true, error: null })
 
         try {
-          const isDemoMode = useAuthStore.getState().isDemoMode
-
-          if (isDemoMode) {
-            await new Promise((resolve) => setTimeout(resolve, 300))
-            const base = get().demoMovements ?? [...DEMO_MOVEMENTS]
-            const demoMovements = base.filter((m) => m.id !== id)
-            set({ demoMovements })
-            await get().fetchMovements()
-            set({ isLoading: false })
-            return true
-          }
-
           const result = await deleteMovementRemote(id)
 
           if (result.success) {

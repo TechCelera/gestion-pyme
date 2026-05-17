@@ -50,8 +50,6 @@ import { getProjects } from '@/lib/actions/projects'
 import type { Account } from '@/lib/actions/accounts'
 import type { Category } from '@/lib/actions/categories'
 import type { Project } from '@/lib/actions/projects'
-import { DEMO_ACCOUNTS, DEMO_CATEGORIES } from '@/lib/demo-data'
-import { useAuthStore } from '@/stores/auth-store'
 import type { Movement } from '@/lib/actions/movements'
 import { getMovementComponents } from '@/lib/actions/movements'
 import { getContacts, createContact, type ContactRow } from '@/lib/actions/contacts'
@@ -130,7 +128,6 @@ export function MovementForm({
   const [quickServices, setQuickServices] = useState('')
   const [quickSaving, setQuickSaving] = useState(false)
 
-  const isDemoMode = useAuthStore((state) => state.isDemoMode)
   const isEditing = !!movement
   const selectedType = MOVEMENT_TYPE_OPTIONS.find((t) => t.value === type)
   const isGuidedCreate =
@@ -160,14 +157,6 @@ export function MovementForm({
 
   // Fetch accounts and categories on open
   const loadFormData = useCallback(async () => {
-    if (isDemoMode) {
-      // Modo demo: usar datos locales
-      setAccounts(DEMO_ACCOUNTS.map(a => ({ ...a })))
-      setCategories(DEMO_CATEGORIES.map(c => ({ ...c })))
-      setContacts([])
-      return
-    }
-
     setIsLoadingData(true)
     try {
       const [accountsResult, categoriesResult, projectsResult, contactsResult] = await Promise.all([
@@ -194,7 +183,7 @@ export function MovementForm({
     } finally {
       setIsLoadingData(false)
     }
-  }, [isDemoMode])
+  }, [])
 
   useEffect(() => {
     if (!isOpen) return
@@ -236,7 +225,7 @@ export function MovementForm({
   }, [movement, isOpen, resetForm, fixedType])
 
   useEffect(() => {
-    if (!isOpen || !movement || isDemoMode) return
+    if (!isOpen || !movement) return
     let cancelled = false
     ;(async () => {
       const res = await getMovementComponents(movement.id)
@@ -256,7 +245,7 @@ export function MovementForm({
     return () => {
       cancelled = true
     }
-  }, [isOpen, movement, isDemoMode])
+  }, [isOpen, movement])
 
   const effectiveComponentLines = useMemo((): ComponentLineDraft[] => {
     if (
@@ -582,7 +571,6 @@ export function MovementForm({
                 onToggleAdvanced={() => setShowAdvanced((v) => !v)}
                 isLoading={isLoading}
                 isLoadingData={isLoadingData}
-                isDemoMode={isDemoMode}
                 onNavigateToConfig={handleClose}
                 onQuickContact={openQuickContact}
               />
@@ -717,7 +705,7 @@ export function MovementForm({
                 {isLoadingData && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               </div>
 
-              {!isDemoMode && !isLoadingData && accounts.length === 0 ? (
+              {!isLoadingData && accounts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-6 px-4 rounded-lg border border-dashed border-muted-foreground/20 bg-muted/30 text-center space-y-3">
                   <Wallet className="h-10 w-10 text-muted-foreground/40" />
                   <div className="space-y-1">
@@ -967,7 +955,6 @@ export function MovementForm({
                   totalAmount={amount}
                   isLoading={isLoading}
                   isLoadingData={isLoadingData}
-                  isDemoMode={isDemoMode}
                   onQuickContact={openQuickContact}
                 />
               </>
@@ -1015,7 +1002,7 @@ export function MovementForm({
             <Button
               variant="secondary"
               onClick={() => handleSubmit(true)}
-              disabled={isLoading || (!isDemoMode && accounts.length === 0)}
+              disabled={isLoading || accounts.length === 0}
               className="w-full"
             >
               Guardar Borrador
@@ -1025,7 +1012,7 @@ export function MovementForm({
             onClick={() => handleSubmit(false)}
             disabled={
               isLoading ||
-              (!isDemoMode && accounts.length === 0) ||
+              accounts.length === 0 ||
               ((type === 'income' || type === 'expense') &&
                 (!accountId || !categoryId || !sumMatchesComponents))
             }

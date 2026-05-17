@@ -34,7 +34,6 @@ export type MovementComponentBreakdownProps = {
   totalAmount: string
   isLoading?: boolean
   isLoadingData?: boolean
-  isDemoMode?: boolean
   onQuickContact: (lineLocalId: string) => void
   compact?: boolean
 }
@@ -49,7 +48,6 @@ export function MovementComponentBreakdown({
   totalAmount,
   isLoading,
   isLoadingData,
-  isDemoMode,
   onQuickContact,
   compact,
 }: MovementComponentBreakdownProps) {
@@ -213,17 +211,15 @@ export function MovementComponentBreakdown({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <Label>Contacto</Label>
-                    {!isDemoMode ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs shrink-0"
-                        onClick={() => onQuickContact(line.localId)}
-                      >
-                        + Nuevo
-                      </Button>
-                    ) : null}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs shrink-0"
+                      onClick={() => onQuickContact(line.localId)}
+                    >
+                      + Nuevo
+                    </Button>
                   </div>
                   <Select
                     value={line.contactId}

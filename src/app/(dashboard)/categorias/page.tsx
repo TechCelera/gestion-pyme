@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Pencil, Trash2, Tag, Info, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Tag, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -24,8 +24,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { getCategories, deleteCategory } from '@/lib/actions/categories'
 import { CATEGORY_TYPES, getCategoryTypeLabel, isCategoryIncomeType } from '@/lib/constants'
-import { DEMO_CATEGORIES } from '@/lib/demo-data'
-import { useAuthStore } from '@/stores/auth-store'
 import { CategoryForm } from '@/components/settings/category-form'
 
 import type { Category } from '@/lib/actions/categories'
@@ -37,14 +35,7 @@ export default function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
-  const isDemoMode = useAuthStore((state) => state.isDemoMode)
-
   const fetchData = useCallback(async () => {
-    if (isDemoMode) {
-      setCategories(DEMO_CATEGORIES.map((c) => ({ ...c })))
-      return
-    }
-
     setIsLoading(true)
     try {
       const categoriesResult = await getCategories()
@@ -57,7 +48,7 @@ export default function CategoriesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [isDemoMode])
+  }, [])
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -76,12 +67,6 @@ export default function CategoriesPage() {
   }
 
   const handleDeleteCategory = async (category: Category) => {
-    if (isDemoMode) {
-      setCategories((prev) => prev.filter((c) => c.id !== category.id))
-      toast.success('Categoría eliminada (demo)')
-      return
-    }
-
     const result = await deleteCategory(category.id)
     if (result.success) {
       toast.success('Categoría eliminada exitosamente')
@@ -102,17 +87,6 @@ export default function CategoriesPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      {isDemoMode && (
-        <Card className="border-[#7B68EE]/30 bg-[#7B68EE]/5">
-          <CardContent className="flex items-center gap-3 py-3">
-            <Info className="h-5 w-5 text-[#7B68EE] shrink-0" />
-            <p className="text-sm text-foreground">
-              Estás en modo demo. Los cambios no se guardarán.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
       <PageHeader
         title="Categorías"
         description="Clasificá cada movimiento como ingreso o gasto. Los nombres los elegís vos; el tipo define en qué informes entra."

@@ -63,7 +63,6 @@ export type MovementGuidedFieldsProps = {
   onToggleAdvanced: () => void
   isLoading?: boolean
   isLoadingData?: boolean
-  isDemoMode?: boolean
   onNavigateToConfig: () => void
   onQuickContact: (lineLocalId: string) => void
 }
@@ -122,7 +121,6 @@ export function MovementGuidedFields({
   onToggleAdvanced,
   isLoading,
   isLoadingData,
-  isDemoMode,
   onNavigateToConfig,
   onQuickContact,
 }: MovementGuidedFieldsProps) {
@@ -176,7 +174,7 @@ export function MovementGuidedFields({
             />
           </FieldGroup>
           <FieldGroup label={accountLabelText} htmlFor="account-guided">
-            {!isDemoMode && !isLoadingData && accounts.length === 0 ? (
+            {!isLoadingData && accounts.length === 0 ? (
               <div className="flex h-10 items-center justify-center rounded-lg border border-dashed px-2 text-center text-xs text-muted-foreground">
                 <Link
                   href="/cuentas"
@@ -307,7 +305,6 @@ export function MovementGuidedFields({
             totalAmount={amount}
             isLoading={isLoading}
             isLoadingData={isLoadingData}
-            isDemoMode={isDemoMode}
             onQuickContact={onQuickContact}
             compact
           />

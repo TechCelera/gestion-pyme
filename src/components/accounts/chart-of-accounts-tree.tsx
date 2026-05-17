@@ -19,7 +19,6 @@ export interface ChartOfAccountsTreeProps {
   rows: ChartAccountWithBalance[]
   currency: string
   asOf: string
-  isDemo?: boolean
 }
 
 function buildChildrenMap(rows: ChartAccountWithBalance[]) {
@@ -196,7 +195,7 @@ function SectionBlock({
   )
 }
 
-export function ChartOfAccountsTree({ rows, currency, asOf, isDemo }: ChartOfAccountsTreeProps) {
+export function ChartOfAccountsTree({ rows, currency, asOf }: ChartOfAccountsTreeProps) {
   const byParent = useMemo(() => buildChildrenMap(rows), [rows])
   const rolled = useMemo(() => rollupChartBalances(rows), [rows])
   const roots = byParent.get(null) ?? []
@@ -235,24 +234,29 @@ export function ChartOfAccountsTree({ rows, currency, asOf, isDemo }: ChartOfAcc
         <CardContent className="flex gap-3 py-4">
           <Info className="h-5 w-5 text-[#7B68EE] shrink-0 mt-0.5" />
           <div className="space-y-2 text-sm">
-            <p className="font-medium text-foreground">Plan de cuentas con saldos</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-medium text-foreground">Plan de cuentas con saldos</p>
+              <Badge variant="outline" className="text-xs font-normal">
+                Datos reales del diario
+              </Badge>
+            </div>
             <p className="text-muted-foreground leading-relaxed">
-              Cada fila muestra el <strong className="font-medium text-foreground">saldo acumulado</strong>{' '}
-              al corte, calculado desde movimientos <strong className="font-medium text-foreground">aprobados</strong>{' '}
-              en el libro diario. Las cuentas agrupadoras suman sus hijas.
+              Cada saldo sale del <strong className="font-medium text-foreground">libro diario</strong>:
+              solo movimientos <strong className="font-medium text-foreground">aprobados</strong> que ya
+              generaron asientos contables. Las cuentas agrupadoras suman sus hijas.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              Para el día a día usá la pestaña{' '}
+              La pestaña{' '}
               <span className="inline-flex items-center gap-1 font-medium text-foreground">
                 <Wallet className="h-3.5 w-3.5" />
                 Cuentas
               </span>{' '}
-              (caja, bancos) y <strong className="font-medium text-foreground">Categorías</strong>.
-              {isDemo ? ' Los importes en demo son de ejemplo.' : null}
+              (caja y bancos) muestra saldos operativos; pueden diferir de esta vista contable hasta que todo
+              quede registrado y aprobado en movimientos.
             </p>
             <p className="text-xs text-muted-foreground">
               Saldos al {asOfLabel}
-              {!hasAnyBalance && !isDemo
+              {!hasAnyBalance
                 ? ' · Todavía no hay movimientos aprobados que generen saldos en el plan.'
                 : null}
             </p>

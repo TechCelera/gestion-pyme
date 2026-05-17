@@ -1,13 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Wallet, Plus, Pencil, Trash2, Info, Loader2, BookOpen } from 'lucide-react'
+import { Wallet, Plus, Pencil, Trash2, Loader2, BookOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/ui/page-header'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PageTabs, PageTabsContent } from '@/components/ui/page-tabs'
 import {
   Table,
   TableBody,
@@ -25,8 +25,6 @@ import {
 } from '@/lib/actions/chart-of-accounts'
 import type { ChartAccountWithBalance } from '@/lib/chart-of-accounts-balances'
 import { ACCOUNT_TYPE_LABELS } from '@/lib/constants'
-import { DEMO_ACCOUNTS, DEMO_CHART_SNAPSHOT } from '@/lib/demo-data'
-import { useAuthStore } from '@/stores/auth-store'
 
 function formatBalance(amount: number, currency: string): string {
   try {
@@ -57,14 +55,8 @@ export default function AccountsPage() {
   const [chartAsOf, setChartAsOf] = useState(() => new Date().toISOString().slice(0, 10))
   const [chartLoading, setChartLoading] = useState(false)
   const [chartError, setChartError] = useState<string | null>(null)
-  const isDemoMode = useAuthStore((state) => state.isDemoMode)
 
   const fetchAccounts = useCallback(async () => {
-    if (isDemoMode) {
-      setAccounts(DEMO_ACCOUNTS.map((account) => ({ ...account })))
-      return
-    }
-
     setIsLoading(true)
     try {
       const accountsResult = await getAccounts()
@@ -79,7 +71,7 @@ export default function AccountsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [isDemoMode])
+  }, [])
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -94,12 +86,6 @@ export default function AccountsPage() {
   }, [])
 
   const loadChartOfAccounts = useCallback(async () => {
-    if (isDemoMode) {
-      applyChartSnapshot(DEMO_CHART_SNAPSHOT)
-      setChartError(null)
-      setChartLoading(false)
-      return
-    }
     setChartLoading(true)
     setChartError(null)
     try {
@@ -115,7 +101,7 @@ export default function AccountsPage() {
     } finally {
       setChartLoading(false)
     }
-  }, [isDemoMode, applyChartSnapshot])
+  }, [applyChartSnapshot])
 
   useEffect(() => {
     if (tab === 'chart') {
@@ -136,12 +122,6 @@ export default function AccountsPage() {
   }
 
   const handleDeleteAccount = async (account: Account) => {
-    if (isDemoMode) {
-      setAccounts((prev) => prev.filter((a) => a.id !== account.id))
-      toast.success('Cuenta eliminada (demo)')
-      return
-    }
-
     const result = await deleteAccount(account.id)
     if (result.success) {
       toast.success('Cuenta eliminada exitosamente')
@@ -153,113 +133,98 @@ export default function AccountsPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      {isDemoMode && (
-        <Card className="border-[#7B68EE]/30 bg-[#7B68EE]/5">
-          <CardContent className="flex items-center gap-3 py-3">
-            <Info className="h-5 w-5 text-[#7B68EE] shrink-0" />
-            <p className="text-sm text-foreground">
-              Estás en modo demo. Los cambios no se guardarán.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
       <PageHeader
         title="Mis cuentas"
         description="Cuentas del día a día (caja, bancos) y el mapa contable de referencia de la empresa."
       />
 
-      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="accounts" className="gap-2">
-            <Wallet className="h-4 w-4" />
-            Cuentas
-          </TabsTrigger>
-          <TabsTrigger value="chart" className="gap-2">
-            <BookOpen className="h-4 w-4" />
-            Plan de cuentas
-          </TabsTrigger>
-        </TabsList>
+      <PageTabs
+        value={tab}
+        onValueChange={setTab}
+        tabs={[
+          { value: 'accounts', label: 'Cuentas', icon: Wallet },
+          { value: 'chart', label: 'Plan de cuentas', icon: BookOpen },
+        ]}
+      >
+        <PageTabsContent value="accounts" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Listado de Cuentas</CardTitle>
+              <Button
+                onClick={() => handleOpenAccountForm()}
+                size="sm"
+                className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Nueva Cuenta
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : accounts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <Wallet className="h-12 w-12 mb-3 opacity-30" />
+                  <p className="text-sm">Todavía no tenés cuentas</p>
+                  <p className="text-xs mt-1">Agregá caja, banco u otra cuenta cuando quieras empezar</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-center">Nombre</TableHead>
+                      <TableHead className="text-center">Tipo</TableHead>
+                      <TableHead className="text-center">Moneda</TableHead>
+                      <TableHead className="text-right">Saldo</TableHead>
+                      <TableHead className="text-center">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {accounts.map((account) => (
+                      <TableRow key={account.id}>
+                        <TableCell className="text-center font-medium">{account.name}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="mx-auto">
+                            {ACCOUNT_TYPE_LABELS[account.type] || account.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">{account.currency}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {formatBalance(account.balance, account.currency)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="inline-flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenAccountForm(account)}
+                            >
+                              <Pencil className="mr-1 h-4 w-4" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteAccount(account)}
+                            >
+                              <Trash2 className="mr-1 h-4 w-4" />
+                              Eliminar
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </PageTabsContent>
 
-        <TabsContent value="accounts" className="space-y-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Listado de Cuentas</CardTitle>
-          <Button
-            onClick={() => handleOpenAccountForm()}
-            size="sm"
-            className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            Nueva Cuenta
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : accounts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <Wallet className="h-12 w-12 mb-3 opacity-30" />
-              <p className="text-sm">Todavía no tenés cuentas</p>
-              <p className="text-xs mt-1">Agregá caja, banco u otra cuenta cuando quieras empezar</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-center">Nombre</TableHead>
-                  <TableHead className="text-center">Tipo</TableHead>
-                  <TableHead className="text-center">Moneda</TableHead>
-                  <TableHead className="text-right">Saldo</TableHead>
-                  <TableHead className="text-center">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {accounts.map((account) => (
-                  <TableRow key={account.id}>
-                    <TableCell className="text-center font-medium">{account.name}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline" className="mx-auto">
-                        {ACCOUNT_TYPE_LABELS[account.type] || account.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">{account.currency}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">
-                      {formatBalance(account.balance, account.currency)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="inline-flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenAccountForm(account)}
-                        >
-                          <Pencil className="mr-1 h-4 w-4" />
-                          Editar
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteAccount(account)}
-                        >
-                          <Trash2 className="mr-1 h-4 w-4" />
-                          Eliminar
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-        </TabsContent>
-
-        <TabsContent value="chart" className="space-y-4">
+        <PageTabsContent value="chart" className="space-y-4">
           {chartLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -271,15 +236,10 @@ export default function AccountsPage() {
               </CardContent>
             </Card>
           ) : (
-            <ChartOfAccountsTree
-              rows={chartRows}
-              currency={chartCurrency}
-              asOf={chartAsOf}
-              isDemo={isDemoMode}
-            />
+            <ChartOfAccountsTree rows={chartRows} currency={chartCurrency} asOf={chartAsOf} />
           )}
-        </TabsContent>
-      </Tabs>
+        </PageTabsContent>
+      </PageTabs>
 
       <AccountForm
         isOpen={isAccountFormOpen}

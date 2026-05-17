@@ -16,6 +16,13 @@ const baseURL =
 /** Ruta estable para el probe del webServer (evita cadena de redirects desde `/`). */
 const webServerReadyURL = process.env.PLAYWRIGHT_WEBSERVER_URL ?? `${baseURL}/login`
 
+const e2eAuthEnabled = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() &&
+    process.env.E2E_TEST_EMAIL?.trim() &&
+    process.env.E2E_TEST_PASSWORD
+)
+
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
@@ -30,7 +37,28 @@ export default defineConfig({
     actionTimeout: 15_000,
     navigationTimeout: 60_000,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], channel: 'chrome' } }],
+  projects: [
+    ...(e2eAuthEnabled ? [{ name: 'setup', testMatch: /auth\.setup\.ts/ }] : []),
+    {
+      name: 'chromium',
+      testIgnore: [/auth\.setup\.ts/, /authenticated\//],
+      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+    },
+    ...(e2eAuthEnabled
+      ? [
+          {
+            name: 'authenticated',
+            testMatch: /authenticated\/.*\.spec\.ts/,
+            dependencies: ['setup'],
+            use: {
+              ...devices['Desktop Chrome'],
+              channel: 'chrome',
+              storageState: 'e2e/.auth/user.json',
+            },
+          },
+        ]
+      : []),
+  ],
   ...(skipWebServer
     ? {}
     : {

@@ -7,6 +7,11 @@ import {
 } from '@/lib/auth/roles'
 
 describe('normalizeRole', () => {
+  it('keeps canonical DB slugs as admin or collaborator', () => {
+    expect(normalizeRole('admin')).toBe(USER_ROLES.ADMIN)
+    expect(normalizeRole('collaborator')).toBe(USER_ROLES.COLLABORATOR)
+  })
+
   it('maps legacy admin slugs to admin', () => {
     expect(normalizeRole('superadmin')).toBe(USER_ROLES.ADMIN)
     expect(normalizeRole('admin_finanzas')).toBe(USER_ROLES.ADMIN)

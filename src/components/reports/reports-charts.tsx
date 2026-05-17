@@ -15,7 +15,11 @@ import {
   Line,
   Legend,
 } from 'recharts'
+import { ChartEmptyState } from '@/components/charts/chart-empty-state'
 import type { ReportsData } from '@/lib/actions/movements'
+import { hasCashFlowTrendData, hasNonZeroAmounts } from '@/lib/charts/has-chart-data'
+import { PieChart as PieChartIcon, TrendingUp } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ReportsChartsProps {
   data: ReportsData
@@ -36,6 +40,22 @@ function formatMonth(monthKey: string): string {
   const [year, month] = monthKey.split('-')
   const date = new Date(Number(year), Number(month) - 1, 1)
   return date.toLocaleDateString('es-AR', { month: 'short' })
+}
+
+interface ChartPanelProps {
+  title: string
+  heightClass?: string
+  className?: string
+  children: React.ReactNode
+}
+
+function ChartPanel({ title, heightClass = 'h-72', className, children }: ChartPanelProps) {
+  return (
+    <div className={cn('rounded-lg border p-4', className)}>
+      <p className="text-sm font-medium mb-3">{title}</p>
+      <div className={heightClass}>{children}</div>
+    </div>
+  )
 }
 
 export function ReportsCharts({ data }: ReportsChartsProps) {
@@ -60,11 +80,20 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
     proyectadoGasto: cashFlow.monthlyTrendProjected[index]?.outflow ?? 0,
   }))
 
+  const hasIncomeExpenseChart = hasNonZeroAmounts([
+    incomeStatement.totalIncome,
+    incomeStatement.totalExpenses,
+    incomeStatement.netProfit,
+  ])
+
+  const hasExpensePieChart = hasNonZeroAmounts(expenseBreakdownData.map((item) => item.value))
+
+  const hasTrendChart = hasCashFlowTrendData(cashFlow.monthlyTrend)
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-      <div className="rounded-lg border p-4">
-        <p className="text-sm font-medium mb-3">Ingresos vs gastos del período</p>
-        <div className="h-72">
+      <ChartPanel title="Ingresos vs gastos del período">
+        {hasIncomeExpenseChart ? (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={incomeVsExpenseData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -81,12 +110,16 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
-      </div>
+        ) : (
+          <ChartEmptyState
+            title="Sin ingresos ni gastos en el período"
+            description="Registrá ventas, cobros o compras aprobadas para comparar resultados acá."
+          />
+        )}
+      </ChartPanel>
 
-      <div className="rounded-lg border p-4">
-        <p className="text-sm font-medium mb-3">Distribución de gastos por categoría</p>
-        <div className="h-72">
+      <ChartPanel title="Distribución de gastos por categoría">
+        {hasExpensePieChart ? (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={expenseBreakdownData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={110}>
@@ -98,12 +131,21 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
               <Legend />
             </PieChart>
           </ResponsiveContainer>
-        </div>
-      </div>
+        ) : (
+          <ChartEmptyState
+            icon={PieChartIcon}
+            title="No hay gastos por categoría"
+            description="Cuando tengas egresos aprobados en el período, vas a ver cómo se reparten."
+          />
+        )}
+      </ChartPanel>
 
-      <div className="rounded-lg border p-4 xl:col-span-2">
-        <p className="text-sm font-medium mb-3">Tendencia de flujo de caja (6 meses)</p>
-        <div className="h-80">
+      <ChartPanel
+        title="Tendencia de flujo de caja (6 meses)"
+        heightClass="h-80"
+        className="xl:col-span-2"
+      >
+        {hasTrendChart ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -131,8 +173,14 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
-      </div>
+        ) : (
+          <ChartEmptyState
+            icon={TrendingUp}
+            title="Sin movimientos de caja en los últimos meses"
+            description="Los ingresos y egresos aprobados en caja o banco van a dibujar la tendencia acá."
+          />
+        )}
+      </ChartPanel>
     </div>
   )
 }

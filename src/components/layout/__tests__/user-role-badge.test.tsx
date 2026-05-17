@@ -12,7 +12,6 @@ describe('UserRoleBadge', () => {
       role: null,
       fullName: null,
       isAuthenticated: false,
-      isDemoMode: false,
     })
   })
 

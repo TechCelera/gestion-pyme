@@ -7,17 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useLogout } from '@/hooks/use-logout'
 
 export function SessionSection() {
-  const { logout, isDemoMode } = useLogout()
+  const { logout } = useLogout()
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Sesión</CardTitle>
-        <CardDescription>
-          {isDemoMode
-            ? 'Salí del modo invitado y volvé a la pantalla de inicio de sesión.'
-            : 'Cerrá tu sesión en este dispositivo.'}
-        </CardDescription>
+        <CardDescription>Cerrá tu sesión en este dispositivo.</CardDescription>
       </CardHeader>
       <CardContent>
         <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => void logout()}>

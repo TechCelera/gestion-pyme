@@ -5,7 +5,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## Estado
 
 - Activo
-- Ultima actualizacion: 2026-05-15
+- Ultima actualizacion: 2026-05-17
 
 ## 1) Caja unica por empresa
 
@@ -292,8 +292,8 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ### Decision
 
 **Aprobacion**
-- Movimiento creado/enviado por **colaborador** (`responsable`, `vendedor`): debe quedar **pendiente** hasta que un **administrador** (`admin_finanzas`, `superadmin`) lo apruebe.
-- Movimiento creado por **administrador**: puede **autoaprobarse** o ser aprobado por **otro** administrador de la misma empresa.
+- Movimiento creado/enviado por **colaborador** (rol `collaborator` en BD): debe quedar **pendiente** hasta que un **administrador** (`admin`) lo apruebe.
+- Movimiento creado por **administrador**: puede **autoaprobarse** (flujo `finalizeMovementSubmission`) o ser aprobado por **otro** administrador de la misma empresa.
 
 **Factura en cuenta corriente**
 - La factura oficial es **opcional** (operativa mayoritaria sin factura formal).
@@ -310,7 +310,7 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 
 ### Implementacion (parcial — 2026-05)
 - Navegacion: sidebar con bloque **Flujo de caja** (Ventas y cobros, Compras y pagos, Todos los movimientos con filtro `?flujo=`); contador de pendientes en sidebar y badge en bottom nav.
-- Reglas de rol: `finalizeMovementSubmission` y `updateMovementStatus` en `src/lib/actions/movements.ts` (aprobar/rechazar/anular solo `admin_finanzas` / `superadmin`).
+- Reglas de rol: `finalizeMovementSubmission` y `updateMovementStatus` en `src/lib/actions/movements.ts` (aprobar/rechazar/anular solo `admin`; RLS vía `auth_user_is_admin()`).
 - Contactos: alta rapida inline en `operation-form` + `createContact` en `src/lib/actions/contacts.ts` con `client_segment` y `associated_services`; falta ficha/listado dedicado y PDF en Storage.
 - Pendiente: adjunto PDF factura, refinamiento de copy total vs `PROPUESTA_SOCIO.md`, opcion admin “solo enviar a otro admin” sin auto‑aprobar, RPC adicional si se centraliza todo en base.
 
@@ -417,9 +417,56 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ### Decision
 - `categories.type` canónico: **`income` | `expense`** (alineado con `transactions.type` para ingresos/egresos).
 - Migración `20260517120000_categories_income_expense_only.sql`: convierte subtipos legacy a `expense` y actualiza el CHECK.
-- Semillas por país (`country-config`, backfill) y demo usan solo esos dos tipos.
+- Semillas por país (`country-config`, backfill) usan solo esos dos tipos.
 - Validación Zod en server actions (`src/lib/validations/category.ts`).
 
 ### Razon
 - Modelo mental PYME: clasificar movimientos en ingreso o gasto; el desglose contable fino vive en el plan de cuentas / diario, no en la etiqueta de categoría del usuario.
+
+## 20) Roles canónicos en BD y RLS (Mayo 2026)
+
+### Decision
+- Slugs de tenant en **`public.users.role`**: solo `admin` | `collaborator` (misma semántica que `src/lib/auth/roles.ts`).
+- Slugs legacy (`admin_finanzas`, `vendedor`, …) se migran una vez; la app sigue normalizando metadata JWT antigua vía `normalizeRole()`.
+- Políticas RLS sensibles usan **`public.auth_user_is_admin()`** (no listas duplicadas de slugs legacy).
+
+### Implementacion
+- Migración `supabase/migrations/20260518140000_canonical_user_roles_rls.sql`:
+  - backfill + `CHECK (role IN ('admin','collaborator'))`;
+  - función `auth_user_is_admin()`;
+  - políticas `transactions_*` y `chart_of_accounts_modify` actualizadas;
+  - trigger `handle_new_user` asigna `admin` al creador de empresa.
+- App: `getProfile` / `getCurrentUserRole` devuelven rol canónico cuando es posible.
+
+### Razon
+- Una sola verdad en BD, RLS y UI; menos divergencia colaborador-en-app vs admin-en-RLS.
+
+## 21) Sin modo demo — datos siempre reales (Mayo 2026)
+
+### Decision
+- No hay modo invitado ni cookies `demo_mode`. Toda la UI operativa exige sesión Supabase.
+- Plan de cuentas: saldos desde RPC / diario (`listChartOfAccountsWithBalances`), nunca datos ficticios en producción.
+
+### Implementacion
+- Eliminados `demo-data`, `demo-dashboard`, helpers E2E demo y ramas `isDemoMode` en stores/forms.
+- `SeedOnFirstAccess` + migraciones idempotentes repiten el mínimo operativo (caja, banco, categorías) en empresas vacías.
+
+### Razon
+- Robustez = un camino de datos; menos bugs y menos costo de mantenimiento.
+
+## 22) Pruebas, E2E y CI (Mayo 2026)
+
+### Decision
+- **Calidad mínima por cambio:** `pnpm run verify` (lint, `tsc`, Vitest, build).
+- **E2E público:** login/registro sin credenciales (`e2e/public-routes.spec.ts`).
+- **E2E autenticado (opcional):** solo si existen `NEXT_PUBLIC_SUPABASE_*` + `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` (ver `.env.example`); Playwright proyecto `authenticated` con `storageState` tras `e2e/auth.setup.ts`.
+- **CI:** job `e2e` recibe secrets de Supabase y usuario E2E; sin secrets, los specs autenticados no se registran (proyecto omitido en config).
+
+### Implementacion
+- `playwright.config.ts`: proyectos `setup` + `chromium` + `authenticated` condicional.
+- `e2e/helpers/auth.ts`, `e2e/authenticated/*.spec.ts`.
+- `.github/workflows/ci.yml`: variables desde GitHub Secrets.
+
+### Razon
+- CI verde sin secrets de staging; equipos con proyecto E2E dedicado obtienen cobertura de flujos reales sin reintroducir demo.
 

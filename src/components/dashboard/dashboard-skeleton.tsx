@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PageTabs, PageTabsContent } from '@/components/ui/page-tabs'
 import { BarChart3, PieChart, Target, Activity } from 'lucide-react'
 
 export function DashboardSkeleton() {
@@ -33,30 +33,20 @@ export function DashboardSkeleton() {
       </div>
 
       {/* Chart Tabs skeleton */}
-      <Tabs value="resultados">
-        <TabsList className="grid grid-cols-2 lg:grid-cols-4 lg:w-fit">
-          <TabsTrigger value="resultados" disabled>
-            <BarChart3 className="h-4 w-4 mr-2" />
-            <span className="hidden md:inline">Resultados</span>
-          </TabsTrigger>
-          <TabsTrigger value="gastos" disabled>
-            <PieChart className="h-4 w-4 mr-2" />
-            <span className="hidden md:inline">Gastos</span>
-          </TabsTrigger>
-          <TabsTrigger value="radar" disabled>
-            <Target className="h-4 w-4 mr-2" />
-            <span className="hidden md:inline">KPIs</span>
-          </TabsTrigger>
-          <TabsTrigger value="flujo" disabled>
-            <Activity className="h-4 w-4 mr-2" />
-            <span className="hidden md:inline">Flujo</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="resultados" className="mt-4">
+      <PageTabs
+        value="resultados"
+        onValueChange={() => {}}
+        tabs={[
+          { value: 'resultados', label: 'Resultados', icon: BarChart3 },
+          { value: 'gastos', label: 'Gastos', icon: PieChart },
+          { value: 'radar', label: 'KPIs', icon: Target },
+          { value: 'flujo', label: 'Flujo', icon: Activity },
+        ]}
+      >
+        <PageTabsContent value="resultados">
           <ChartCardSkeleton />
-        </TabsContent>
-      </Tabs>
+        </PageTabsContent>
+      </PageTabs>
     </div>
   )
 }

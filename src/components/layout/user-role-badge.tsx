@@ -13,8 +13,6 @@ interface UserRoleBadgeProps {
 export function UserRoleBadge({ className, variant = 'default' }: UserRoleBadgeProps) {
   const role = useAuthStore((state) => state.role)
   const fullName = useAuthStore((state) => state.fullName)
-  const isDemoMode = useAuthStore((state) => state.isDemoMode)
-
   if (!role) return null
 
   const label = getUserRoleLabel(role)
@@ -46,7 +44,6 @@ export function UserRoleBadge({ className, variant = 'default' }: UserRoleBadgeP
         )}
       >
         {label}
-        {isDemoMode ? ' (demo)' : ''}
       </span>
       {!isApprover ? (
         <span className="text-muted-foreground">

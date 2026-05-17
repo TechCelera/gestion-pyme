@@ -4,15 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
-import { useAuthStore } from '@/stores/auth-store'
-import { setDemoCookie, clearDemoCookie } from '@/lib/actions/demo-cookie'
-import { hasDemoModeCookie } from '@/lib/demo-mode-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Loader2, UserCircle } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -38,40 +35,11 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Limpiar cookie de demo en background (no bloquea login)
-        clearDemoCookie().catch(() => {})
         toast.success('Inicio de sesión exitoso')
         router.push('/dashboard')
       }
     } catch {
       toast.error('Error al iniciar sesión')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const setDemoUser = useAuthStore((state) => state.setDemoUser)
-
-  async function handleDemoLogin() {
-    setLoading(true)
-
-    try {
-      // Modo demo local directo — sin llamar a Supabase
-      // (el usuario demo no existe en Supabase y causaría error 400)
-      setDemoUser()
-      // La cookie debe existir antes de /dashboard (SSR redirige a login sin ella)
-      if (!hasDemoModeCookie()) {
-        const cookieResult = await setDemoCookie()
-        if (!cookieResult.success) {
-          toast.error(cookieResult.error ?? 'Error al activar el modo demo')
-          return
-        }
-      }
-      toast.success('Modo Demo activado — Explora con datos de prueba')
-      // Navegación completa: el SSR de /dashboard debe ver la cookie recién seteada
-      window.location.assign('/dashboard')
-    } catch {
-      toast.error('Error al activar el modo demo')
     } finally {
       setLoading(false)
     }
@@ -112,8 +80,8 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-[#7B68EE] hover:bg-[#7B68EE]/90"
               disabled={loading}
             >
@@ -125,28 +93,6 @@ export default function LoginPage() {
               ) : (
                 'Iniciar Sesión'
               )}
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  O prueba el demo
-                </span>
-              </div>
-            </div>
-
-            <Button 
-              type="button" 
-              variant="outline"
-              className="w-full border-dashed border-2 hover:border-[#7B68EE] hover:text-[#7B68EE]"
-              disabled={loading}
-              onClick={handleDemoLogin}
-            >
-              <UserCircle className="mr-2 h-4 w-4" />
-              Entrar como Invitado (Demo)
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">

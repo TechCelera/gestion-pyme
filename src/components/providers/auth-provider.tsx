@@ -4,24 +4,14 @@ import { useEffect } from 'react'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { hydrateAuthStoreUser } from '@/lib/auth/hydrate-auth-user'
 import { useAuthStore } from '@/stores/auth-store'
-import { hasDemoModeCookie } from '@/lib/demo-mode-client'
-
-function syncDemoFromCookie(): void {
-  if (hasDemoModeCookie() && !useAuthStore.getState().isDemoMode) {
-    useAuthStore.getState().setDemoUser()
-  }
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((state) => state.setUser)
-  const setDemoUser = useAuthStore((state) => state.setDemoUser)
   const clearUser = useAuthStore((state) => state.clearUser)
 
   const supabase = createSafeBrowserClient()
 
   useEffect(() => {
-    syncDemoFromCookie()
-
     let cancelled = false
 
     async function applySession(session: Awaited<
@@ -39,11 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      if (hasDemoModeCookie()) {
-        setDemoUser()
-      } else {
-        clearUser()
-      }
+      clearUser()
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -60,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true
       subscription.unsubscribe()
     }
-  }, [setUser, setDemoUser, clearUser, supabase])
+  }, [setUser, clearUser, supabase])
 
   return <>{children}</>
 }

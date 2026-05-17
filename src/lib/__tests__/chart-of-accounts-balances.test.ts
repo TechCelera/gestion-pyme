@@ -31,4 +31,19 @@ describe('rollupChartBalances', () => {
     expect(rolled.get('leaf')).toBe(100)
     expect(rolled.get('root')).toBe(100)
   })
+
+  it('returns empty map for no rows', () => {
+    expect(rollupChartBalances([]).size).toBe(0)
+  })
+
+  it('ignores orphan postable nodes without parent in set', () => {
+    const orphan: ChartAccountWithBalance = {
+      ...rows[1],
+      id: 'orphan',
+      parentId: 'missing',
+      balance: 50,
+    }
+    const rolled = rollupChartBalances([orphan])
+    expect(rolled.get('orphan')).toBe(50)
+  })
 })

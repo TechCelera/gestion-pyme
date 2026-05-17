@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useMovementStore } from '../movement-store'
-import { useAuthStore } from '../auth-store'
 
 vi.mock('@/lib/actions/movements', () => ({
   listMovements: vi.fn(),
@@ -11,25 +10,15 @@ vi.mock('@/lib/actions/movements', () => ({
   deleteMovement: vi.fn(),
 }))
 
-vi.mock('../auth-store', () => ({
-  useAuthStore: {
-    getState: vi.fn(() => ({ isDemoMode: false })),
-  },
-}))
-
 describe('movement store', () => {
   beforeEach(() => {
     useMovementStore.setState({
       movements: [],
-      demoMovements: null,
       filters: { page: 1, pageSize: 50 },
       pagination: { page: 1, pageSize: 50, total: 0 },
       isLoading: false,
       error: null,
     })
-    vi.mocked(useAuthStore.getState).mockReturnValue({ isDemoMode: false } as ReturnType<
-      typeof useAuthStore.getState
-    >)
   })
 
   describe('initial state', () => {
@@ -120,41 +109,6 @@ describe('movement store', () => {
 
       const state = useMovementStore.getState()
       expect(state.pagination.total).toBe(150)
-    })
-  })
-
-  describe('demo mode', () => {
-    it('agrega movimiento a la lista en sesión demo', async () => {
-      vi.mocked(useAuthStore.getState).mockReturnValue({ isDemoMode: true } as ReturnType<
-        typeof useAuthStore.getState
-      >)
-
-      const ok = await useMovementStore.getState().addMovement(
-        {
-          type: 'income',
-          date: new Date(),
-          amount: 999,
-          currency: 'ARS',
-          description: 'Prueba demo',
-          method: 'cash',
-          accountId: 'demo-acc-1',
-          categoryId: 'demo-cat-1',
-          movementComponents: [
-            {
-              componentType: 'operative_cash',
-              accountId: 'demo-acc-1',
-              amount: 999,
-              currency: 'ARS',
-            },
-          ],
-        },
-        false
-      )
-
-      expect(ok).toBe(true)
-      const state = useMovementStore.getState()
-      expect(state.movements.some((m) => m.amount === 999)).toBe(true)
-      expect(state.demoMovements?.length).toBeGreaterThan(0)
     })
   })
 })
