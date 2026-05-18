@@ -1,7 +1,10 @@
 -- Canonical tenant roles in DB: admin | collaborator (aligned with src/lib/auth/roles.ts).
 -- Legacy slugs (admin_finanzas, vendedor, …) are migrated once; RLS uses auth_user_is_admin().
 
--- 1) Map legacy slugs → canonical
+-- 1) Drop legacy constraint before rewriting role values
+ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
+
+-- 2) Map legacy slugs → canonical
 UPDATE public.users
 SET role = 'admin'
 WHERE role IN ('superadmin', 'admin_finanzas');
@@ -10,9 +13,7 @@ UPDATE public.users
 SET role = 'collaborator'
 WHERE role IN ('vendedor', 'responsable');
 
--- 2) Constraint + default
-ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
-
+-- 3) Constraint + default
 ALTER TABLE public.users
   ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'collaborator'));
 
@@ -22,14 +23,14 @@ ALTER TABLE public.users
 COMMENT ON COLUMN public.users.role IS
   'Tenant role: admin (Administrador) | collaborator (Colaborador). Product labels in app; RLS via auth_user_is_admin().';
 
--- 3) Sync auth.users app_metadata.role with public.users
+-- 4) Sync auth.users app_metadata.role with public.users
 UPDATE auth.users au
 SET raw_app_meta_data = COALESCE(au.raw_app_meta_data, '{}'::jsonb)
   || jsonb_build_object('role', u.role)
 FROM public.users u
 WHERE au.id = u.id;
 
--- 4) RLS helper (single source of truth for finance-admin policies)
+-- 5) RLS helper (single source of truth for finance-admin policies)
 CREATE OR REPLACE FUNCTION public.auth_user_is_admin()
 RETURNS boolean
 LANGUAGE sql
@@ -49,7 +50,7 @@ $$;
 COMMENT ON FUNCTION public.auth_user_is_admin() IS
   'True when the authenticated user is an active tenant admin (canonical role admin).';
 
--- 5) Signup: company creator is admin (canonical slug)
+-- 6) Signup: company creator is admin (canonical slug)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -101,7 +102,7 @@ BEGIN
 END;
 $$;
 
--- 6) transactions RLS — replace legacy role lists
+-- 7) transactions RLS — replace legacy role lists
 DROP POLICY IF EXISTS transactions_update_draft ON transactions;
 CREATE POLICY transactions_update_draft ON transactions
   FOR UPDATE
@@ -161,7 +162,7 @@ CREATE POLICY transactions_budget_exemption_update ON transactions
     company_id IN (SELECT u.company_id FROM users u WHERE u.id = auth.uid())
   );
 
--- 7) chart_of_accounts modify
+-- 8) chart_of_accounts modify
 DROP POLICY IF EXISTS chart_of_accounts_modify ON chart_of_accounts;
 CREATE POLICY chart_of_accounts_modify ON chart_of_accounts
   FOR ALL
