@@ -9,15 +9,8 @@ import { ProjectAnalysisFallback } from '@/components/projects/project-analysis-
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/ui/page-header'
+import { ReportsPeriodTabs } from '@/components/reports/reports-period-tabs'
 import { formatCurrency } from '@/lib/format/currency'
-import type { ReportsRangeKey } from '@/lib/utils/reports-period'
-
-const PERIOD_LINKS: { key: ReportsRangeKey; label: string; href: string }[] = [
-  { key: 'mes', label: 'Este mes', href: 'mes' },
-  { key: 'mes_anterior', label: 'Mes anterior', href: 'mes_anterior' },
-  { key: 'trimestre', label: 'Este trimestre', href: 'trimestre' },
-  { key: 'trim_anterior', label: 'Trimestre anterior', href: 'trim_anterior' },
-]
 
 export function ProjectAnalysisContent({
   id,
@@ -105,15 +98,7 @@ function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undef
         description={`Presupuesto vs movimientos aprobados en el período · ${a.periodLabel}`}
       />
 
-      <div className="flex flex-wrap gap-2">
-        {PERIOD_LINKS.map(({ key, label, href }) => (
-          <Button key={key} variant={a.rangeKey === key ? 'default' : 'outline'} size="sm" asChild>
-            <Link href={href === 'mes' ? `/proyectos/${id}` : `/proyectos/${id}?rango=${href}`}>
-              {label}
-            </Link>
-          </Button>
-        ))}
-      </div>
+      <ReportsPeriodTabs value={a.rangeKey} basePath={`/proyectos/${id}`} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>

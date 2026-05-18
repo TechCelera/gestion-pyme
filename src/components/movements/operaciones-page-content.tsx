@@ -8,11 +8,10 @@ import {
   ArrowLeftRight,
   ArrowUpRight,
   ChevronDown,
-  LayoutList,
   SlidersHorizontal,
   Tag,
 } from 'lucide-react'
-import { PageTabsBar } from '@/components/ui/page-tabs'
+import { OperacionesFilterTabs } from '@/components/movements/operaciones-filter-tabs'
 import { isAdminRole } from '@/lib/auth/roles'
 import { ROUTES } from '@/lib/constants'
 import { toast } from 'sonner'
@@ -31,10 +30,8 @@ import { useMovementStore } from '@/stores/movement-store'
 import { useAuthStore } from '@/stores/auth-store'
 import type { CreateMovementInput, MovementType } from '@/lib/validations/movement'
 import {
-  operacionesFlowHint,
   operacionesFlowToTypeFilter,
   parseOperacionesFlow,
-  type OperacionesFlowKey,
 } from '@/lib/movements/operaciones-flow'
 import {
   DropdownMenu,
@@ -71,14 +68,6 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
   } = useMovementStore()
 
   const flowKey = parseOperacionesFlow(flujo ?? null)
-
-  const setFlowFilter = useCallback(
-    (next: OperacionesFlowKey) => {
-      if (next === 'all') router.replace('/operaciones', { scroll: false })
-      else router.replace(`/operaciones?flujo=${next}`, { scroll: false })
-    },
-    [router]
-  )
 
   useEffect(() => {
     setFilters({ type: operacionesFlowToTypeFilter(flowKey) })
@@ -383,18 +372,7 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
         <UserRoleBadge className="w-full items-center rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5" />
       </header>
 
-      <div className="space-y-2">
-        <PageTabsBar
-          value={flowKey}
-          onValueChange={(next) => setFlowFilter(next as OperacionesFlowKey)}
-          tabs={[
-            { value: 'all', label: 'Todo', icon: LayoutList },
-            { value: 'ingresos', label: 'Ingresos', icon: ArrowDownLeft },
-            { value: 'egresos', label: 'Egresos', icon: ArrowUpRight },
-          ]}
-        />
-        <p className="text-xs text-muted-foreground">{operacionesFlowHint(flowKey)}</p>
-      </div>
+      <OperacionesFilterTabs value={flowKey} />
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">

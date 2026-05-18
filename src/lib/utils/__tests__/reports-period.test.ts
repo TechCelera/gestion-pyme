@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { resolveReportsPeriod, formatReportsPeriodLabel } from '../reports-period'
+import {
+  formatReportsPeriodLabel,
+  parseReportsRange,
+  reportsPeriodHint,
+  reportsPeriodHref,
+  resolveReportsPeriod,
+} from '../reports-period'
 
 describe('resolveReportsPeriod', () => {
   afterEach(() => {
@@ -52,6 +58,42 @@ describe('resolveReportsPeriod', () => {
     const { key, start } = resolveReportsPeriod('garbage')
     expect(key).toBe('mes')
     expect(start.getMonth()).toBe(0)
+  })
+})
+
+describe('parseReportsRange', () => {
+  it('devuelve mes para preset desconocido o vacío', () => {
+    expect(parseReportsRange(null)).toBe('mes')
+    expect(parseReportsRange(undefined)).toBe('mes')
+    expect(parseReportsRange('invalid')).toBe('mes')
+  })
+
+  it('acepta presets válidos', () => {
+    expect(parseReportsRange('trimestre')).toBe('trimestre')
+    expect(parseReportsRange('trim_anterior')).toBe('trim_anterior')
+  })
+})
+
+describe('reportsPeriodHref', () => {
+  it('omite query en mes actual', () => {
+    expect(reportsPeriodHref('/reportes', 'mes')).toBe('/reportes')
+    expect(reportsPeriodHref('/proyectos/abc', 'mes')).toBe('/proyectos/abc')
+  })
+
+  it('añade rango para otros presets', () => {
+    expect(reportsPeriodHref('/reportes', 'mes_anterior')).toBe(
+      '/reportes?rango=mes_anterior'
+    )
+    expect(reportsPeriodHref('/proyectos/abc', 'trimestre')).toBe(
+      '/proyectos/abc?rango=trimestre'
+    )
+  })
+})
+
+describe('reportsPeriodHint', () => {
+  it('describe cada preset', () => {
+    expect(reportsPeriodHint('mes')).toMatch(/mes calendario en curso/i)
+    expect(reportsPeriodHint('trimestre')).toMatch(/trimestre civil en curso/i)
   })
 })
 

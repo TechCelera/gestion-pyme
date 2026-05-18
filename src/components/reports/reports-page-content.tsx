@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { AlertCircle, BarChart3, TrendingUp, Scale } from 'lucide-react'
 import { getReportsData } from '@/lib/actions/movements'
 import { ReportsCharts } from '@/components/reports/reports-charts'
@@ -13,18 +12,10 @@ import {
   ReportMetricRows,
   ReportMetricSection,
 } from '@/components/reports/report-metric-rows'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CashFlowMonthlyTrend } from '@/components/reports/cash-flow-monthly-trend'
+import { ReportsPeriodTabs } from '@/components/reports/reports-period-tabs'
 import { formatReportCurrency } from '@/lib/reports/format'
-import type { ReportsRangeKey } from '@/lib/utils/reports-period'
-
-const PERIOD_LINKS: { key: ReportsRangeKey; label: string; href: string }[] = [
-  { key: 'mes', label: 'Este mes', href: '/reportes' },
-  { key: 'mes_anterior', label: 'Mes anterior', href: '/reportes?rango=mes_anterior' },
-  { key: 'trimestre', label: 'Este trimestre', href: '/reportes?rango=trimestre' },
-  { key: 'trim_anterior', label: 'Trimestre anterior', href: '/reportes?rango=trim_anterior' },
-]
 
 export function ReportsPageContent({ rango }: { rango?: string }) {
   return <ReportsPageInner key={rango ?? 'mes'} rango={rango} />
@@ -85,19 +76,7 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
         description={`Estado de resultados, balance y flujo de caja · ${incomeStatement.periodLabel}`}
       />
 
-      <div className="flex flex-wrap gap-2">
-        {PERIOD_LINKS.map(({ key, label, href }) => (
-          <Button
-            key={key}
-            variant={rangeKey === key ? 'default' : 'outline'}
-            size="sm"
-            className={cn(rangeKey === key && 'bg-primary')}
-            asChild
-          >
-            <Link href={href}>{label}</Link>
-          </Button>
-        ))}
-      </div>
+      <ReportsPeriodTabs value={rangeKey} basePath="/reportes" />
 
       <div className="space-y-4 lg:space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 md:items-stretch">

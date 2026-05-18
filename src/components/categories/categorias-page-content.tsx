@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { Plus, Pencil, Trash2, Tag, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -20,11 +19,8 @@ import {
 } from '@/components/ui/table'
 import { getCategories, deleteCategory, type Category } from '@/lib/actions/categories'
 import { CATEGORY_TYPES, getCategoryTypeLabel, isCategoryIncomeType } from '@/lib/constants'
-import {
-  categoriasFilterHref,
-  parseCategoriasFilter,
-  type CategoriasFilterKey,
-} from '@/lib/categories/categorias-filter'
+import { parseCategoriasFilter } from '@/lib/categories/categorias-filter'
+import { CategoriasFilterTabs } from '@/components/categories/categorias-filter-tabs'
 import { CategoryForm } from '@/components/settings/category-form'
 
 interface CategoriasPageContentProps {
@@ -32,7 +28,6 @@ interface CategoriasPageContentProps {
 }
 
 export function CategoriasPageContent({ tipo }: CategoriasPageContentProps) {
-  const router = useRouter()
   const categoryFilter = parseCategoriasFilter(tipo)
 
   const [categories, setCategories] = useState<Category[]>([])
@@ -60,10 +55,6 @@ export function CategoriasPageContent({ tipo }: CategoriasPageContentProps) {
       void fetchData()
     })
   }, [fetchData])
-
-  const setFilter = (filter: CategoriasFilterKey) => {
-    router.replace(categoriasFilterHref(filter))
-  }
 
   const handleOpenCategoryForm = (category?: Category) => {
     setEditingCategory(category ?? null)
@@ -101,55 +92,15 @@ export function CategoriasPageContent({ tipo }: CategoriasPageContentProps) {
         description="Clasifica cada movimiento como ingreso o gasto. Tú eliges los nombres; el tipo define en qué informes entra."
       />
 
+      <CategoriasFilterTabs value={categoryFilter} />
+
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">Listado</CardTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Button
-                variant={categoryFilter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('all')}
-                className={categoryFilter === 'all' ? 'bg-[#7B68EE] hover:bg-[#7B68EE]/90' : ''}
-              >
-                Todas
-              </Button>
-              <Button
-                variant={categoryFilter === 'income' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('income')}
-                className={categoryFilter === 'income' ? 'bg-[#7B68EE] hover:bg-[#7B68EE]/90' : ''}
-              >
-                Ingresos
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (categoryFilter === 'expense') {
-                    setFilter('all')
-                  } else {
-                    setFilter('expense')
-                  }
-                }}
-                className={
-                  categoryFilter === 'expense'
-                    ? 'bg-[#7B68EE] hover:bg-[#7B68EE]/90 text-primary-foreground'
-                    : ''
-                }
-              >
-                Gastos
-              </Button>
-            </div>
-            <Button
-              onClick={() => handleOpenCategoryForm()}
-              size="sm"
-              className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Nueva categoría
-            </Button>
-          </div>
+          <Button onClick={() => handleOpenCategoryForm()} size="sm">
+            <Plus className="mr-1 h-4 w-4" />
+            Nueva categoría
+          </Button>
         </CardHeader>
         <CardContent>
           {isLoading ? (

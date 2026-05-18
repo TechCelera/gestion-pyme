@@ -1,15 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Wallet, Plus, Pencil, Trash2, Loader2, BookOpen } from 'lucide-react'
+import { Wallet, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { TableRowActions } from '@/components/ui/table-row-actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/ui/page-header'
-import { PageTabs, PageTabsContent } from '@/components/ui/page-tabs'
+import { CuentasFilterTabs } from '@/components/accounts/cuentas-filter-tabs'
 import {
   Table,
   TableBody,
@@ -26,7 +25,7 @@ import {
   type ChartOfAccountsSnapshot,
 } from '@/lib/actions/chart-of-accounts'
 import type { ChartAccountWithBalance } from '@/lib/chart-of-accounts-balances'
-import { cuentasTabHref, parseCuentasTab, type CuentasTabKey } from '@/lib/accounts/cuentas-tab'
+import { parseCuentasTab } from '@/lib/accounts/cuentas-tab'
 import { formatCurrency } from '@/lib/format/currency'
 import { ACCOUNT_TYPE_LABELS } from '@/lib/constants'
 
@@ -35,7 +34,6 @@ interface CuentasPageContentProps {
 }
 
 export function CuentasPageContent({ tab: tabParam }: CuentasPageContentProps) {
-  const router = useRouter()
   const tab = parseCuentasTab(tabParam)
 
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -47,10 +45,6 @@ export function CuentasPageContent({ tab: tabParam }: CuentasPageContentProps) {
   const [chartAsOf, setChartAsOf] = useState(() => new Date().toISOString().slice(0, 10))
   const [chartLoading, setChartLoading] = useState(false)
   const [chartError, setChartError] = useState<string | null>(null)
-
-  const setTab = (next: CuentasTabKey) => {
-    router.replace(cuentasTabHref(next))
-  }
 
   const fetchAccounts = useCallback(async () => {
     setIsLoading(true)
@@ -134,28 +128,18 @@ export function CuentasPageContent({ tab: tabParam }: CuentasPageContentProps) {
         description="Caja y bancos para el día a día, y el plan de cuentas de la empresa (solo lectura)."
       />
 
-      <PageTabs
-        value={tab}
-        onValueChange={(v) => setTab(parseCuentasTab(v))}
-        tabs={[
-          { value: 'accounts', label: 'Cuentas', icon: Wallet },
-          { value: 'chart', label: 'Plan de cuentas', icon: BookOpen },
-        ]}
-      >
-        <PageTabsContent value="accounts" className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Listado de Cuentas</CardTitle>
-              <Button
-                onClick={() => handleOpenAccountForm()}
-                size="sm"
-                className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
-              >
-                <Plus className="mr-1 h-4 w-4" />
-                Nueva Cuenta
-              </Button>
-            </CardHeader>
-            <CardContent>
+      <CuentasFilterTabs value={tab} />
+
+      {tab === 'accounts' ? (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Listado de Cuentas</CardTitle>
+            <Button onClick={() => handleOpenAccountForm()} size="sm">
+              <Plus className="mr-1 h-4 w-4" />
+              Nueva Cuenta
+            </Button>
+          </CardHeader>
+          <CardContent>
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -214,26 +198,21 @@ export function CuentasPageContent({ tab: tabParam }: CuentasPageContentProps) {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
-        </PageTabsContent>
-
-        <PageTabsContent value="chart" className="space-y-4">
-          {chartLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : chartError ? (
-            <Card>
-              <CardContent className="py-6">
-                <p className="text-sm text-destructive">{chartError}</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <ChartOfAccountsTree rows={chartRows} currency={chartCurrency} asOf={chartAsOf} />
-          )}
-        </PageTabsContent>
-      </PageTabs>
+          </CardContent>
+        </Card>
+      ) : chartLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : chartError ? (
+        <Card>
+          <CardContent className="py-6">
+            <p className="text-sm text-destructive">{chartError}</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <ChartOfAccountsTree rows={chartRows} currency={chartCurrency} asOf={chartAsOf} />
+      )}
 
       <AccountForm
         isOpen={isAccountFormOpen}
