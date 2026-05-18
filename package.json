@@ -28,6 +28,7 @@
     "verify": "pnpm run lint && pnpm run typecheck && pnpm run test:run && pnpm run build",
     "verify:all": "pnpm run verify && pnpm run test:e2e:ci",
     "verify:all:local": "pnpm run verify && pnpm run test:e2e",
+    "verify:trial": "bash scripts/trial-verify.sh",
     "sb": "node scripts/supabase-cli.mjs",
     "sb:version": "node scripts/supabase-cli.mjs --version",
     "sb:login": "node scripts/supabase-cli.mjs login",

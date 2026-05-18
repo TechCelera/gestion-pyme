@@ -53,6 +53,8 @@ pnpm run verify
 
 Eso ejecuta **eslint**, **TypeScript** (`tsc --noEmit`), **tests unitarios** (Vitest) y **build** de Next.
 
+Antes de un piloto con cliente: `pnpm run verify:trial` (verify + E2E si hay secrets + recordatorio `sb:push`).
+
 - Flujos críticos de UI: `pnpm run test:e2e` (con `pnpm run dev` en otra terminal) o `pnpm run verify:all` en CI.
 - Migraciones Supabase: CLI **del sistema** en PATH (`supabase --version`), no el paquete npm (segfault en algunos Linux). Flujo: `pnpm sb:push:dry` → `pnpm sb:push` (o `--yes`).
 - En desarrollo no hay datos que preservar: migraciones de reset pueden vaciar movimientos/cuentas/categorías; el mínimo operativo (Caja, banco, categorías típicas) se repone con `seedCompanyDefaults` al entrar al dashboard y con migraciones idempotentes de backfill.
