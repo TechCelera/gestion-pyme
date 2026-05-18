@@ -1,4 +1,5 @@
 import type { ChartAccountRow } from '@/lib/actions/chart-of-accounts'
+import { formatCurrency } from '@/lib/format/currency'
 
 export type ChartAccountWithBalance = ChartAccountRow & {
   balance: number
@@ -45,19 +46,5 @@ export function rollupChartBalances(
 }
 
 export function formatChartBalance(amount: number, currency: string): string {
-  try {
-    const locale =
-      currency === 'ARS' ? 'es-AR' :
-      currency === 'COP' ? 'es-CO' :
-      currency === 'EUR' ? 'es-ES' :
-      'en-US'
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: currency === 'COP' ? 0 : 2,
-      maximumFractionDigits: currency === 'COP' ? 0 : 2,
-    }).format(amount)
-  } catch {
-    return `${currency} ${amount.toLocaleString()}`
-  }
+  return formatCurrency(amount, currency)
 }

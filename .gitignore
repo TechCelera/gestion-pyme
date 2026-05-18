@@ -16,6 +16,9 @@ tmp/
 # Reglas duplicadas del agente (fuente única: AGENTS.md)
 .cursorrules
 
+# OpenCode (no usado; evita que instaladores vuelvan a meter basura)
+.opencode/
+
 # Artefactos JS compilados por error dentro de src/
 src/**/*.js
 

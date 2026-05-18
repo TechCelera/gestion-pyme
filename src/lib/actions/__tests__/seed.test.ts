@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { stubAuthError, stubAuthenticatedContext } from '@/test-utils/mock-server-context'
 import { COUNTRY_CONFIGS } from '@/lib/country-config'
-import { seedCompanyDefaults } from '../seed'
+import { USER_ROLES } from '@/lib/auth/roles'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
 
 import { createClient } from '@/lib/supabase/server'
+import { seedCompanyDefaults } from '../seed'
 
 const COMPANY_ID = '11111111-1111-4111-8111-111111111111'
 
@@ -75,6 +76,12 @@ function buildSeedClient({
     from: mockFrom,
   } as unknown as Awaited<ReturnType<typeof createClient>>)
 
+  stubAuthenticatedContext({
+    userId: 'user-1',
+    companyId: COMPANY_ID,
+    role: USER_ROLES.ADMIN,
+  })
+
   return { insertedAccounts, insertedCategories }
 }
 
@@ -84,12 +91,7 @@ describe('seedCompanyDefaults', () => {
   })
 
   it('falla sin empresa del usuario', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
-      },
-      from: vi.fn(),
-    } as unknown as Awaited<ReturnType<typeof createClient>>)
+    stubAuthError('Usuario no autenticado o sin empresa')
 
     const res = await seedCompanyDefaults()
     expect(res.success).toBe(false)

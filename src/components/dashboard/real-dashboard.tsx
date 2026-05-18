@@ -4,20 +4,12 @@ import { KpiCard } from './kpi-card'
 import { TrendingUp, ArrowDownRight, DollarSign, Wallet } from 'lucide-react'
 import { ReportsCharts } from '@/components/reports/reports-charts'
 import type { DashboardStats, ReportsData } from '@/lib/actions/movements'
+import { formatCurrency } from '@/lib/format/currency'
 
 interface RealDashboardProps {
   stats: DashboardStats
   reportsData: ReportsData | null | undefined
   reportsError?: string | null
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)
 }
 
 export function RealDashboard({ stats, reportsData, reportsError }: RealDashboardProps) {
@@ -38,13 +30,13 @@ export function RealDashboard({ stats, reportsData, reportsError }: RealDashboar
         />
         <KpiCard
           title="Gastos"
-          value={formatCurrency(stats.totalExpenses)}
+          value={formatCurrency(stats.totalExpenses, 'ARS')}
           icon={ArrowDownRight}
           gradient="from-[#FF6B6B] to-[#FFE66D]"
         />
         <KpiCard
           title="Balance Neto"
-          value={formatCurrency(stats.netBalance)}
+          value={formatCurrency(stats.netBalance, 'ARS')}
           icon={DollarSign}
           gradient="from-[#00C9FF] to-[#92FE9D]"
         />

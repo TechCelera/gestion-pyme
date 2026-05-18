@@ -1,15 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getContacts } from '../contacts'
+import { stubAuthenticatedContext } from '@/test-utils/mock-server-context'
+import { USER_ROLES } from '@/lib/auth/roles'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
 
 import { createClient } from '@/lib/supabase/server'
+import { getContacts } from '../contacts'
 
 describe('getContacts', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    stubAuthenticatedContext({
+      userId: 'u1',
+      companyId: 'c1',
+      role: USER_ROLES.ADMIN,
+    })
   })
 
   it('devuelve contactos ordenados por nombre', async () => {

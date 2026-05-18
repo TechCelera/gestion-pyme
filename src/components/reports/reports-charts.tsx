@@ -19,6 +19,7 @@ import { ChartEmptyState } from '@/components/charts/chart-empty-state'
 import type { ReportsData } from '@/lib/actions/movements'
 import { hasCashFlowTrendData, hasNonZeroAmounts } from '@/lib/charts/has-chart-data'
 import { PieChart as PieChartIcon, TrendingUp } from 'lucide-react'
+import { formatCurrency } from '@/lib/format/currency'
 import { cn } from '@/lib/utils'
 
 interface ReportsChartsProps {
@@ -27,13 +28,8 @@ interface ReportsChartsProps {
 
 const PIE_COLORS = ['#7B68EE', '#00C9FF', '#92FE9D', '#FF6B6B', '#FFE66D', '#FF9F43', '#A78BFA', '#34D399']
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
+function formatChartCurrency(value: number): string {
+  return formatCurrency(value, 'ARS', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 function formatMonth(monthKey: string): string {
@@ -99,7 +95,7 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
               <XAxis dataKey="name" />
               <YAxis tickFormatter={(value) => `${Math.round(value / 1000)}k`} />
-              <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+              <Tooltip formatter={(value) => formatChartCurrency(Number(value))} />
               <Bar dataKey="value" radius={[8, 8, 0, 0]}>
                 {incomeVsExpenseData.map((entry) => (
                   <Cell
@@ -127,7 +123,7 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
                   <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+              <Tooltip formatter={(value) => formatChartCurrency(Number(value))} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -151,7 +147,7 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
               <XAxis dataKey="month" />
               <YAxis tickFormatter={(value) => `${Math.round(value / 1000)}k`} />
-              <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+              <Tooltip formatter={(value) => formatChartCurrency(Number(value))} />
               <Legend />
               <Line type="monotone" dataKey="realIngreso" stroke="#16A34A" strokeWidth={2} name="Ingreso real" />
               <Line type="monotone" dataKey="realGasto" stroke="#DC2626" strokeWidth={2} name="Gasto real" />

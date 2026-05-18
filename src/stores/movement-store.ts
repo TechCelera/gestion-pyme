@@ -33,7 +33,11 @@ interface MovementStoreState {
   resetFilters: () => void
 
   fetchMovements: () => Promise<void>
-  addMovement: (data: CreateMovementInput, asDraft?: boolean) => Promise<boolean>
+  addMovement: (
+    data: CreateMovementInput,
+    asDraft?: boolean,
+    submitForReviewOnly?: boolean
+  ) => Promise<boolean>
   editMovement: (id: string, data: CreateMovementInput) => Promise<boolean>
   changeStatus: (id: string, status: MovementStatus, reason?: string) => Promise<boolean>
   removeMovement: (id: string) => Promise<boolean>
@@ -112,7 +116,7 @@ export const useMovementStore = create<MovementStoreState>()(
         }
       },
 
-      addMovement: async (data, asDraft = true) => {
+      addMovement: async (data, asDraft = true, submitForReviewOnly = false) => {
         set({ isLoading: true, error: null })
 
         try {
@@ -120,13 +124,17 @@ export const useMovementStore = create<MovementStoreState>()(
 
           if (result.success) {
             if (!asDraft && result.data?.id) {
-              const fin = await finalizeMovementSubmission(result.data.id)
+              const fin = await finalizeMovementSubmission(result.data.id, {
+                approveImmediately: !submitForReviewOnly,
+              })
 
               if (!fin.success) {
+                const stuckPending = fin.data?.status === 'pending'
                 set({
-                  error:
-                    fin.error ??
-                    'Movimiento creado, pero no se pudo completar el envío o registro',
+                  error: stuckPending
+                    ? (fin.error ??
+                      'Quedó pendiente de aprobación. Revisá presupuesto o usá Aprobar en la tabla.')
+                    : (fin.error ?? 'Movimiento creado, pero no se pudo completar el envío'),
                   isLoading: false,
                 })
                 return false

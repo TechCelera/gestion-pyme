@@ -1,11 +1,4 @@
-export function formatReportCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)
-}
+export { formatReportCurrency } from '@/lib/format/currency'
 
 export function formatReportMonth(monthKey: string): string {
   const [year, month] = monthKey.split('-')

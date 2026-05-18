@@ -1,5 +1,7 @@
 'use server'
 
+import type { ActionResult } from '@/lib/actions/types'
+import { requireAuthenticatedContext } from '@/lib/auth/server-context'
 import { createClient } from '@/lib/supabase/server'
 import type { ChartAccountWithBalance } from '@/lib/chart-of-accounts-balances'
 
@@ -17,30 +19,6 @@ export interface ChartOfAccountsSnapshot {
   asOf: string
   currency: string
   rows: ChartAccountWithBalance[]
-}
-
-interface ActionResult<T = unknown> {
-  success: boolean
-  data?: T
-  error?: string
-}
-
-async function getCurrentUserCompany(): Promise<string | null> {
-  try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser()
-    if (error || !user) return null
-    const appMeta = user.app_metadata as Record<string, unknown>
-    if (appMeta?.company_id) return appMeta.company_id as string
-    if (user.user_metadata?.company_id) return user.user_metadata.company_id as string
-    const { data } = await supabase.from('users').select('company_id').eq('id', user.id).single()
-    return data?.company_id ?? null
-  } catch {
-    return null
-  }
 }
 
 export async function listChartOfAccounts(): Promise<ActionResult<ChartAccountRow[]>> {
@@ -68,10 +46,11 @@ export async function listChartOfAccountsWithBalances(
   asOf?: string
 ): Promise<ActionResult<ChartOfAccountsSnapshot>> {
   try {
-    const companyId = await getCurrentUserCompany()
-    if (!companyId) {
-      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    const auth = await requireAuthenticatedContext()
+    if ('error' in auth) {
+      return { success: false, error: auth.error }
     }
+    const { companyId } = auth
 
     const asOfDate = asOf ?? new Date().toISOString().slice(0, 10)
     const supabase = await createClient()

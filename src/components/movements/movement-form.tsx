@@ -2,17 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { format } from 'date-fns'
-import Link from 'next/link'
-import { 
-  Wallet, 
-  Settings, 
-  Calendar,
-  DollarSign,
-  FileText,
-  Tag,
-  Loader2,
-  ArrowRight,
-} from 'lucide-react'
+import { Wallet } from 'lucide-react'
 
 import {
   Sheet,
@@ -20,28 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-  SheetFooter,
 } from '@/components/ui/sheet'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { MoneyInput } from '@/components/ui/money-input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_TYPES } from '@/lib/constants'
 import { getAccounts } from '@/lib/actions/accounts'
@@ -66,9 +35,7 @@ import {
   resolveMovementDescription,
 } from '@/lib/movements/form-defaults'
 import {
-  MOVEMENT_CURRENCIES,
   MOVEMENT_FORM_COPY,
-  MOVEMENT_METHODS,
   MOVEMENT_TYPE_OPTIONS,
 } from '@/components/movements/movement-form.constants'
 import {
@@ -77,13 +44,17 @@ import {
   newComponentLine,
 } from '@/components/movements/movement-form.types'
 import { MovementGuidedFields } from '@/components/movements/movement-guided-fields'
-import { MovementComponentBreakdown } from '@/components/movements/movement-component-breakdown'
+import { MovementFormFooter } from '@/components/movements/movement-form-footer'
+import { MovementFormFullFields } from '@/components/movements/movement-form-full-fields'
+import { MovementQuickContactDialog } from '@/components/movements/movement-quick-contact-dialog'
 import { flattenProjects } from '@/lib/movements/flatten-projects'
+import { useAuthStore } from '@/stores/auth-store'
+import { isAdminRole } from '@/lib/constants'
 
 interface MovementFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: CreateMovementInput, asDraft: boolean) => void
+  onSubmit: (data: CreateMovementInput, asDraft: boolean, submitForReviewOnly?: boolean) => void
   movement?: Movement | null
   isLoading?: boolean
   /** Al crear: fija el tipo y oculta el selector (ingreso/egreso/transferencia/ajuste). */
@@ -128,7 +99,10 @@ export function MovementForm({
   const [quickServices, setQuickServices] = useState('')
   const [quickSaving, setQuickSaving] = useState(false)
 
+  const role = useAuthStore((state) => state.role)
+  const isAdmin = isAdminRole(role)
   const isEditing = !!movement
+  const isRejectedCorrection = movement?.status === 'rejected'
   const selectedType = MOVEMENT_TYPE_OPTIONS.find((t) => t.value === type)
   const isGuidedCreate =
     !isEditing &&
@@ -214,7 +188,7 @@ export function MovementForm({
         setAmount(movement.amount.toString())
         setCurrency(movement.currency)
         setDescription(movement.description)
-        setMethod('cash')
+        setMethod((movement.method as MovementMethod) || 'cash')
         setFundOwner((movement.fundOwner ?? 'company') as 'company' | 'client_advance')
         setProjectId(movement.projectId ?? '')
         setMovementScope(movement.projectId ? 'project' : 'general')
@@ -292,7 +266,7 @@ export function MovementForm({
     return rows
   }
 
-  const handleSubmit = (asDraft: boolean) => {
+  const handleSubmit = (asDraft: boolean, submitForReviewOnly = false) => {
     const parsedAmount = parseFloat(amount)
     if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
       toast.error('Indicá un monto mayor a cero')
@@ -352,7 +326,7 @@ export function MovementForm({
       projectId: movementScope === 'project' ? projectId || undefined : undefined,
     }
 
-    onSubmit(data, asDraft)
+    onSubmit(data, asDraft, submitForReviewOnly)
     if (!isEditing) {
       resetForm(fixedType ?? 'income')
     }
@@ -372,7 +346,6 @@ export function MovementForm({
   })
 
   // Resolve display labels from current values (base-ui shows raw value, not label)
-  const methodLabel = MOVEMENT_METHODS.find(m => m.value === method)?.label ?? ''
   const accountLabel = accountId ? (() => {
     const a = accounts.find(acc => acc.id === accountId)
     return a ? `${a.name} (${a.currency})` : ''
@@ -476,15 +449,19 @@ export function MovementForm({
             </div>
             <div className="min-w-0">
               <SheetTitle className={isGuidedCreate ? 'text-base leading-tight' : 'text-lg'}>
-                {isEditing
-                  ? 'Editar movimiento'
-                  : formCopy?.title ?? 'Nuevo movimiento'}
+                {isRejectedCorrection
+                  ? 'Corregir movimiento rechazado'
+                  : isEditing
+                    ? 'Editar movimiento'
+                    : formCopy?.title ?? 'Nuevo movimiento'}
               </SheetTitle>
               {!isGuidedCreate ? (
                 <SheetDescription>
-                  {isEditing
-                    ? 'Modificá los datos del movimiento'
-                    : formCopy?.subtitle ?? 'Completá los datos para registrar un movimiento'}
+                  {isRejectedCorrection
+                    ? 'Ajustá los datos y reenviá a aprobación'
+                    : isEditing
+                      ? 'Modificá los datos del movimiento'
+                      : formCopy?.subtitle ?? 'Completá los datos para registrar un movimiento'}
                 </SheetDescription>
               ) : null}
             </div>
@@ -575,508 +552,86 @@ export function MovementForm({
                 onQuickContact={openQuickContact}
               />
             ) : (
-              <>
-            {/* Formulario completo (transferencia, ajuste, edición) */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>Información General</span>
-              </div>
-              
-              <div className={`grid grid-cols-1 gap-4 ${type === 'income' || type === 'expense' ? '' : 'sm:grid-cols-2'}`}>
-                <div className="space-y-2">
-                  <Label htmlFor="date">Fecha</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
-                {(type === 'transfer' || type === 'adjustment') && (
-                  <div className="space-y-2">
-                    <Label htmlFor="method">Método del movimiento</Label>
-                    <Select 
-                      value={method} 
-                      onValueChange={(v) => setMethod(v as MovementMethod)}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger id="method" className="w-full">
-                        <SelectValue>
-                          <span className="block truncate" title={methodLabel}>
-                            {methodLabel || 'Seleccione método'}
-                          </span>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MOVEMENT_METHODS.map((m) => (
-                          <SelectItem key={m.value} value={m.value}>
-                            {m.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="scope">Ámbito</Label>
-                  <Select
-                    value={movementScope}
-                    onValueChange={(value) => {
-                      const scope = (value as 'general' | 'project') ?? 'general'
-                      setMovementScope(scope)
-                      if (scope === 'general') setProjectId('')
-                    }}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger id="scope" className="w-full">
-                      <SelectValue>
-                        <span className="block truncate">
-                          {movementScope === 'general' ? 'General empresa' : 'Proyecto/Subproyecto'}
-                        </span>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general">General empresa</SelectItem>
-                      <SelectItem value="project">Proyecto/Subproyecto</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fundOwner">Origen de fondos</Label>
-                  <Select
-                    value={fundOwner}
-                    onValueChange={(value) => setFundOwner((value as 'company' | 'client_advance') ?? 'company')}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger id="fundOwner" className="w-full">
-                      <SelectValue>
-                        <span className="block truncate">
-                          {fundOwner === 'company' ? 'Fondos empresa' : 'Anticipo cliente'}
-                        </span>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="company">Fondos empresa</SelectItem>
-                      <SelectItem value="client_advance">Anticipo cliente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {movementScope === 'project' && (
-                <div className="space-y-2">
-                  <Label htmlFor="project">Proyecto / Subproyecto</Label>
-                  <Select
-                    value={projectId}
-                    onValueChange={(value) => setProjectId(value ?? '')}
-                    disabled={isLoading || isLoadingData}
-                  >
-                    <SelectTrigger id="project" className="w-full">
-                      <SelectValue>
-                        <span className="block truncate" title={projectLabel}>
-                          {projectLabel || 'Seleccione proyecto'}
-                        </span>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {flatProjects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Section: Accounts */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Wallet className="h-4 w-4" />
-                <span>Cuentas</span>
-                {isLoadingData && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              </div>
-
-              {!isLoadingData && accounts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-6 px-4 rounded-lg border border-dashed border-muted-foreground/20 bg-muted/30 text-center space-y-3">
-                  <Wallet className="h-10 w-10 text-muted-foreground/40" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">No tienes cuentas registradas</p>
-                    <p className="text-xs text-muted-foreground">Creá una cuenta en Mis cuentas para poder registrar movimientos.</p>
-                  </div>
-                  <Link
-                    href="/cuentas"
-                    onClick={handleClose}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#7B68EE] text-white hover:bg-[#7B68EE]/90 transition-colors"
-                  >
-                    Ir a Mis cuentas
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
-              ) : type === 'transfer' ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="sourceAccount">Cuenta Origen</Label>
-                    <Select
-                      value={sourceAccountId}
-                      onValueChange={(v) => setSourceAccountId(v ?? '')}
-                      disabled={isLoading || isLoadingData}
-                    >
-                      <SelectTrigger id="sourceAccount" className="w-full">
-                        <SelectValue>
-                          <span className="block truncate" title={sourceAccountLabel}>
-                            {sourceAccountLabel || (isLoadingData ? 'Cargando...' : 'Seleccione cuenta')}
-                          </span>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accounts.map((account) => (
-                          <SelectItem key={account.id} value={account.id}>
-                            {account.name} ({account.currency})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="destAccount">Cuenta Destino</Label>
-                    <Select
-                      value={destinationAccountId}
-                      onValueChange={(v) => setDestinationAccountId(v ?? '')}
-                      disabled={isLoading || isLoadingData}
-                    >
-                      <SelectTrigger id="destAccount" className="w-full">
-                        <SelectValue>
-                          <span className="block truncate" title={destAccountLabel}>
-                            {destAccountLabel || (isLoadingData ? 'Cargando...' : 'Seleccione cuenta')}
-                          </span>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accounts.map((account) => (
-                          <SelectItem key={account.id} value={account.id}>
-                            {account.name} ({account.currency})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="account">
-                    {type === 'adjustment' ? 'Cuenta a Ajustar' : 'Cuenta'}
-                  </Label>
-                  <Select
-                    value={accountId}
-                    onValueChange={(v) => setAccountId(v ?? '')}
-                    disabled={isLoading || isLoadingData}
-                  >
-                    <SelectTrigger id="account" className="w-full">
-                      <SelectValue>
-                        <span className="block truncate" title={accountLabel}>
-                          {accountLabel || (isLoadingData ? 'Cargando...' : 'Seleccione cuenta')}
-                        </span>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.name} ({account.currency})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-
-            {/* Category - only for income/expense */}
-            {(type === 'income' || type === 'expense') && (
-              <>
-                <Separator />
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Tag className="h-4 w-4" />
-                    <span>Categorización</span>
-                    {isLoadingData && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Categoría</Label>
-                    {(!isLoadingData && filteredCategories.length === 0) ? (
-                      <div className="flex flex-col items-center justify-center py-6 px-4 rounded-lg border border-dashed border-muted-foreground/20 bg-muted/30 text-center space-y-3">
-                        <Tag className="h-10 w-10 text-muted-foreground/40" />
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-muted-foreground">No hay categorías disponibles</p>
-                          <p className="text-xs text-muted-foreground">
-                            Creá categorías para registrar {type === 'income' ? 'ingresos' : 'egresos'}.
-                          </p>
-                        </div>
-                        <Link
-                          href="/categorias"
-                          onClick={handleClose}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#7B68EE] text-white hover:bg-[#7B68EE]/90 transition-colors"
-                        >
-                          Ir a Categorías
-                          <ArrowRight className="h-3 w-3" />
-                        </Link>
-                      </div>
-                    ) : (
-                      <Select
-                        value={categoryId}
-                        onValueChange={(v) => setCategoryId(v ?? '')}
-                        disabled={isLoading || isLoadingData}
-                      >
-                        <SelectTrigger id="category" className="w-full">
-                          <SelectValue>
-                            <span className="block truncate" title={categoryLabel}>
-                              {categoryLabel || (isLoadingData ? 'Cargando...' : 'Seleccione categoría')}
-                            </span>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredCategories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Adjustment Reason */}
-            {type === 'adjustment' && (
-              <>
-                <Separator />
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Settings className="h-4 w-4" />
-                    <span>Motivo del Ajuste</span>
-                  </div>
-                  <div className="space-y-2">
-                    <Select
-                      value={adjustmentReason}
-                      onValueChange={(value) => setAdjustmentReason(value ?? '')}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>
-                          <span className="block truncate" title={adjustmentReasonLabel}>
-                            {adjustmentReasonLabel || 'Seleccione motivo'}
-                          </span>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="reconciliation">Conciliación</SelectItem>
-                        <SelectItem value="correction">Corrección</SelectItem>
-                        <SelectItem value="other">Otro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <Separator />
-
-            {/* Section: Amount */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <DollarSign className="h-4 w-4" />
-                <span>Monto</span>
-              </div>
-              
-              <div className="grid grid-cols-[1fr,auto] gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Valor</Label>
-                  <MoneyInput
-                    id="amount"
-                    value={amount}
-                    onValueChange={setAmount}
-                    currency={currency}
-                    disabled={isLoading}
-                    className="text-lg"
-                  />
-                </div>
-                <div className="space-y-2 w-28">
-                  <Label htmlFor="currency">Moneda</Label>
-                  <Select 
-                    value={currency} 
-                    onValueChange={(value) => setCurrency(value ?? 'ARS')}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger id="currency" className="w-full">
-                      <SelectValue>
-                        {(() => {
-                          const c = MOVEMENT_CURRENCIES.find(cur => cur.value === currency)
-                          return c ? (
-                            <span className="block truncate">{c.flag} {c.value}</span>
-                          ) : (
-                            <span className="block truncate">{currency}</span>
-                          )
-                        })()}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MOVEMENT_CURRENCIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>
-                          <span className="mr-2">{c.flag}</span>
-                          {c.value}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            {(type === 'income' || type === 'expense') && (
-              <>
-                <Separator />
-                <MovementComponentBreakdown
-                  movementType={type as 'income' | 'expense'}
-                  componentLines={componentLines}
-                  onComponentLinesChange={setComponentLines}
-                  accounts={accounts}
-                  filteredContacts={filteredContacts}
-                  currency={currency}
-                  totalAmount={amount}
-                  isLoading={isLoading}
-                  isLoadingData={isLoadingData}
-                  onQuickContact={openQuickContact}
-                />
-              </>
-            )}
-
-
-            {/* Section: Description */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <FileText className="h-4 w-4" />
-                <span>Descripción</span>
-              </div>
-              <div className="space-y-2">
-                <Input
-                  placeholder="Describe el movimiento..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-              </>
+              <MovementFormFullFields
+                type={type}
+                date={date}
+                onDateChange={setDate}
+                method={method}
+                onMethodChange={setMethod}
+                movementScope={movementScope}
+                onMovementScopeChange={setMovementScope}
+                fundOwner={fundOwner}
+                onFundOwnerChange={setFundOwner}
+                projectId={projectId}
+                onProjectIdChange={setProjectId}
+                flatProjects={flatProjects}
+                projectLabel={projectLabel}
+                accounts={accounts}
+                isLoading={isLoading}
+                isLoadingData={isLoadingData}
+                sourceAccountId={sourceAccountId}
+                onSourceAccountIdChange={setSourceAccountId}
+                destinationAccountId={destinationAccountId}
+                onDestinationAccountIdChange={setDestinationAccountId}
+                accountId={accountId}
+                onAccountIdChange={setAccountId}
+                sourceAccountLabel={sourceAccountLabel}
+                destAccountLabel={destAccountLabel}
+                accountLabel={accountLabel}
+                filteredCategories={filteredCategories}
+                categoryId={categoryId}
+                onCategoryIdChange={setCategoryId}
+                categoryLabel={categoryLabel}
+                adjustmentReason={adjustmentReason}
+                onAdjustmentReasonChange={setAdjustmentReason}
+                adjustmentReasonLabel={adjustmentReasonLabel}
+                amount={amount}
+                onAmountChange={setAmount}
+                currency={currency}
+                onCurrencyChange={setCurrency}
+                componentLines={componentLines}
+                onComponentLinesChange={setComponentLines}
+                filteredContacts={filteredContacts}
+                description={description}
+                onDescriptionChange={setDescription}
+                onClose={handleClose}
+                onQuickContact={openQuickContact}
+              />
             )}
 
           </div>
         </div>
 
-        {/* Footer */}
-        <SheetFooter
-          className={
-            isGuidedCreate
-              ? 'shrink-0 flex-col-reverse gap-2 border-t bg-muted/50 px-4 py-3 sm:grid sm:grid-cols-3 sm:items-center sm:gap-2'
-              : 'shrink-0 flex-col-reverse gap-2 border-t bg-muted/50 px-6 py-4 md:grid md:grid-cols-3 md:items-center md:gap-3'
-          }
-        >
-          <Button 
-            variant="outline" 
-            onClick={handleClose} 
-            disabled={isLoading}
-            className="w-full"
-          >
-            Cancelar
-          </Button>
-          {!isEditing && (
-            <Button
-              variant="secondary"
-              onClick={() => handleSubmit(true)}
-              disabled={isLoading || accounts.length === 0}
-              className="w-full"
-            >
-              Guardar Borrador
-            </Button>
-          )}
-          <Button
-            onClick={() => handleSubmit(false)}
-            disabled={
-              isLoading ||
-              accounts.length === 0 ||
-              ((type === 'income' || type === 'expense') &&
-                (!accountId || !categoryId || !sumMatchesComponents))
-            }
-            className="bg-[#7B68EE] hover:bg-[#7B68EE]/90 w-full"
-          >
-            {isLoading
-              ? 'Guardando...'
-              : isEditing
-                ? 'Guardar cambios'
-                : formCopy?.submitLabel ?? 'Enviar a aprobación'}
-          </Button>
-        </SheetFooter>
+        <MovementFormFooter
+          isGuidedCreate={isGuidedCreate}
+          isLoading={Boolean(isLoading)}
+          isEditing={isEditing}
+          isRejectedCorrection={isRejectedCorrection}
+          isAdmin={isAdmin}
+          accountsEmpty={accounts.length === 0}
+          type={type}
+          accountId={accountId}
+          categoryId={categoryId}
+          sumMatchesComponents={sumMatchesComponents}
+          submitLabel={formCopy?.submitLabel}
+          onClose={handleClose}
+          onSubmit={handleSubmit}
+        />
       </SheetContent>
     </Sheet>
 
-    <Dialog open={quickContactOpen} onOpenChange={setQuickContactOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Nuevo contacto</DialogTitle>
-          <DialogDescription>
-            Queda en tu empresa y seleccionado en esta línea. El tipo cliente/proveedor sigue el movimiento.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3 py-2">
-          <div className="space-y-1">
-            <Label>Nombre</Label>
-            <Input
-              value={quickContactName}
-              onChange={(e) => setQuickContactName(e.target.value)}
-              placeholder="Nombre o razón social"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Segmento (opcional)</Label>
-            <Input
-              value={quickClientSegment}
-              onChange={(e) => setQuickClientSegment(e.target.value)}
-              placeholder="ej. particular, corporativo"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Servicios asociados (opcional)</Label>
-            <Input
-              value={quickServices}
-              onChange={(e) => setQuickServices(e.target.value)}
-              placeholder="Texto libre"
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setQuickContactOpen(false)} disabled={quickSaving}>
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={() => void saveQuickContact()}
-            disabled={quickSaving}
-            className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
-          >
-            {quickSaving ? 'Guardando...' : 'Crear contacto'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <MovementQuickContactDialog
+      open={quickContactOpen}
+      onOpenChange={setQuickContactOpen}
+      name={quickContactName}
+      onNameChange={setQuickContactName}
+      clientSegment={quickClientSegment}
+      onClientSegmentChange={setQuickClientSegment}
+      services={quickServices}
+      onServicesChange={setQuickServices}
+      saving={quickSaving}
+      onSave={() => void saveQuickContact()}
+    />
     </>
   )
 }

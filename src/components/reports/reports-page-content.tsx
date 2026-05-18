@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { AlertCircle, BarChart3, TrendingUp, Scale } from 'lucide-react'
 import { getReportsData } from '@/lib/actions/movements'
 import { ReportsCharts } from '@/components/reports/reports-charts'
@@ -21,9 +20,7 @@ const PERIOD_LINKS: { key: ReportsRangeKey; label: string; href: string }[] = [
   { key: 'trim_anterior', label: 'Trimestre anterior', href: '/reportes?rango=trim_anterior' },
 ]
 
-export function ReportsPageContent() {
-  const searchParams = useSearchParams()
-  const rango = searchParams.get('rango') ?? undefined
+export function ReportsPageContent({ rango }: { rango?: string }) {
   return <ReportsPageInner key={rango ?? 'mes'} rango={rango} />
 }
 

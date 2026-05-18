@@ -119,20 +119,32 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
         collapsed ? 'w-16' : 'w-60'
       )}
     >
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        {!collapsed && (
-          <div>
-            <h1 className="text-lg font-bold text-primary">Gestion PYME</h1>
-            <UserRoleBadge variant="compact" className="mt-1" />
-          </div>
+      <div className={cn(
+          'flex shrink-0 items-center gap-2 border-b border-border min-h-[4.25rem]',
+          collapsed ? 'justify-center px-2 py-3' : 'px-3 py-3'
         )}
+      >
+        {!collapsed ? (
+          <div className="min-w-0 flex-1 overflow-hidden pr-1">
+            <h1 className="truncate text-lg font-bold leading-tight text-primary">Gestion PYME</h1>
+            <UserRoleBadge variant="compact" className="mt-1 max-w-full" />
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground"
+          className={cn(
+            'inline-flex size-8 shrink-0 items-center justify-center rounded-md',
+            'text-muted-foreground hover:bg-accent',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+          )}
           aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
         >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {collapsed ? (
+            <ChevronRight className="size-4" aria-hidden />
+          ) : (
+            <ChevronLeft className="size-4" aria-hidden />
+          )}
         </button>
       </div>
 

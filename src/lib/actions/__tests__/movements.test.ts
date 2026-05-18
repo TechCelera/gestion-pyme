@@ -1,4 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { stubAuthError, stubAuthenticatedContext } from '@/test-utils/mock-server-context'
+import { USER_ROLES } from '@/lib/auth/roles'
+import { DEFAULT_TRANSFER_DESCRIPTION } from '@/lib/validations/movement'
+import { evaluateBudgetStatus } from '@/lib/utils/budget'
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(),
+}))
+
+import { createClient } from '@/lib/supabase/server'
 import {
   listMovements,
   getReportsData,
@@ -7,16 +17,12 @@ import {
   updateMovement,
   getMovementComponents,
 } from '../movements'
-import { DEFAULT_TRANSFER_DESCRIPTION } from '@/lib/validations/movement'
-import { evaluateBudgetStatus } from '@/lib/utils/budget'
 
-// Mock the Supabase client
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
-}))
-
-// Import the mocked module
-import { createClient } from '@/lib/supabase/server'
+const TEST_AUTH = {
+  userId: 'user-123',
+  companyId: 'company-123',
+  role: USER_ROLES.ADMIN,
+} as const
 
 describe('listMovements', () => {
   let mockRpc: ReturnType<typeof vi.fn>
@@ -25,6 +31,7 @@ describe('listMovements', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    stubAuthenticatedContext(TEST_AUTH)
 
     mockAuthGetUser = vi.fn().mockResolvedValue({
       data: { user: { id: 'user-123' } },
@@ -102,19 +109,7 @@ describe('listMovements', () => {
   })
 
   it('should return auth error when user is not authenticated', async () => {
-    // Mock auth failure
-    mockAuthGetUser.mockResolvedValue({
-      data: { user: null },
-      error: { message: 'Not authenticated' },
-    })
-
-    // Mock no company found
-    const mockSelectNoCompany = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: null }),
-      }),
-    })
-    mockFrom.mockReturnValue({ select: mockSelectNoCompany })
+    stubAuthError('Usuario no autenticado o sin empresa')
 
     const result = await listMovements({
       page: 1,
@@ -233,6 +228,7 @@ describe('listMovements', () => {
 describe('getReportsData server action', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    stubAuthenticatedContext(TEST_AUTH)
   })
 
   it('combina RPC del diario con tendencia proyectada (solo pendientes)', async () => {
@@ -472,6 +468,7 @@ describe('getReportsData server action', () => {
 describe('createMovement con movementComponents', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    stubAuthenticatedContext(TEST_AUTH)
   })
 
   it('llama set_operation_components tras create_transaction', async () => {
@@ -655,37 +652,179 @@ describe('createMovement con movementComponents', () => {
 })
 
 describe('updateMovement', () => {
+  const txId = '22222222-2222-4222-8222-222222222222'
+  const accountId = '550e8400-e29b-41d4-a716-446655440001'
+  const categoryId = '550e8400-e29b-41d4-a716-446655440002'
+  const baseInput = {
+    accountId,
+    categoryId,
+    type: 'income' as const,
+    amount: 200,
+    date: new Date('2026-05-02'),
+    description: 'Actualizado',
+    method: 'cash' as const,
+    currency: 'ARS',
+    movementComponents: [{ componentType: 'operative_bank' as const, accountId, amount: 200 }],
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
+    stubAuthenticatedContext(TEST_AUTH)
   })
 
-  it('rechaza edición directa de movimientos', async () => {
-    const txId = '22222222-2222-4222-8222-222222222222'
-    const accountId = '550e8400-e29b-41d4-a716-446655440001'
-    const categoryId = '550e8400-e29b-41d4-a716-446655440002'
-
-    const result = await updateMovement(txId, {
-      accountId,
-      categoryId,
-      type: 'income',
-      amount: 200,
-      date: new Date('2026-05-02'),
-      description: 'Actualizado',
-      method: 'cash',
-      currency: 'ARS',
-      movementComponents: [{ componentType: 'operative_bank', accountId, amount: 200 }],
+  it('rechaza edición si el movimiento no es borrador ni rechazado', async () => {
+    const mockAuthGetUser = vi.fn().mockResolvedValue({
+      data: { user: { id: 'user-123' } },
+      error: null,
     })
+
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'users') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { company_id: 'company-123' }, error: null }),
+            }),
+          }),
+        }
+      }
+      if (table === 'transactions') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: txId, status: 'approved', created_by: 'user-123' },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        }
+      }
+      return { select: vi.fn() }
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: mockAuthGetUser },
+      from: mockFrom,
+      rpc: vi.fn(),
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await updateMovement(txId, baseInput)
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error).toContain('No se permite editar movimientos registrados')
+      expect(result.error).toContain('borradores o movimientos rechazados')
     }
+  })
+
+  it('actualiza un movimiento rechazado y sus componentes', async () => {
+    const companyId = 'company-123'
+    stubAuthenticatedContext({
+      ...TEST_AUTH,
+      role: USER_ROLES.COLLABORATOR,
+    })
+    const mockAuthGetUser = vi.fn().mockResolvedValue({
+      data: { user: { id: 'user-123', app_metadata: { company_id: companyId } } },
+      error: null,
+    })
+
+    const mockUpdate = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    })
+
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'users') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { company_id: 'company-123' }, error: null }),
+              maybeSingle: vi.fn().mockResolvedValue({ data: { role: 'collaborator' }, error: null }),
+            }),
+          }),
+        }
+      }
+      if (table === 'transactions') {
+        const updatedRow = {
+          id: txId,
+          account_id: accountId,
+          accounts: { name: 'Caja' },
+          category_id: categoryId,
+          categories: { name: 'Ventas' },
+          type: 'income',
+          status: 'rejected',
+          method: 'cash',
+          amount: 200,
+          currency: 'ARS',
+          date: '2026-05-02',
+          description: 'Actualizado',
+          created_at: '2026-05-02T00:00:00Z',
+          created_by: 'user-123',
+          users: { full_name: 'Test' },
+          project_id: null,
+          projects: null,
+          fund_owner: 'company',
+          requires_budget_approval: false,
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn((column: string) => {
+              if (column === 'company_id') {
+                return {
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: { id: txId, status: 'rejected', created_by: 'user-123' },
+                    error: null,
+                  }),
+                }
+              }
+              return {
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: { id: txId, status: 'rejected', created_by: 'user-123' },
+                    error: null,
+                  }),
+                }),
+                single: vi.fn().mockResolvedValue({ data: updatedRow, error: null }),
+              }
+            }),
+          }),
+          update: mockUpdate,
+        }
+      }
+      return { select: vi.fn(), update: mockUpdate }
+    })
+
+    const mockRpc = vi.fn((name: string) => {
+      if (name === 'set_operation_components') {
+        return Promise.resolve({ data: null, error: null })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: mockAuthGetUser },
+      from: mockFrom,
+      rpc: mockRpc,
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await updateMovement(txId, baseInput)
+
+    expect(result.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalled()
+    expect(mockRpc).toHaveBeenCalledWith(
+      'set_operation_components',
+      expect.objectContaining({ p_transaction_id: txId })
+    )
   })
 })
 
 describe('getMovementComponents', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    stubAuthenticatedContext(TEST_AUTH)
   })
 
   it('mapea filas de operation_components', async () => {
@@ -750,6 +889,10 @@ describe('getMovementComponents', () => {
 })
 
 describe('budget flow rules', () => {
+  beforeEach(() => {
+    stubAuthenticatedContext(TEST_AUTH)
+  })
+
   it('should require budget approval when expense exceeds budget', () => {
     const result = evaluateBudgetStatus({
       budgetAmount: 1000,

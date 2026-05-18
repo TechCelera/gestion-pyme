@@ -1,5 +1,6 @@
 'use server'
 
+import type { ActionResult } from '@/lib/actions/types'
 import { normalizeRole, USER_ROLES } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/server'
 
@@ -11,12 +12,6 @@ export interface UserProfile {
   companyId: string
   companyName: string
   isActive: boolean
-}
-
-interface ActionResult<T = unknown> {
-  success: boolean
-  data?: T
-  error?: string
 }
 
 export async function getProfile(): Promise<ActionResult<UserProfile>> {

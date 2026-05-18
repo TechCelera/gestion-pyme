@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { notFound, useParams, useSearchParams } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { ArrowLeft, BarChart3 } from 'lucide-react'
 import { getProjectFinancialAnalysis } from '@/lib/actions/projects'
 import { ProjectAnalysisFallback } from '@/components/projects/project-analysis-fallback'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/ui/page-header'
+import { formatCurrency } from '@/lib/format/currency'
 import type { ReportsRangeKey } from '@/lib/utils/reports-period'
 
 const PERIOD_LINKS: { key: ReportsRangeKey; label: string; href: string }[] = [
@@ -18,24 +19,18 @@ const PERIOD_LINKS: { key: ReportsRangeKey; label: string; href: string }[] = [
   { key: 'trim_anterior', label: 'Trimestre anterior', href: 'trim_anterior' },
 ]
 
-function formatAr(value: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value)
-}
-
-export function ProjectAnalysisContent() {
-  const params = useParams()
-  const searchParams = useSearchParams()
-  const id = typeof params.id === 'string' ? params.id : ''
-  const rango = searchParams.get('rango') ?? undefined
-
+export function ProjectAnalysisContent({
+  id,
+  rango,
+}: {
+  id: string
+  rango?: string
+}) {
   if (!id) {
     notFound()
   }
 
-  return <ProjectAnalysisInner key={`${id}-${rango ?? 'mes'}`} id={id} rango={rango} />
+  return <ProjectAnalysisInner id={id} rango={rango} />
 }
 
 function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undefined }) {
@@ -126,7 +121,7 @@ function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undef
             <CardTitle className="text-sm font-medium text-muted-foreground">Presupuesto</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{formatAr(a.budgetAmount)}</p>
+            <p className="text-2xl font-semibold tabular-nums">{formatCurrency(a.budgetAmount, 'ARS')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -135,7 +130,7 @@ function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undef
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold tabular-nums text-red-600 dark:text-red-400">
-              {formatAr(a.expensesApproved)}
+              {formatCurrency(a.expensesApproved, 'ARS')}
             </p>
           </CardContent>
         </Card>
@@ -145,7 +140,7 @@ function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undef
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-              {formatAr(a.incomeApproved)}
+              {formatCurrency(a.incomeApproved, 'ARS')}
             </p>
           </CardContent>
         </Card>
@@ -162,7 +157,7 @@ function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undef
                 a.varianceVsBudget < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'
               }`}
             >
-              {formatAr(a.varianceVsBudget)}
+              {formatCurrency(a.varianceVsBudget, 'ARS')}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Positivo: aún queda cupo antes de agotar el presupuesto (según gastos aprobados).

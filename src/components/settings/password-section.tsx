@@ -10,17 +10,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 
-interface SecuritySectionProps {
+interface PasswordSectionProps {
   currentEmail: string
 }
 
-export function SecuritySection({ currentEmail }: SecuritySectionProps) {
+export function PasswordSection({ currentEmail }: PasswordSectionProps) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [newEmail, setNewEmail] = useState(currentEmail)
-  const [isSavingPassword, setIsSavingPassword] = useState(false)
-  const [isSavingEmail, setIsSavingEmail] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const supabase = createSafeBrowserClient()
 
@@ -36,7 +34,7 @@ export function SecuritySection({ currentEmail }: SecuritySectionProps) {
       return
     }
 
-    setIsSavingPassword(true)
+    setIsSaving(true)
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: currentEmail,
@@ -59,46 +57,21 @@ export function SecuritySection({ currentEmail }: SecuritySectionProps) {
       setNewPassword('')
       setConfirmPassword('')
     } finally {
-      setIsSavingPassword(false)
-    }
-  }
-
-  async function handleChangeEmail(e: React.FormEvent) {
-    e.preventDefault()
-    const trimmed = newEmail.trim()
-    if (!trimmed) {
-      toast.error('Ingresá un correo válido')
-      return
-    }
-
-    if (trimmed === currentEmail) {
-      toast.info('El correo es el mismo que el actual')
-      return
-    }
-
-    setIsSavingEmail(true)
-    try {
-      const { error } = await supabase.auth.updateUser({ email: trimmed })
-      if (error) {
-        toast.error(error.message)
-        return
-      }
-
-      toast.success('Revisá tu bandeja para confirmar el nuevo correo')
-    } finally {
-      setIsSavingEmail(false)
+      setIsSaving(false)
     }
   }
 
   return (
-  <>
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Contraseña</CardTitle>
-        <CardDescription>Cambiá tu contraseña de acceso</CardDescription>
+        <CardDescription>
+          Tu correo de acceso es <span className="font-medium text-foreground">{currentEmail}</span>.
+          Acá solo cambiás la contraseña.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+        <form onSubmit={handleChangePassword} className="grid gap-4 sm:max-w-md">
           <div className="space-y-2">
             <Label htmlFor="currentPassword">Contraseña actual</Label>
             <Input
@@ -107,7 +80,7 @@ export function SecuritySection({ currentEmail }: SecuritySectionProps) {
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              disabled={isSavingPassword}
+              disabled={isSaving}
               required
             />
           </div>
@@ -119,7 +92,7 @@ export function SecuritySection({ currentEmail }: SecuritySectionProps) {
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              disabled={isSavingPassword}
+              disabled={isSaving}
               required
               minLength={8}
             />
@@ -132,17 +105,17 @@ export function SecuritySection({ currentEmail }: SecuritySectionProps) {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={isSavingPassword}
+              disabled={isSaving}
               required
               minLength={8}
             />
           </div>
           <Button
             type="submit"
-            disabled={isSavingPassword}
-            className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
+            disabled={isSaving}
+            className="w-full sm:w-auto bg-[#7B68EE] hover:bg-[#7B68EE]/90"
           >
-            {isSavingPassword ? (
+            {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Guardando...
@@ -154,45 +127,5 @@ export function SecuritySection({ currentEmail }: SecuritySectionProps) {
         </form>
       </CardContent>
     </Card>
-
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Correo electrónico</CardTitle>
-        <CardDescription>
-          Te enviaremos un enlace de confirmación al nuevo correo
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleChangeEmail} className="space-y-4 max-w-md">
-          <div className="space-y-2">
-            <Label htmlFor="newEmail">Nuevo correo</Label>
-            <Input
-              id="newEmail"
-              type="email"
-              autoComplete="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              disabled={isSavingEmail}
-              required
-            />
-          </div>
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={isSavingEmail}
-          >
-            {isSavingEmail ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Enviando...
-              </>
-            ) : (
-              'Solicitar cambio de correo'
-            )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  </>
   )
 }

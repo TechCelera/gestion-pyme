@@ -1,38 +1,13 @@
 'use server'
 
+import type { ActionResult } from '@/lib/actions/types'
+import { requireAuthenticatedContext } from '@/lib/auth/server-context'
 import { createClient } from '@/lib/supabase/server'
 import { COUNTRY_CONFIGS } from '@/lib/country-config'
-
-interface ActionResult<T = unknown> {
-  success: boolean
-  data?: T
-  error?: string
-}
 
 interface SeedSummary {
   accountsCreated: number
   categoriesCreated: number
-}
-
-async function getCurrentUserCompany(): Promise<string | null> {
-  try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser()
-
-    if (error || !user) return null
-
-    const appMeta = user.app_metadata as Record<string, unknown>
-    if (appMeta?.company_id) return appMeta.company_id as string
-    if (user.user_metadata?.company_id) return user.user_metadata.company_id as string
-
-    const { data } = await supabase.from('users').select('company_id').eq('id', user.id).single()
-    return data?.company_id ?? null
-  } catch {
-    return null
-  }
 }
 
 async function getCompanyCountry(companyId: string): Promise<string | null> {
@@ -48,11 +23,11 @@ async function getCompanyCountry(companyId: string): Promise<string | null> {
 export async function seedCompanyDefaults(): Promise<ActionResult<SeedSummary>> {
   try {
     const supabase = await createClient()
-    const companyId = await getCurrentUserCompany()
-
-    if (!companyId) {
-      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    const auth = await requireAuthenticatedContext()
+    if ('error' in auth) {
+      return { success: false, error: auth.error }
     }
+    const { companyId } = auth
 
     const country = await getCompanyCountry(companyId)
     const config = COUNTRY_CONFIGS[country ?? 'AR']

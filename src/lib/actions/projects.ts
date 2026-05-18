@@ -1,5 +1,7 @@
 'use server'
 
+import type { ActionResult } from '@/lib/actions/types'
+import { requireAuthenticatedContext } from '@/lib/auth/server-context'
 import { createClient } from '@/lib/supabase/server'
 import { formatReportsPeriodLabel, resolveReportsPeriod, type ReportsRangeKey } from '@/lib/utils/reports-period'
 
@@ -16,44 +18,6 @@ export interface Project {
   children?: Project[]
 }
 
-interface ActionResult<T = unknown> {
-  success: boolean
-  data?: T
-  error?: string
-}
-
-async function getCurrentUserCompany(): Promise<string | null> {
-  try {
-    const supabase = await createClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
-    if (error || !user) return null
-
-    const appMeta = user.app_metadata as Record<string, unknown>
-    if (appMeta?.company_id) return appMeta.company_id as string
-    if (user.user_metadata?.company_id) return user.user_metadata.company_id as string
-
-    const { data } = await supabase
-      .from('users')
-      .select('company_id')
-      .eq('id', user.id)
-      .single()
-    return data?.company_id ?? null
-  } catch {
-    return null
-  }
-}
-
-async function getCurrentUserId(): Promise<string | null> {
-  try {
-    const supabase = await createClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
-    if (error || !user) return null
-    return user.id
-  } catch {
-    return null
-  }
-}
-
 function buildProjectTree(items: Project[], parentId: string | null = null): Project[] {
   return items
     .filter((item) => item.parentProjectId === parentId)
@@ -65,8 +29,9 @@ function buildProjectTree(items: Project[], parentId: string | null = null): Pro
 
 export async function getProjects(): Promise<ActionResult<Project[]>> {
   try {
-    const companyId = await getCurrentUserCompany()
-    if (!companyId) return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    const auth = await requireAuthenticatedContext()
+    if ('error' in auth) return { success: false, error: auth.error }
+    const { companyId } = auth
 
     const supabase = await createClient()
     const { data, error } = await supabase
@@ -126,8 +91,9 @@ export async function createProject(input: {
   endDate?: string | null
 }): Promise<ActionResult<Project>> {
   try {
-    const [companyId, userId] = await Promise.all([getCurrentUserCompany(), getCurrentUserId()])
-    if (!companyId || !userId) return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    const auth = await requireAuthenticatedContext()
+    if ('error' in auth) return { success: false, error: auth.error }
+    const { companyId, userId } = auth
 
     const supabase = await createClient()
     const { data, error } = await supabase
@@ -178,8 +144,9 @@ export async function updateProject(
   }
 ): Promise<ActionResult> {
   try {
-    const [companyId, userId] = await Promise.all([getCurrentUserCompany(), getCurrentUserId()])
-    if (!companyId || !userId) return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    const auth = await requireAuthenticatedContext()
+    if ('error' in auth) return { success: false, error: auth.error }
+    const { companyId, userId } = auth
 
     if (!input.name.trim()) {
       return { success: false, error: 'El nombre del proyecto es requerido' }
@@ -243,8 +210,9 @@ export async function getProjectFinancialAnalysis(
   rangePreset?: string | null
 ): Promise<ActionResult<ProjectFinancialAnalysis>> {
   try {
-    const companyId = await getCurrentUserCompany()
-    if (!companyId) return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    const auth = await requireAuthenticatedContext()
+    if ('error' in auth) return { success: false, error: auth.error }
+    const { companyId } = auth
 
     const { start, end, key: rangeKey } = resolveReportsPeriod(rangePreset)
     const startStr = start.toISOString().split('T')[0]

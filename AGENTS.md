@@ -66,3 +66,9 @@ CI en GitHub (`.github/workflows/ci.yml`) corre `verify` y E2E en cada push/PR a
 - Escribir los mensajes de commit en español.
 - Mantener prefijos de tipo cuando apliquen (por ejemplo: `fix`, `bug`, `feat`, `docs`, `refactor`).
 - No incluir líneas de coautoría automática de Cursor (por ejemplo: `Co-authored-by: Cursor`).
+
+## Agente de código (solo Cursor)
+
+- Guía y reglas de **este repo**: `AGENTS.md` y `.cursor/rules/*.mdc` (solo reglas del proyecto).
+- Preferencias globales del IDE (ej. caveman): `~/.cursor/rules/`, no duplicar en el repo.
+- No usar carpetas de otros IDEs (OpenCode, Windsurf, Cline, etc.).

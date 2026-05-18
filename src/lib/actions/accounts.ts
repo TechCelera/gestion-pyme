@@ -1,5 +1,7 @@
 'use server'
 
+import type { ActionResult } from '@/lib/actions/types'
+import { requireAuthenticatedContext } from '@/lib/auth/server-context'
 import { createClient } from '@/lib/supabase/server'
 
 // Types
@@ -9,12 +11,6 @@ export interface Account {
   type: string
   currency: string
   balance: number
-}
-
-interface ActionResult<T = unknown> {
-  success: boolean
-  data?: T
-  error?: string
 }
 
 function normalizeAccountName(value: string): string {
@@ -31,54 +27,14 @@ function isSemanticCashName(value: string): boolean {
   return ['caja', 'caja principal', 'caja ppal', 'caja general'].includes(normalized)
 }
 
-// Helper: obtener companyId del usuario actual
-async function getCurrentUserCompany(): Promise<string | null> {
-  try {
-    const supabase = await createClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
-
-    if (error || !user) {
-      return null
-    }
-
-    // 1. Try app_metadata.company_id (from JWT, set by trigger)
-    const appMeta = user.app_metadata as Record<string, unknown>
-    if (appMeta?.company_id) {
-      return appMeta.company_id as string
-    }
-
-    // 2. Try user_metadata.company_id (set during signup, available client-side)
-    if (user.user_metadata?.company_id) {
-      return user.user_metadata.company_id as string
-    }
-
-    // 3. Fallback: query public.users table
-    const { data, error: queryError } = await supabase
-      .from('users')
-      .select('company_id')
-      .eq('id', user.id)
-      .single()
-
-    if (queryError) {
-      console.error('accounts.getCurrentUserCompany: query error:', queryError.message)
-      return null
-    }
-
-    return data?.company_id ?? null
-  } catch (error) {
-    console.error('accounts.getCurrentUserCompany error:', error)
-    return null
-  }
-}
-
 // GET ACCOUNTS
 export async function getAccounts(): Promise<ActionResult<Account[]>> {
   try {
-    const companyId = await getCurrentUserCompany()
-
-    if (!companyId) {
-      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    const auth = await requireAuthenticatedContext()
+    if ('error' in auth) {
+      return { success: false, error: auth.error }
     }
+    const { companyId } = auth
 
     const supabase = await createClient()
 
@@ -111,11 +67,11 @@ export async function createAccount(input: {
   balance?: number
 }): Promise<ActionResult<Account>> {
   try {
-    const companyId = await getCurrentUserCompany()
-
-    if (!companyId) {
-      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    const auth = await requireAuthenticatedContext()
+    if ('error' in auth) {
+      return { success: false, error: auth.error }
     }
+    const { companyId } = auth
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -173,11 +129,11 @@ export async function updateAccount(
   }
 ): Promise<ActionResult<Account>> {
   try {
-    const companyId = await getCurrentUserCompany()
-
-    if (!companyId) {
-      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    const auth = await requireAuthenticatedContext()
+    if ('error' in auth) {
+      return { success: false, error: auth.error }
     }
+    const { companyId } = auth
 
     const supabase = await createClient()
 
@@ -231,11 +187,11 @@ export async function updateAccount(
 // DELETE ACCOUNT (soft delete)
 export async function deleteAccount(id: string): Promise<ActionResult> {
   try {
-    const companyId = await getCurrentUserCompany()
-
-    if (!companyId) {
-      return { success: false, error: 'Usuario no autenticado o sin empresa' }
+    const auth = await requireAuthenticatedContext()
+    if ('error' in auth) {
+      return { success: false, error: auth.error }
     }
+    const { companyId } = auth
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
