@@ -15,29 +15,69 @@ import { AuthShell } from '@/components/auth/auth-shell'
 import { AuthSubmitButton } from '@/components/auth/auth-submit-button'
 import { PasswordStrengthHint } from '@/components/auth/password-strength-hint'
 
+const SESSION_WAIT_MS = 8_000
+
 export default function ResetPasswordPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const [sessionError, setSessionError] = useState(false)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    if (code) {
+      const callbackUrl = new URL(ROUTES.AUTH_CALLBACK, window.location.origin)
+      callbackUrl.searchParams.set('code', code)
+      callbackUrl.searchParams.set('next', ROUTES.RESET_PASSWORD)
+      window.location.replace(callbackUrl.toString())
+      return
+    }
+
     const supabase = createSafeBrowserClient()
+    let settled = false
+
+    function markReady() {
+      if (settled) return
+      settled = true
+      setReady(true)
+      setSessionError(false)
+    }
+
+    function markSessionError() {
+      if (settled) return
+      settled = true
+      setSessionError(true)
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          markReady()
+          return
+        }
+        markSessionError()
+      })
+    }, SESSION_WAIT_MS)
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        setReady(true)
+        markReady()
       }
     })
 
     void supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true)
+      if (session) markReady()
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      window.clearTimeout(timeoutId)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,7 +93,7 @@ export default function ResetPasswordPage() {
       const supabase = createSafeBrowserClient()
       const { error } = await supabase.auth.updateUser({ password })
       if (error) {
-        toast.error('No se pudo actualizar la contraseña. Intentá de nuevo.')
+        toast.error('No se pudo actualizar la contraseña. Intenta de nuevo.')
         return
       }
       toast.success('Contraseña actualizada')
@@ -78,7 +118,19 @@ export default function ResetPasswordPage() {
         </p>
       }
     >
-      {!ready ? (
+      {sessionError ? (
+        <div className="space-y-4 text-center text-sm text-muted-foreground">
+          <p>
+            El enlace no es válido o ya expiró. Solicita uno nuevo para continuar.
+          </p>
+          <Link
+            href={ROUTES.FORGOT_PASSWORD}
+            className="inline-block font-medium text-primary hover:underline"
+          >
+            Pedir enlace de recuperación
+          </Link>
+        </div>
+      ) : !ready ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>

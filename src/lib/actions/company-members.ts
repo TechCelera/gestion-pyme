@@ -5,8 +5,8 @@ import type { ActionResult } from '@/lib/actions/types'
 import { requireAdminContext } from '@/lib/auth/server-context'
 import { createClient } from '@/lib/supabase/server'
 import { normalizeRole, USER_ROLES, type CanonicalUserRole } from '@/lib/auth/roles'
-import { MAX_USERS_PER_COMPANY } from '@/lib/constants'
-import { getAppOrigin } from '@/lib/utils/app-origin'
+import { MAX_USERS_PER_COMPANY, ROUTES } from '@/lib/constants'
+import { buildAuthCallbackRedirect, getAppOrigin } from '@/lib/utils/app-origin'
 import { errorMessageForUser } from '@/lib/utils/errors'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -287,7 +287,7 @@ export async function sendMemberPasswordReset(memberId: string): Promise<ActionR
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${getAppOrigin()}/nueva-contrasena`,
+      redirectTo: buildAuthCallbackRedirect(ROUTES.RESET_PASSWORD, getAppOrigin()),
     })
 
     if (error) {

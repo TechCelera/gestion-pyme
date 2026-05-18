@@ -8,6 +8,7 @@ import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ROUTES } from '@/lib/constants'
+import { buildAuthCallbackRedirect } from '@/lib/utils/app-origin'
 import { normalizeAuthEmail } from '@/lib/validations/auth'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { AuthSubmitButton } from '@/components/auth/auth-submit-button'
@@ -22,7 +23,10 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     try {
       const supabase = createSafeBrowserClient()
-      const redirectTo = `${window.location.origin}${ROUTES.RESET_PASSWORD}`
+      const redirectTo = buildAuthCallbackRedirect(
+        ROUTES.RESET_PASSWORD,
+        window.location.origin
+      )
       const { error } = await supabase.auth.resetPasswordForEmail(normalizeAuthEmail(email), {
         redirectTo,
       })

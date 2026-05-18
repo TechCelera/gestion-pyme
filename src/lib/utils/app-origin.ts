@@ -16,3 +16,10 @@ export function getClientAppOrigin(): string {
   }
   return getAppOrigin()
 }
+
+/** Callback Supabase (intercambia PKCE) con ruta final tras establecer sesión. */
+export function buildAuthCallbackRedirect(nextPath: string, origin?: string): string {
+  const base = (origin ?? getAppOrigin()).replace(/\/$/, '')
+  const normalizedNext = nextPath.startsWith('/') ? nextPath : `/${nextPath}`
+  return `${base}/auth/callback?next=${encodeURIComponent(normalizedNext)}`
+}
