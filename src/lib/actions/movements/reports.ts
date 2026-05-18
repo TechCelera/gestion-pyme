@@ -4,6 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/lib/actions/types'
 import { requireAuthenticatedContext } from '@/lib/auth/server-context'
 import { errorMessageForUser } from '@/lib/utils/errors'
+import {
+  sumProjectedCashFlowForPeriod,
+  sumRealCashFlowForPeriod,
+} from '@/lib/reports/cash-flow-period'
 import { formatReportsPeriodLabel, resolveReportsPeriod, type ReportsRangeKey } from '@/lib/utils/reports-period'
 
 export interface IncomeStatementReport {
@@ -199,23 +203,8 @@ export async function getReportsData(
       net: values.inflow - values.outflow,
     }))
 
-    const periodEndKey = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}`
-    const currentMonthTrendReal =
-      monthlyTrend.find((m) => m.month === periodEndKey) ??
-      monthlyTrend[monthlyTrend.length - 1] ?? {
-        month: '',
-        inflow: 0,
-        outflow: 0,
-        net: 0,
-      }
-    const currentMonthTrendProjected =
-      monthlyTrendProjected.find((m) => m.month === periodEndKey) ??
-      monthlyTrendProjected[monthlyTrendProjected.length - 1] ?? {
-        month: '',
-        inflow: 0,
-        outflow: 0,
-        net: 0,
-      }
+    const periodRealCashFlow = sumRealCashFlowForPeriod(monthlyTrend, start, end)
+    const periodProjectedCashFlow = sumProjectedCashFlowForPeriod(trendRows, startStr, endStr)
 
     const periodLabel = formatReportsPeriodLabel(start, end)
 
@@ -233,12 +222,12 @@ export async function getReportsData(
         },
         cashFlow: {
           periodLabel,
-          cashInReal: currentMonthTrendReal.inflow,
-          cashOutReal: currentMonthTrendReal.outflow,
-          netCashFlowReal: currentMonthTrendReal.net,
-          cashInProjected: currentMonthTrendProjected.inflow,
-          cashOutProjected: currentMonthTrendProjected.outflow,
-          netCashFlowProjected: currentMonthTrendProjected.net,
+          cashInReal: periodRealCashFlow.inflow,
+          cashOutReal: periodRealCashFlow.outflow,
+          netCashFlowReal: periodRealCashFlow.net,
+          cashInProjected: periodProjectedCashFlow.inflow,
+          cashOutProjected: periodProjectedCashFlow.outflow,
+          netCashFlowProjected: periodProjectedCashFlow.net,
           monthlyTrend,
           monthlyTrendProjected,
         },

@@ -100,15 +100,18 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
       </div>
 
       <div className="space-y-4 lg:space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 items-start">
-          <Card size="sm" className="min-w-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 md:items-stretch">
+          <Card size="sm" className="min-w-0 flex h-full flex-col">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <BarChart3 className="h-5 w-5 shrink-0 text-primary" />
                 Estado de Resultados
               </CardTitle>
+              <CardDescription className="text-xs leading-relaxed">
+                {incomeStatement.periodLabel} · movimientos aprobados
+              </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="flex flex-1 flex-col pt-0">
               <ReportMetricRows>
                 <ReportMetricRow
                   label="Ingresos"
@@ -155,17 +158,17 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
             </CardContent>
           </Card>
 
-          <Card size="sm" className="min-w-0">
+          <Card size="sm" className="min-w-0 flex h-full flex-col">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Scale className="h-5 w-5 shrink-0 text-primary" />
                 Balance (diario)
               </CardTitle>
               <CardDescription className="text-xs leading-relaxed">
-                Posición al {balanceSheet.asOf} · movimientos aprobados
+                Posición al {balanceSheet.asOf} · cierre del período seleccionado
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="flex flex-1 flex-col pt-0">
               <ReportMetricRows>
                 <ReportMetricRow
                   label="Activos"
@@ -183,6 +186,20 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
                   valueClassName="font-medium"
                 />
               </ReportMetricRows>
+
+              <ReportMetricSection title="Cuadre contable">
+                <ReportMetricRows>
+                  <ReportMetricRow
+                    label="Activos − Pasivos − Patrimonio"
+                    value={formatReportCurrency(
+                      balanceSheet.totalAssets -
+                        balanceSheet.totalLiabilities -
+                        balanceSheet.totalEquity
+                    )}
+                    valueClassName="font-medium text-muted-foreground"
+                  />
+                </ReportMetricRows>
+              </ReportMetricSection>
             </CardContent>
           </Card>
         </div>
@@ -193,6 +210,9 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
               <TrendingUp className="h-5 w-5 shrink-0 text-primary" />
               Flujo de caja
             </CardTitle>
+            <CardDescription className="text-xs leading-relaxed">
+              Totales del período · {cashFlow.periodLabel}
+            </CardDescription>
           </CardHeader>
           <CardContent className="pt-0 grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
             <div className="rounded-lg border border-green-200/70 bg-green-50/60 p-3 min-w-0">
@@ -255,6 +275,9 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Tendencia últimos 6 meses</CardTitle>
+          <CardDescription className="text-xs leading-relaxed">
+            Ventana fija de 6 meses hasta el cierre del período seleccionado
+          </CardDescription>
         </CardHeader>
         <CardContent className="pt-0 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 min-w-0">
           <CashFlowMonthlyTrend title="Real (aprobadas)" items={cashFlow.monthlyTrend} />
