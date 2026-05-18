@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { updatePasswordAction } from '@/lib/actions/auth'
+import { navigateAfterAuth } from '@/lib/auth/post-auth-navigation'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
@@ -18,7 +19,6 @@ import { PasswordStrengthHint } from '@/components/auth/password-strength-hint'
 const SESSION_WAIT_MS = 8_000
 
 export default function ResetPasswordPage() {
-  const router = useRouter()
   const [ready, setReady] = useState(false)
   const [sessionError, setSessionError] = useState(false)
   const [password, setPassword] = useState('')
@@ -90,15 +90,12 @@ export default function ResetPasswordPage() {
 
     setLoading(true)
     try {
-      const supabase = createSafeBrowserClient()
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) {
-        toast.error('No se pudo actualizar la contraseña. Intenta de nuevo.')
+      const result = await updatePasswordAction(password)
+      if (!result.success) {
+        toast.error(result.error)
         return
       }
-      toast.success('Contraseña actualizada')
-      router.push(ROUTES.DASHBOARD)
-      router.refresh()
+      navigateAfterAuth(result.redirectTo)
     } catch {
       toast.error('No se pudo actualizar la contraseña')
     } finally {

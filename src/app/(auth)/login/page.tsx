@@ -1,15 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
+import { toast } from 'sonner'
+
+import { signInAction } from '@/lib/actions/auth'
+import { navigateAfterAuth } from '@/lib/auth/post-auth-navigation'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { ROUTES } from '@/lib/constants'
-import { toast } from 'sonner'
-import { mapSignInErrorMessage, normalizeAuthEmail } from '@/lib/validations/auth'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { AuthSubmitButton } from '@/components/auth/auth-submit-button'
 import { AuthFooterLink } from '@/components/auth/auth-footer-link'
@@ -18,9 +18,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
-
-  const supabase = createSafeBrowserClient()
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -34,21 +31,12 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: normalizeAuthEmail(email),
-        password,
-      })
-
-      if (error) {
-        toast.error(mapSignInErrorMessage(error))
+      const result = await signInAction(email, password)
+      if (!result.success) {
+        toast.error(result.error)
         return
       }
-
-      if (data.user) {
-        toast.success('Inicio de sesión exitoso')
-        router.push(ROUTES.DASHBOARD)
-        router.refresh()
-      }
+      navigateAfterAuth(result.redirectTo)
     } catch {
       toast.error('Error al iniciar sesión')
     } finally {
@@ -80,6 +68,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={loading}
             className="h-10"
           />
         </div>
@@ -101,6 +90,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={loading}
             className="h-10"
           />
         </div>

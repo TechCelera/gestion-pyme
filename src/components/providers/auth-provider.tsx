@@ -9,9 +9,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((state) => state.setUser)
   const clearUser = useAuthStore((state) => state.clearUser)
 
-  const supabase = createSafeBrowserClient()
-
   useEffect(() => {
+    const supabase = createSafeBrowserClient()
     let cancelled = false
 
     async function applySession(session: Awaited<
@@ -46,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true
       subscription.unsubscribe()
     }
-  }, [setUser, clearUser, supabase])
+  }, [setUser, clearUser])
 
   return <>{children}</>
 }
