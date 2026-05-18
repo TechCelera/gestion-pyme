@@ -6,7 +6,9 @@ import { requireAdminContext } from '@/lib/auth/server-context'
 import { createClient } from '@/lib/supabase/server'
 import { normalizeRole, USER_ROLES, type CanonicalUserRole } from '@/lib/auth/roles'
 import { MAX_USERS_PER_COMPANY } from '@/lib/constants'
+import { getAppOrigin } from '@/lib/utils/app-origin'
 import { errorMessageForUser } from '@/lib/utils/errors'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export interface CompanyMember {
   id: string
@@ -178,16 +180,9 @@ export async function createCompanyInvite(
       return { success: false, error: insertError.message }
     }
 
-    const base =
-      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ??
-      process.env.VERCEL_URL?.replace(/^(?!https?:\/\/)/, 'https://') ??
-      'http://localhost:3000'
-
-    const origin = base.startsWith('http') ? base : `https://${base}`
-
     return {
       success: true,
-      data: { inviteUrl: `${origin}/register?invite=${token}` },
+      data: { inviteUrl: `${getAppOrigin()}/register?invite=${token}` },
     }
   } catch (e) {
     return { success: false, error: errorMessageForUser(e, 'Error al crear la invitación') }
@@ -229,5 +224,126 @@ export async function getCompanyInvitePreview(
     }
   } catch (e) {
     return { success: false, error: errorMessageForUser(e, 'Error al validar la invitación') }
+  }
+}
+
+async function getMemberInCompany(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  memberId: string,
+  companyId: string
+) {
+  const { data: target, error } = await supabase
+    .from('users')
+    .select('id, company_id, email, role, is_active')
+    .eq('id', memberId)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (error || !target) return null
+  return target
+}
+
+async function assertNotLastActiveAdmin(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  companyId: string,
+  targetRole: string
+): Promise<ActionResult | null> {
+  if (normalizeRole(targetRole) !== USER_ROLES.ADMIN) return null
+
+  const { count } = await supabase
+    .from('users')
+    .select('id', { count: 'exact', head: true })
+    .eq('company_id', companyId)
+    .eq('role', USER_ROLES.ADMIN)
+    .eq('is_active', true)
+
+  if ((count ?? 0) <= 1) {
+    return { success: false, error: 'Debe quedar al menos un administrador activo' }
+  }
+  return null
+}
+
+export async function sendMemberPasswordReset(memberId: string): Promise<ActionResult> {
+  try {
+    const ctx = await requireAdminContext()
+    if (!ctx.ok) return { success: false, error: ctx.error }
+
+    if (memberId === ctx.userId) {
+      return {
+        success: false,
+        error: 'Para tu cuenta usá “Olvidé mi contraseña” en el inicio de sesión o Cambiar contraseña en Configuración',
+      }
+    }
+
+    const supabase = await createClient()
+    const target = await getMemberInCompany(supabase, memberId, ctx.companyId)
+    if (!target) {
+      return { success: false, error: 'Usuario no encontrado en tu empresa' }
+    }
+
+    const email = (target.email ?? '').trim().toLowerCase()
+    if (!email) {
+      return { success: false, error: 'El usuario no tiene correo registrado' }
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${getAppOrigin()}/nueva-contrasena`,
+    })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (e) {
+    return {
+      success: false,
+      error: errorMessageForUser(e, 'Error al enviar recuperación de contraseña'),
+    }
+  }
+}
+
+export async function removeCompanyMember(memberId: string): Promise<ActionResult> {
+  try {
+    const ctx = await requireAdminContext()
+    if (!ctx.ok) return { success: false, error: ctx.error }
+
+    if (memberId === ctx.userId) {
+      return { success: false, error: 'No podés eliminar tu propia cuenta desde aquí' }
+    }
+
+    const supabase = await createClient()
+    const target = await getMemberInCompany(supabase, memberId, ctx.companyId)
+    if (!target) {
+      return { success: false, error: 'Usuario no encontrado en tu empresa' }
+    }
+
+    const lastAdminError = await assertNotLastActiveAdmin(supabase, ctx.companyId, target.role)
+    if (lastAdminError) return lastAdminError
+
+    const { error: deleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', memberId)
+      .eq('company_id', ctx.companyId)
+
+    if (deleteError) {
+      return { success: false, error: deleteError.message }
+    }
+
+    const service = createServiceClient()
+    if (service) {
+      const { error: authError } = await service.auth.admin.deleteUser(memberId)
+      if (authError) {
+        return {
+          success: false,
+          error: `Se quitó el acceso en la empresa, pero falló borrar el login: ${authError.message}`,
+        }
+      }
+    }
+
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: errorMessageForUser(e, 'Error al eliminar el usuario') }
   }
 }

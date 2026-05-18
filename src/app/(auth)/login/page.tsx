@@ -6,8 +6,10 @@ import Link from 'next/link'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ROUTES } from '@/lib/constants'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
@@ -57,32 +59,49 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4" autoComplete="on">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Correo</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
+                inputMode="email"
+                autoComplete="username email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 placeholder="tu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-10"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Link
+                  href={ROUTES.FORGOT_PASSWORD}
+                  className="text-xs text-primary hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+              <PasswordInput
                 id="password"
-                type="password"
-                placeholder="••••••••"
+                name="password"
+                autoComplete="current-password"
+                placeholder="Tu contraseña"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="h-10"
               />
             </div>
             <Button
               type="submit"
-              className="w-full bg-[#7B68EE] hover:bg-[#7B68EE]/90"
+              className="w-full h-10 bg-[#7B68EE] hover:bg-[#7B68EE]/90"
               disabled={loading}
             >
               {loading ? (
@@ -91,7 +110,7 @@ export default function LoginPage() {
                   Ingresando...
                 </>
               ) : (
-                'Iniciar Sesión'
+                'Iniciar sesión'
               )}
             </Button>
           </form>

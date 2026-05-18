@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2, UserPlus } from 'lucide-react'
+import { KeyRound, Loader2, Trash2, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,8 @@ import {
 import {
   createCompanyInvite,
   listCompanyMembers,
+  removeCompanyMember,
+  sendMemberPasswordReset,
   updateCompanyMember,
   type CompanyMember,
 } from '@/lib/actions/company-members'
@@ -44,6 +46,8 @@ export function TeamSection({ currentUserId }: TeamSectionProps) {
   const [inviteName, setInviteName] = useState('')
   const [isInviting, setIsInviting] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [resettingId, setResettingId] = useState<string | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
 
   const loadMembers = useCallback(async () => {
     setIsLoading(true)
@@ -103,6 +107,40 @@ export function TeamSection({ currentUserId }: TeamSectionProps) {
     }
   }
 
+  async function handlePasswordReset(member: CompanyMember) {
+    setResettingId(member.id)
+    try {
+      const result = await sendMemberPasswordReset(member.id)
+      if (result.success) {
+        toast.success(`Enviamos un correo de recuperación a ${member.email}`)
+      } else {
+        toast.error(result.error ?? 'No se pudo enviar la recuperación')
+      }
+    } finally {
+      setResettingId(null)
+    }
+  }
+
+  async function handleRemove(member: CompanyMember) {
+    const ok = window.confirm(
+      `¿Eliminar a ${member.fullName}?\n\nPerderá el acceso a la empresa. Esta acción no se puede deshacer.`
+    )
+    if (!ok) return
+
+    setRemovingId(member.id)
+    try {
+      const result = await removeCompanyMember(member.id)
+      if (result.success) {
+        toast.success('Usuario eliminado')
+        await loadMembers()
+      } else {
+        toast.error(result.error ?? 'No se pudo eliminar el usuario')
+      }
+    } finally {
+      setRemovingId(null)
+    }
+  }
+
   async function handleToggleActive(member: CompanyMember) {
     setUpdatingId(member.id)
     try {
@@ -124,10 +162,10 @@ export function TeamSection({ currentUserId }: TeamSectionProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Invitar colaborador</CardTitle>
+          <CardTitle className="text-base">Crear cuenta de colaborador</CardTitle>
           <CardDescription>
-            Generá un enlace de registro (válido 7 días). Máximo {MAX_USERS_PER_COMPANY} usuarios por
-            empresa.
+            Generá un enlace de registro (válido 7 días) para que se unan a tu empresa. Máximo{' '}
+            {MAX_USERS_PER_COMPANY} usuarios.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -211,7 +249,10 @@ export function TeamSection({ currentUserId }: TeamSectionProps) {
               <TableBody>
                 {members.map((member) => {
                   const isSelf = member.id === currentUserId
-                  const busy = updatingId === member.id
+                  const busy =
+                    updatingId === member.id ||
+                    resettingId === member.id ||
+                    removingId === member.id
                   return (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">
@@ -257,15 +298,53 @@ export function TeamSection({ currentUserId }: TeamSectionProps) {
                         {isSelf ? (
                           <span className="text-xs text-muted-foreground">—</span>
                         ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={busy}
-                            onClick={() => void handleToggleActive(member)}
-                          >
-                            {member.isActive ? 'Desactivar' : 'Reactivar'}
-                          </Button>
+                          <div className="flex flex-wrap justify-end gap-1.5">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8"
+                              disabled={busy}
+                              onClick={() => void handlePasswordReset(member)}
+                              title="Enviar correo para restablecer contraseña"
+                            >
+                              {resettingId === member.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <>
+                                  <KeyRound className="mr-1 h-3.5 w-3.5" />
+                                  Recuperar clave
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8"
+                              disabled={busy}
+                              onClick={() => void handleToggleActive(member)}
+                            >
+                              {member.isActive ? 'Desactivar' : 'Reactivar'}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-destructive hover:text-destructive"
+                              disabled={busy}
+                              onClick={() => void handleRemove(member)}
+                            >
+                              {removingId === member.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <>
+                                  <Trash2 className="mr-1 h-3.5 w-3.5" />
+                                  Eliminar
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>

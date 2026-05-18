@@ -307,6 +307,7 @@ export function MovementGuidedFields({
             isLoadingData={isLoadingData}
             onQuickContact={onQuickContact}
             compact
+            manualEntry
           />
         </section>
       ) : null}

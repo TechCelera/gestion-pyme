@@ -32,6 +32,7 @@ import type {
 import { toast } from 'sonner'
 import {
   defaultComponentTypeForAccount,
+  movementHasCustomComponentBreakdown,
   resolveMovementDescription,
 } from '@/lib/movements/form-defaults'
 import {
@@ -203,29 +204,42 @@ export function MovementForm({
     let cancelled = false
     ;(async () => {
       const res = await getMovementComponents(movement.id)
-      if (cancelled || !res.success || !res.data?.length) return
-      setComponentLines(
-        res.data.map((c) =>
-          newComponentLine({
-            localId: (c.id as string | undefined) ?? crypto.randomUUID(),
-            componentType: c.componentType,
-            accountId: c.accountId ?? '',
-            contactId: c.contactId ?? '',
-            amount: String(c.amount),
-          })
-        )
+      if (cancelled) return
+      const rows = res.success && res.data?.length ? res.data : []
+      const custom = movementHasCustomComponentBreakdown(
+        rows,
+        movement.accountId,
+        movement.amount
       )
+      setShowAdvanced(custom)
+      if (custom && rows.length > 0) {
+        setComponentLines(
+          rows.map((c) =>
+            newComponentLine({
+              localId: (c.id as string | undefined) ?? crypto.randomUUID(),
+              componentType: c.componentType,
+              accountId: c.accountId ?? '',
+              contactId: c.contactId ?? '',
+              amount: String(c.amount),
+            })
+          )
+        )
+      } else {
+        setComponentLines([newComponentLine()])
+      }
     })()
     return () => {
       cancelled = true
     }
   }, [isOpen, movement])
 
+  const usesOptionalComponentBreakdown =
+    type === 'income' || type === 'expense'
+
   const effectiveComponentLines = useMemo((): ComponentLineDraft[] => {
     if (
       showAdvanced ||
-      isEditing ||
-      (type !== 'income' && type !== 'expense')
+      !usesOptionalComponentBreakdown
     ) {
       return componentLines
     }
@@ -237,7 +251,7 @@ export function MovementForm({
         amount,
       }),
     ]
-  }, [showAdvanced, isEditing, type, accountId, amount, accounts, componentLines])
+  }, [showAdvanced, usesOptionalComponentBreakdown, accountId, amount, accounts, componentLines])
 
   const buildMovementComponents = (): MovementComponentRow[] => {
     const total = parseFloat(amount)
@@ -553,6 +567,12 @@ export function MovementForm({
               />
             ) : (
               <MovementFormFullFields
+                showComponentBreakdown={usesOptionalComponentBreakdown ? showAdvanced : undefined}
+                onToggleComponentBreakdown={
+                  usesOptionalComponentBreakdown
+                    ? () => setShowAdvanced((v) => !v)
+                    : undefined
+                }
                 type={type}
                 date={date}
                 onDateChange={setDate}

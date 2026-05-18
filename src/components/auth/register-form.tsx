@@ -7,6 +7,7 @@ import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 import { getCompanyInvitePreview } from '@/lib/actions/company-members'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
@@ -218,7 +219,10 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
                 <Label htmlFor="email">Correo</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
+                  autoComplete="username email"
+                  autoCapitalize="none"
                   placeholder="tu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -229,9 +233,10 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Contraseña</Label>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
+                  name="password"
+                  autoComplete="new-password"
                   placeholder="Mínimo 6 caracteres"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

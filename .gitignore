@@ -19,6 +19,12 @@ tmp/
 # OpenCode (no usado; evita que instaladores vuelvan a meter basura)
 .opencode/
 
+# Otros editores (solo Cursor)
+.windsurf/
+.clinerules/
+.codex/
+.aider/
+
 # Artefactos JS compilados por error dentro de src/
 src/**/*.js
 

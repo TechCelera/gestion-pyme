@@ -6,7 +6,10 @@ export const ROUTES = {
   MOVEMENTS: '/operaciones',
   REPORTS: '/reportes',
   CATEGORIES: '/categorias',
+  TEAM: '/equipo',
   SETTINGS: '/configuracion',
+  FORGOT_PASSWORD: '/recuperar-contrasena',
+  RESET_PASSWORD: '/nueva-contrasena',
 } as const
 
 export {

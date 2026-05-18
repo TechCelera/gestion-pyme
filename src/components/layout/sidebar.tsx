@@ -13,6 +13,7 @@ import {
   ChevronRight,
   LogOut,
   Tag,
+  Users,
 } from 'lucide-react'
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
@@ -20,7 +21,9 @@ import { cn } from '@/lib/utils'
 import { useLogout } from '@/hooks/use-logout'
 import { Badge } from '@/components/ui/badge'
 import { ROUTES } from '@/lib/constants'
+import { isAdminRole } from '@/lib/auth/roles'
 import { UserRoleBadge } from '@/components/layout/user-role-badge'
+import { useAuthStore } from '@/stores/auth-store'
 
 type NavLink = {
   href: string
@@ -68,6 +71,8 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
   const { logout } = useLogout()
+  const role = useAuthStore((state) => state.role)
+  const isAdmin = isAdminRole(role)
 
   const mainNavItems: NavLink[] = [
     {
@@ -107,6 +112,16 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
       icon: FolderKanban,
       match: (p) => p === '/proyectos' || p.startsWith('/proyectos/'),
     },
+    ...(isAdmin
+      ? [
+          {
+            href: ROUTES.TEAM,
+            label: 'Equipo',
+            icon: Users,
+            match: (p: string) => p === ROUTES.TEAM,
+          } satisfies NavLink,
+        ]
+      : []),
   ]
 
   const isActive = (item: NavLink) =>

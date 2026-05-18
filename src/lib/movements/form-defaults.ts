@@ -34,3 +34,42 @@ export function resolveMovementDescription(input: {
 export function isIncomeExpenseType(type: MovementType): boolean {
   return type === 'income' || type === 'expense'
 }
+
+export type ComponentBreakdownSource = {
+  componentType: string
+  accountId?: string | null
+  contactId?: string | null
+  amount: number | string
+}
+
+/** True cuando el movimiento guardó un desglose que no se puede inferir solo de cuenta + monto. */
+export function movementHasCustomComponentBreakdown(
+  components: ComponentBreakdownSource[],
+  movementAccountId: string,
+  movementAmount: number
+): boolean {
+  if (components.length > 1) return true
+  if (components.length === 0) return false
+
+  const line = components[0]!
+  if (
+    line.componentType === 'client_receivable' ||
+    line.componentType === 'supplier_payable'
+  ) {
+    return true
+  }
+
+  const accountId = line.accountId ?? ''
+  if (accountId && accountId !== movementAccountId) return true
+
+  const amt =
+    typeof line.amount === 'number' ? line.amount : parseFloat(String(line.amount))
+  if (
+    !Number.isNaN(amt) &&
+    Math.round(amt * 100) !== Math.round(movementAmount * 100)
+  ) {
+    return true
+  }
+
+  return false
+}

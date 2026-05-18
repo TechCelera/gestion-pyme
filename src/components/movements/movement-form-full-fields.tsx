@@ -10,7 +10,10 @@ import {
   Tag,
   Loader2,
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { MoneyInput } from '@/components/ui/money-input'
 import { Label } from '@/components/ui/label'
@@ -75,6 +78,8 @@ export interface MovementFormFullFieldsProps {
   onDescriptionChange: (value: string) => void
   onClose: () => void
   onQuickContact: (lineLocalId: string) => void
+  showComponentBreakdown?: boolean
+  onToggleComponentBreakdown?: () => void
 }
 
 export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
@@ -122,6 +127,8 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
     onDescriptionChange,
     onClose,
     onQuickContact,
+    showComponentBreakdown,
+    onToggleComponentBreakdown,
   } = props
 
   const methodLabel = MOVEMENT_METHODS.find((m) => m.value === method)?.label ?? ''
@@ -494,23 +501,40 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
               </div>
             </div>
 
-            {(type === 'income' || type === 'expense') && (
-              <>
-                <Separator />
-                <MovementComponentBreakdown
-                  movementType={type as 'income' | 'expense'}
-                  componentLines={componentLines}
-                  onComponentLinesChange={onComponentLinesChange}
-                  accounts={accounts}
-                  filteredContacts={filteredContacts}
-                  currency={currency}
-                  totalAmount={amount}
-                  isLoading={isLoading}
-                  isLoadingData={isLoadingData}
-                  onQuickContact={onQuickContact}
-                />
-              </>
-            )}
+            {(type === 'income' || type === 'expense') && onToggleComponentBreakdown ? (
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 w-full justify-between text-muted-foreground"
+                  onClick={onToggleComponentBreakdown}
+                  disabled={isLoading}
+                >
+                  Desglosar por medios de pago
+                  {showComponentBreakdown ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </Button>
+                {showComponentBreakdown ? (
+                  <MovementComponentBreakdown
+                    movementType={type as 'income' | 'expense'}
+                    componentLines={componentLines}
+                    onComponentLinesChange={onComponentLinesChange}
+                    accounts={accounts}
+                    filteredContacts={filteredContacts}
+                    currency={currency}
+                    totalAmount={amount}
+                    isLoading={isLoading}
+                    isLoadingData={isLoadingData}
+                    onQuickContact={onQuickContact}
+                    manualEntry
+                  />
+                ) : null}
+              </div>
+            ) : null}
 
 
             {/* Section: Description */}

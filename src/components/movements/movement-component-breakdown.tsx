@@ -36,6 +36,8 @@ export type MovementComponentBreakdownProps = {
   isLoadingData?: boolean
   onQuickContact: (lineLocalId: string) => void
   compact?: boolean
+  /** Si false, el panel solo se muestra cuando el usuario lo activó (copy más suave). */
+  manualEntry?: boolean
 }
 
 export function MovementComponentBreakdown({
@@ -50,6 +52,7 @@ export function MovementComponentBreakdown({
   isLoadingData,
   onQuickContact,
   compact,
+  manualEntry = true,
 }: MovementComponentBreakdownProps) {
   const activeCompTypes = componentTypesForMovement(movementType)
   const sumMatches = componentsSumMatchesTotal(componentLines, totalAmount)
@@ -79,7 +82,9 @@ export function MovementComponentBreakdown({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        La suma debe coincidir con el monto total ({currency}). Es obligatorio para guardar.
+        {manualEntry
+          ? `La suma debe coincidir con el monto total (${currency}). Es obligatorio para guardar.`
+          : `Opcional: si no usás líneas, al guardar se toma la cuenta principal del movimiento. Si agregás líneas, la suma debe coincidir con el total (${currency}).`}
       </p>
       <div
         className={cn(

@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
 
@@ -74,9 +74,9 @@ export function PasswordSection({ currentEmail }: PasswordSectionProps) {
         <form onSubmit={handleChangePassword} className="grid gap-4 sm:max-w-md">
           <div className="space-y-2">
             <Label htmlFor="currentPassword">Contraseña actual</Label>
-            <Input
+            <PasswordInput
               id="currentPassword"
-              type="password"
+              name="current-password"
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
@@ -86,9 +86,9 @@ export function PasswordSection({ currentEmail }: PasswordSectionProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="newPassword">Nueva contraseña</Label>
-            <Input
+            <PasswordInput
               id="newPassword"
-              type="password"
+              name="new-password"
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -99,9 +99,9 @@ export function PasswordSection({ currentEmail }: PasswordSectionProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirmar nueva contraseña</Label>
-            <Input
+            <PasswordInput
               id="confirmPassword"
-              type="password"
+              name="confirm-password"
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
