@@ -49,7 +49,7 @@ export function CancelMovementDialog({
           <DialogHeader>
             <DialogTitle>Anular movimiento aprobado</DialogTitle>
             <DialogDescription>
-              El movimiento dejará de impactar saldos e informes. Indicá el motivo; queda registrado
+              El movimiento dejará de impactar saldos e informes. Indica el motivo; queda registrado
               en el historial.
             </DialogDescription>
           </DialogHeader>

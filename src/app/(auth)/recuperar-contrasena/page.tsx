@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
         <CardContent>
           {sent ? (
             <div className="space-y-4 text-center text-sm text-muted-foreground">
-              <p>Revisá tu bandeja de entrada (y spam) para {email}.</p>
+              <p>Revisa tu bandeja de entrada (y spam) para {email}.</p>
               <Link href={ROUTES.LOGIN} className="text-primary hover:underline">
                 Volver al inicio de sesión
               </Link>

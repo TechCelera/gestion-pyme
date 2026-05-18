@@ -72,7 +72,7 @@ export function TeamSection({ currentUserId }: TeamSectionProps) {
     try {
       const result = await createCompanyInvite(inviteEmail, inviteName)
       if (result.success && result.data) {
-        toast.success('Invitación creada. Copiá el enlace y compartilo.')
+        toast.success('Invitación creada. Copia el enlace y compártelo.')
         try {
           await navigator.clipboard.writeText(result.data.inviteUrl)
           toast.info('Enlace copiado al portapapeles')
@@ -164,7 +164,7 @@ export function TeamSection({ currentUserId }: TeamSectionProps) {
         <CardHeader>
           <CardTitle className="text-base">Crear cuenta de colaborador</CardTitle>
           <CardDescription>
-            Generá un enlace de registro (válido 7 días) para que se unan a tu empresa. Máximo{' '}
+            Genera un enlace de registro (válido 7 días) para que se unan a tu empresa. Máximo{' '}
             {MAX_USERS_PER_COMPANY} usuarios.
           </CardDescription>
         </CardHeader>
@@ -258,7 +258,7 @@ export function TeamSection({ currentUserId }: TeamSectionProps) {
                       <TableCell className="font-medium">
                         {member.fullName}
                         {isSelf ? (
-                          <span className="ml-2 text-xs text-muted-foreground">(vos)</span>
+                          <span className="ml-2 text-xs text-muted-foreground">(tú)</span>
                         ) : null}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{member.email}</TableCell>

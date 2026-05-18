@@ -23,12 +23,12 @@ export const MOVEMENT_FORM_COPY: Record<
   },
   transfer: {
     title: 'Transferencia',
-    subtitle: 'Pasá plata de una cuenta a otra',
+    subtitle: 'Transfiere dinero de una cuenta a otra',
     submitLabel: 'Registrar transferencia',
   },
   adjustment: {
     title: 'Ajuste de saldo',
-    subtitle: 'Corregí un error o conciliá una cuenta',
+    subtitle: 'Corrige un error o concilia una cuenta',
     submitLabel: 'Registrar ajuste',
   },
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Wallet, Plus, Pencil, Trash2, Loader2, BookOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { TableRowActions } from '@/components/ui/table-row-actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/ui/page-header'
@@ -130,7 +131,7 @@ export function CuentasPageContent({ tab: tabParam }: CuentasPageContentProps) {
     <div className="p-4 md:p-8 space-y-6">
       <PageHeader
         title="Mis cuentas"
-        description="Cuentas del día a día (caja, bancos) y el mapa contable de referencia de la empresa."
+        description="Caja y bancos para el día a día, y el plan de cuentas de la empresa (solo lectura)."
       />
 
       <PageTabs
@@ -162,8 +163,8 @@ export function CuentasPageContent({ tab: tabParam }: CuentasPageContentProps) {
               ) : accounts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                   <Wallet className="h-12 w-12 mb-3 opacity-30" />
-                  <p className="text-sm">Todavía no tenés cuentas</p>
-                  <p className="text-xs mt-1">Agregá caja, banco u otra cuenta cuando quieras empezar</p>
+                  <p className="text-sm">Todavía no tienes cuentas</p>
+                  <p className="text-xs mt-1">Agrega caja, banco u otra cuenta cuando quieras empezar</p>
                 </div>
               ) : (
                 <Table>
@@ -190,25 +191,23 @@ export function CuentasPageContent({ tab: tabParam }: CuentasPageContentProps) {
                           {formatCurrency(account.balance, account.currency)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <div className="inline-flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenAccountForm(account)}
-                            >
-                              <Pencil className="mr-1 h-4 w-4" />
-                              Editar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteAccount(account)}
-                            >
-                              <Trash2 className="mr-1 h-4 w-4" />
-                              Eliminar
-                            </Button>
-                          </div>
+                          <TableRowActions
+                            actions={[
+                              {
+                                key: 'edit',
+                                label: 'Editar',
+                                icon: Pencil,
+                                onClick: () => handleOpenAccountForm(account),
+                              },
+                              {
+                                key: 'delete',
+                                label: 'Eliminar',
+                                icon: Trash2,
+                                destructive: true,
+                                onClick: () => handleDeleteAccount(account),
+                              },
+                            ]}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}

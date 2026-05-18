@@ -22,7 +22,7 @@ export function DangerZoneSection() {
 
   async function handleDeactivate() {
     if (confirmText !== CONFIRM_TEXT) {
-      toast.error(`Escribí ${CONFIRM_TEXT} para confirmar`)
+      toast.error(`Escribe ${CONFIRM_TEXT} para confirmar`)
       return
     }
 
@@ -57,7 +57,7 @@ export function DangerZoneSection() {
       <CardContent className="space-y-4 max-w-md">
         <div className="space-y-2">
           <Label htmlFor="confirmDelete">
-            Escribí <span className="font-mono font-semibold">{CONFIRM_TEXT}</span> para confirmar
+            Escribe <span className="font-mono font-semibold">{CONFIRM_TEXT}</span> para confirmar
           </Label>
           <Input
             id="confirmDelete"

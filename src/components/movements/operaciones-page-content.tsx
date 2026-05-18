@@ -143,7 +143,7 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
           const msg = useMovementStore.getState().error
           toast.error(
             msg ??
-              'Cambios guardados, pero no se pudo reenviar. Revisá el desglose e intentá de nuevo.'
+              'Cambios guardados, pero no se pudo reenviar. Revisa el desglose e intenta de nuevo.'
           )
         }
         return
@@ -254,7 +254,7 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
     try {
       const result = await approveBudgetException(budgetMovementId, note)
       if (result.success) {
-        toast.success('Excepción de presupuesto autorizada. Ya podés aprobar el movimiento.')
+        toast.success('Excepción de presupuesto autorizada. Ya puedes aprobar el movimiento.')
         setBudgetMovementId(null)
         await fetchMovements()
       } else {
@@ -321,7 +321,7 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
           <div className="min-w-0 space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">Movimientos</h1>
             <p className="text-sm text-muted-foreground">
-              Registrá ingresos y egresos de tu empresa
+              Registra ingresos y egresos de tu empresa
             </p>
           </div>
 

@@ -283,17 +283,17 @@ export function MovementForm({
   const handleSubmit = (asDraft: boolean, submitForReviewOnly = false) => {
     const parsedAmount = parseFloat(amount)
     if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Indicá un monto mayor a cero')
+      toast.error('Indica un monto mayor a cero')
       return
     }
 
     if (type === 'income' || type === 'expense') {
       if (!accountId) {
-        toast.error('Elegí la cuenta')
+        toast.error('Elige la cuenta')
         return
       }
       if (!categoryId) {
-        toast.error('Elegí una categoría')
+        toast.error('Elige una categoría')
         return
       }
     }
@@ -306,7 +306,7 @@ export function MovementForm({
     })
 
     if (type !== 'transfer' && finalDescription.trim().length < 3) {
-      toast.error('Escribí una nota de al menos 3 caracteres o elegí una categoría')
+      toast.error('Escribe una nota de al menos 3 caracteres o elige una categoría')
       return
     }
 
@@ -314,7 +314,7 @@ export function MovementForm({
     if (type === 'income' || type === 'expense') {
       const built = buildMovementComponents()
       if (!built.length) {
-        toast.error('Revisá el monto y la cuenta: el desglose debe coincidir con el total')
+        toast.error('Revisa el monto y la cuenta: el desglose debe coincidir con el total')
         return
       }
       movementComponents = built
@@ -414,7 +414,7 @@ export function MovementForm({
   async function saveQuickContact() {
     const trimmed = quickContactName.trim()
     if (!trimmed) {
-      toast.error('Escribí el nombre del contacto')
+      toast.error('Escribe el nombre del contacto')
       return
     }
     setQuickSaving(true)
@@ -472,10 +472,10 @@ export function MovementForm({
               {!isGuidedCreate ? (
                 <SheetDescription>
                   {isRejectedCorrection
-                    ? 'Ajustá los datos y reenviá a aprobación'
+                    ? 'Ajusta los datos y reenvía a aprobación'
                     : isEditing
-                      ? 'Modificá los datos del movimiento'
-                      : formCopy?.subtitle ?? 'Completá los datos para registrar un movimiento'}
+                      ? 'Modifica los datos del movimiento'
+                      : formCopy?.subtitle ?? 'Completa los datos para registrar un movimiento'}
                 </SheetDescription>
               ) : null}
             </div>

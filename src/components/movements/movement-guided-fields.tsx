@@ -193,7 +193,7 @@ export function MovementGuidedFields({
                 <SelectTrigger id="account-guided" className={cn('w-full', controlH)}>
                   <SelectValue>
                     <span className="block truncate" title={accountLabel}>
-                      {accountLabel || 'Elegí cuenta'}
+                      {accountLabel || 'Elige cuenta'}
                     </span>
                   </SelectValue>
                 </SelectTrigger>
@@ -230,7 +230,7 @@ export function MovementGuidedFields({
               <SelectTrigger id="category-guided" className={cn('w-full', controlH)}>
                 <SelectValue>
                   <span className="block truncate" title={categoryLabel}>
-                    {categoryLabel || 'Elegí categoría'}
+                    {categoryLabel || 'Elige categoría'}
                   </span>
                 </SelectValue>
               </SelectTrigger>

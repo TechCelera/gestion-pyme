@@ -12,7 +12,7 @@ export function EquipoPageContent({ currentUserId }: EquipoPageContentProps) {
     <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-8">
       <PageHeader
         title="Equipo"
-        description="Invitá colaboradores, enviá recuperación de contraseña o eliminá accesos a la empresa."
+        description="Invita colaboradores, envía recuperación de contraseña o elimina accesos a la empresa."
       />
       <TeamSection currentUserId={currentUserId} />
     </div>

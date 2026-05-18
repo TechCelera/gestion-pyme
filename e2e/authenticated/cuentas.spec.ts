@@ -15,7 +15,7 @@ test.describe('cuentas autenticado', () => {
     await expect(page.getByRole('heading', { name: /mis cuentas/i })).toBeVisible()
     const hasTable = await page.getByRole('table').isVisible().catch(() => false)
     const hasEmpty = await page
-      .getByText(/todavía no tenés cuentas/i)
+      .getByText(/todavía no tienes cuentas/i)
       .isVisible()
       .catch(() => false)
     expect(hasTable || hasEmpty).toBe(true)

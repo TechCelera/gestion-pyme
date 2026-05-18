@@ -33,7 +33,7 @@ describe('UserRoleBadge', () => {
     render(<UserRoleBadge />)
     expect(screen.getByText('Colaborador')).toBeInTheDocument()
     expect(
-      screen.getByText(/Podés crear movimientos; aprobar y anular/)
+      screen.getByText(/Puedes crear movimientos; aprobar y anular/)
     ).toBeInTheDocument()
   })
 

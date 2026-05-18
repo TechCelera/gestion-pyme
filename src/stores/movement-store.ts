@@ -133,7 +133,7 @@ export const useMovementStore = create<MovementStoreState>()(
                 set({
                   error: stuckPending
                     ? (fin.error ??
-                      'Quedó pendiente de aprobación. Revisá presupuesto o usá Aprobar en la tabla.')
+                      'Quedó pendiente de aprobación. Revisa el presupuesto o usa Aprobar en la tabla.')
                     : (fin.error ?? 'Movimiento creado, pero no se pudo completar el envío'),
                   isLoading: false,
                 })

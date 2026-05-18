@@ -1,6 +1,6 @@
 # Checklist de alineación FE / BE
 
-**Objetivo:** ver qué tan alineado está el código con la visión acordada (`docs/PROPUESTA_SOCIO.md`, `docs/DECISIONES.md` §14–17) y guiar el refactor hacia un sistema **ordenado, escalable, mantenible y robusto**.
+**Objetivo:** ver qué tan alineado está el código con la visión acordada (`docs/DECISIONES.md` §14–17) y guiar el refactor hacia un sistema **ordenado, escalable, mantenible y robusto**.
 
 **Cómo usarlo:** columna **Estado** tras auditoría del repo (`2026-05-14`): `OK` cumple o es aceptable hoy; `PARCIAL` hay base pero falta alinear; `GAP` desalineado con la visión actual. Actualizar esta columna al cerrar ítems.
 
@@ -99,7 +99,6 @@
 
 | Documento | Contenido |
 |-----------|-----------|
-| [PROPUESTA_SOCIO.md](./PROPUESTA_SOCIO.md) | Visión de producto para socio |
 | [DECISIONES.md](./DECISIONES.md) | Decisiones §7, §12–§17 |
 | `src/lib/actions/movements.ts` | Orquestación + `getReportsData` |
 | `supabase/migrations/20250421000001_extend_transactions.sql` | Estados y columnas transacción |

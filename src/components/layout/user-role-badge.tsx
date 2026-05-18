@@ -47,7 +47,7 @@ export function UserRoleBadge({ className, variant = 'default' }: UserRoleBadgeP
       </span>
       {!isApprover ? (
         <span className="text-muted-foreground">
-          Podés crear movimientos; aprobar y anular los hace administración.
+          Puedes crear movimientos; aprobar y anular los hace administración.
         </span>
       ) : null}
     </div>

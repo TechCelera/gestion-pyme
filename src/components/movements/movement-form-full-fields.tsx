@@ -269,7 +269,7 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                   <Wallet className="h-10 w-10 text-muted-foreground/40" />
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">No tienes cuentas registradas</p>
-                    <p className="text-xs text-muted-foreground">Creá una cuenta en Mis cuentas para poder registrar movimientos.</p>
+                    <p className="text-xs text-muted-foreground">Crea una cuenta en Mis cuentas para poder registrar movimientos.</p>
                   </div>
                   <Link
                     href="/cuentas"
@@ -376,7 +376,7 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-muted-foreground">No hay categorías disponibles</p>
                           <p className="text-xs text-muted-foreground">
-                            Creá categorías para registrar {type === 'income' ? 'ingresos' : 'egresos'}.
+                            Crea categorías para registrar {type === 'income' ? 'ingresos' : 'egresos'}.
                           </p>
                         </div>
                         <Link

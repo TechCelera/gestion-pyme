@@ -84,7 +84,7 @@ export function MovementComponentBreakdown({
       <p className="text-xs text-muted-foreground">
         {manualEntry
           ? `La suma debe coincidir con el monto total (${currency}). Es obligatorio para guardar.`
-          : `Opcional: si no usás líneas, al guardar se toma la cuenta principal del movimiento. Si agregás líneas, la suma debe coincidir con el total (${currency}).`}
+          : `Opcional: si no usas líneas, al guardar se toma la cuenta principal del movimiento. Si agregas líneas, la suma debe coincidir con el total (${currency}).`}
       </p>
       <div
         className={cn(

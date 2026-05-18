@@ -47,7 +47,7 @@ export function ApproveBudgetDialog({
           <DialogHeader>
             <DialogTitle>Aprobar excepción de presupuesto</DialogTitle>
             <DialogDescription>
-              Este movimiento supera el presupuesto o el plazo del proyecto. Autorizá la excepción
+              Este movimiento supera el presupuesto o el plazo del proyecto. Autoriza la excepción
               antes de aprobar el movimiento en la tabla.
             </DialogDescription>
           </DialogHeader>

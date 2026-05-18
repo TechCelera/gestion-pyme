@@ -74,7 +74,7 @@ export default function ResetPasswordPage() {
             Nueva contraseña
           </CardTitle>
           <CardDescription className="text-center">
-            Elegí una contraseña segura para tu cuenta.
+            Elige una contraseña segura para tu cuenta.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,7 +104,7 @@ export default function ResetPasswordPage() {
                   id="confirmPassword"
                   name="confirm-password"
                   autoComplete="new-password"
-                  placeholder="Repetí la contraseña"
+                  placeholder="Repite la contraseña"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   required

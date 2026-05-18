@@ -13,7 +13,7 @@ export function SessionSection() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Sesión</CardTitle>
-        <CardDescription>Cerrá tu sesión en este dispositivo.</CardDescription>
+        <CardDescription>Cierra tu sesión en este dispositivo.</CardDescription>
       </CardHeader>
       <CardContent>
         <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => void logout()}>

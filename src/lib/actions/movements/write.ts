@@ -190,13 +190,13 @@ export async function updateMovement(
     if (status !== 'draft' && status !== 'rejected') {
       return {
         success: false,
-        error: 'Solo podés editar borradores o movimientos rechazados.',
+        error: 'Solo puedes editar borradores o movimientos rechazados.',
       }
     }
 
     const canEdit = existing.created_by === userId || isAdminRole(role)
     if (!canEdit) {
-      return { success: false, error: 'No tenés permiso para editar este movimiento.' }
+      return { success: false, error: 'No tienes permiso para editar este movimiento.' }
     }
 
     let accountId = validated.accountId
@@ -324,7 +324,7 @@ export async function updateMovementStatus(
         return {
           success: false,
           error:
-            'No tenés permiso para esta acción. Solo administración financiera puede aprobar, rechazar o anular.',
+            'No tienes permiso para esta acción. Solo administración financiera puede aprobar, rechazar o anular.',
         }
       }
     }

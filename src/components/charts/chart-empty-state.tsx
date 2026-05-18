@@ -11,7 +11,7 @@ interface ChartEmptyStateProps {
 
 export function ChartEmptyState({
   title = 'No hay datos para mostrar',
-  description = 'Cuando registres movimientos en este período, vas a ver el gráfico acá.',
+  description = 'Cuando registres movimientos en este período, verás el gráfico aquí.',
   icon: Icon = BarChart3,
   className,
 }: ChartEmptyStateProps) {

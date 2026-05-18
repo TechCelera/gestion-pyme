@@ -109,7 +109,7 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
         ) : (
           <ChartEmptyState
             title="Sin ingresos ni gastos en el período"
-            description="Registrá ventas, cobros o compras aprobadas para comparar resultados acá."
+            description="Registra ventas, cobros o compras aprobadas para comparar resultados aquí."
           />
         )}
       </ChartPanel>
@@ -131,7 +131,7 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
           <ChartEmptyState
             icon={PieChartIcon}
             title="No hay gastos por categoría"
-            description="Cuando tengas egresos aprobados en el período, vas a ver cómo se reparten."
+            description="Cuando tengas egresos aprobados en el período, verás cómo se reparten."
           />
         )}
       </ChartPanel>
@@ -173,7 +173,7 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
           <ChartEmptyState
             icon={TrendingUp}
             title="Sin movimientos de caja en los últimos meses"
-            description="Los ingresos y egresos aprobados en caja o banco van a dibujar la tendencia acá."
+            description="Los ingresos y egresos aprobados en caja o banco dibujarán la tendencia aquí."
           />
         )}
       </ChartPanel>

@@ -66,7 +66,7 @@ export async function updateCompanyMember(
     if (!ctx.ok) return { success: false, error: ctx.error }
 
     if (memberId === ctx.userId) {
-      return { success: false, error: 'No podés cambiar tu propio rol o estado desde aquí' }
+      return { success: false, error: 'No puedes cambiar tu propio rol o estado desde aquí' }
     }
 
     const supabase = await createClient()
@@ -271,7 +271,7 @@ export async function sendMemberPasswordReset(memberId: string): Promise<ActionR
     if (memberId === ctx.userId) {
       return {
         success: false,
-        error: 'Para tu cuenta usá “Olvidé mi contraseña” en el inicio de sesión o Cambiar contraseña en Configuración',
+        error: 'Para tu cuenta usa “Olvidé mi contraseña” en el inicio de sesión o Cambiar contraseña en Configuración',
       }
     }
 
@@ -309,7 +309,7 @@ export async function removeCompanyMember(memberId: string): Promise<ActionResul
     if (!ctx.ok) return { success: false, error: ctx.error }
 
     if (memberId === ctx.userId) {
-      return { success: false, error: 'No podés eliminar tu propia cuenta desde aquí' }
+      return { success: false, error: 'No puedes eliminar tu propia cuenta desde aquí' }
     }
 
     const supabase = await createClient()

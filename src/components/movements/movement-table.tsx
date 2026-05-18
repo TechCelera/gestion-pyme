@@ -213,7 +213,7 @@ export function MovementTable({
                           onClick={() => onApprove(movement.id)}
                           title={
                             budgetGate
-                              ? 'Primero autorizá el presupuesto'
+                              ? 'Primero autoriza el presupuesto'
                               : 'Aprobar y registrar en el libro'
                           }
                           className="text-green-600"

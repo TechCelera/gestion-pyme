@@ -7,10 +7,16 @@ import { getReportsData } from '@/lib/actions/movements'
 import { ReportsCharts } from '@/components/reports/reports-charts'
 import { ReportsPageFallback } from '@/components/reports/reports-page-fallback'
 import { PageHeader } from '@/components/ui/page-header'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  ReportMetricRow,
+  ReportMetricRows,
+  ReportMetricSection,
+} from '@/components/reports/report-metric-rows'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { formatReportCurrency, formatReportMonth } from '@/lib/reports/format'
+import { CashFlowMonthlyTrend } from '@/components/reports/cash-flow-monthly-trend'
+import { formatReportCurrency } from '@/lib/reports/format'
 import type { ReportsRangeKey } from '@/lib/utils/reports-period'
 
 const PERIOD_LINKS: { key: ReportsRangeKey; label: string; href: string }[] = [
@@ -93,186 +99,171 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              Estado de Resultados
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Ingresos</span>
-                <span className="font-medium text-green-600">
-                  {formatReportCurrency(incomeStatement.totalIncome)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Gastos</span>
-                <span className="font-medium text-red-600">
-                  {formatReportCurrency(incomeStatement.totalExpenses)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-t pt-2">
-                <span className="font-medium">Utilidad Neta</span>
-                <span
-                  className={`font-semibold ${incomeStatement.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {formatReportCurrency(incomeStatement.netProfit)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Margen</span>
-                <span className="font-medium">{incomeStatement.marginPercent.toFixed(2)}%</span>
-              </div>
-            </div>
+      <div className="space-y-4 lg:space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 items-start">
+          <Card size="sm" className="min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BarChart3 className="h-5 w-5 shrink-0 text-primary" />
+                Estado de Resultados
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ReportMetricRows>
+                <ReportMetricRow
+                  label="Ingresos"
+                  value={formatReportCurrency(incomeStatement.totalIncome)}
+                  valueClassName="font-medium text-green-600"
+                />
+                <ReportMetricRow
+                  label="Gastos"
+                  value={formatReportCurrency(incomeStatement.totalExpenses)}
+                  valueClassName="font-medium text-red-600"
+                />
+                <ReportMetricRow
+                  label="Utilidad neta"
+                  value={formatReportCurrency(incomeStatement.netProfit)}
+                  emphasize
+                  valueClassName={cn(
+                    'font-semibold',
+                    incomeStatement.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                  )}
+                />
+                <ReportMetricRow
+                  label="Margen"
+                  value={`${incomeStatement.marginPercent.toFixed(2)}%`}
+                  valueClassName="font-medium"
+                />
+              </ReportMetricRows>
 
-            <div className="pt-2">
-              <p className="text-sm font-medium mb-2">Top gastos por categoría</p>
-              <div className="space-y-1.5">
+              <ReportMetricSection title="Top gastos por categoría">
                 {incomeStatement.expenseBreakdown.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Sin gastos registrados en el período.</p>
+                  <p className="text-sm text-muted-foreground">Sin gastos en el período.</p>
                 ) : (
-                  incomeStatement.expenseBreakdown.map((item) => (
-                    <div key={item.category} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{item.category}</span>
-                      <span className="font-medium">{formatReportCurrency(item.amount)}</span>
-                    </div>
-                  ))
+                  <ReportMetricRows>
+                    {incomeStatement.expenseBreakdown.map((item) => (
+                      <ReportMetricRow
+                        key={item.category}
+                        label={item.category}
+                        value={formatReportCurrency(item.amount)}
+                        valueClassName="font-medium"
+                      />
+                    ))}
+                  </ReportMetricRows>
                 )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </ReportMetricSection>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Flujo de Caja
+          <Card size="sm" className="min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Scale className="h-5 w-5 shrink-0 text-primary" />
+                Balance (diario)
+              </CardTitle>
+              <CardDescription className="text-xs leading-relaxed">
+                Posición al {balanceSheet.asOf} · movimientos aprobados
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ReportMetricRows>
+                <ReportMetricRow
+                  label="Activos"
+                  value={formatReportCurrency(balanceSheet.totalAssets)}
+                  valueClassName="font-medium"
+                />
+                <ReportMetricRow
+                  label="Pasivos"
+                  value={formatReportCurrency(balanceSheet.totalLiabilities)}
+                  valueClassName="font-medium"
+                />
+                <ReportMetricRow
+                  label="Patrimonio"
+                  value={formatReportCurrency(balanceSheet.totalEquity)}
+                  valueClassName="font-medium"
+                />
+              </ReportMetricRows>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="min-w-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-5 w-5 shrink-0 text-primary" />
+              Flujo de caja
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2 text-sm rounded-lg border border-green-200/70 bg-green-50/60 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-green-700">
-                Real desde diario (caja/banco · aprobadas)
+          <CardContent className="pt-0 grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
+            <div className="rounded-lg border border-green-200/70 bg-green-50/60 p-3 min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-green-700 mb-2">
+                Real (caja y banco · aprobadas)
               </p>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Entradas de efectivo</span>
-                <span className="font-medium text-green-600">
-                  {formatReportCurrency(cashFlow.cashInReal)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Salidas de efectivo</span>
-                <span className="font-medium text-red-600">
-                  {formatReportCurrency(cashFlow.cashOutReal)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-t pt-2">
-                <span className="font-medium">Flujo Neto</span>
-                <span
-                  className={`font-semibold ${cashFlow.netCashFlowReal >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {formatReportCurrency(cashFlow.netCashFlowReal)}
-                </span>
-              </div>
+              <ReportMetricRows className="divide-green-200/50">
+                <ReportMetricRow
+                  label="Entradas"
+                  value={formatReportCurrency(cashFlow.cashInReal)}
+                  valueClassName="font-medium text-green-600"
+                />
+                <ReportMetricRow
+                  label="Salidas"
+                  value={formatReportCurrency(cashFlow.cashOutReal)}
+                  valueClassName="font-medium text-red-600"
+                />
+                <ReportMetricRow
+                  label="Flujo neto"
+                  value={formatReportCurrency(cashFlow.netCashFlowReal)}
+                  emphasize
+                  valueClassName={cn(
+                    'font-semibold',
+                    cashFlow.netCashFlowReal >= 0 ? 'text-green-600' : 'text-red-600'
+                  )}
+                />
+              </ReportMetricRows>
             </div>
 
-            <div className="space-y-2 text-sm rounded-lg border border-blue-200/70 bg-blue-50/60 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+            <div className="rounded-lg border border-blue-200/70 bg-blue-50/60 p-3 min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 mb-2">
                 Proyectado (pendientes de aprobación)
               </p>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Entradas de efectivo</span>
-                <span className="font-medium text-green-600">
-                  {formatReportCurrency(cashFlow.cashInProjected)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Salidas de efectivo</span>
-                <span className="font-medium text-red-600">
-                  {formatReportCurrency(cashFlow.cashOutProjected)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-t pt-2">
-                <span className="font-medium">Flujo Neto</span>
-                <span
-                  className={`font-semibold ${cashFlow.netCashFlowProjected >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {formatReportCurrency(cashFlow.netCashFlowProjected)}
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <p className="text-sm font-medium mb-2">Tendencia real últimos 6 meses</p>
-              <div className="space-y-1.5">
-                {cashFlow.monthlyTrend.map((item) => (
-                  <div key={item.month} className="grid grid-cols-4 gap-2 text-xs">
-                    <span className="text-muted-foreground">{formatReportMonth(item.month)}</span>
-                    <span className="text-green-600 text-right">{formatReportCurrency(item.inflow)}</span>
-                    <span className="text-red-600 text-right">{formatReportCurrency(item.outflow)}</span>
-                    <span
-                      className={`text-right font-medium ${item.net >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                    >
-                      {formatReportCurrency(item.net)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <p className="text-sm font-medium mb-2">Tendencia proyectada (pendientes) últimos 6 meses</p>
-              <div className="space-y-1.5">
-                {cashFlow.monthlyTrendProjected.map((item) => (
-                  <div key={`projected-${item.month}`} className="grid grid-cols-4 gap-2 text-xs">
-                    <span className="text-muted-foreground">{formatReportMonth(item.month)}</span>
-                    <span className="text-green-600 text-right">{formatReportCurrency(item.inflow)}</span>
-                    <span className="text-red-600 text-right">{formatReportCurrency(item.outflow)}</span>
-                    <span
-                      className={`text-right font-medium ${item.net >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                    >
-                      {formatReportCurrency(item.net)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Scale className="h-5 w-5 text-primary" />
-              Balance (diario)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Posición acumulada hasta el {balanceSheet.asOf} desde el diario (movimientos aprobados).
-            </p>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Activos</span>
-                <span className="font-medium">{formatReportCurrency(balanceSheet.totalAssets)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Pasivos</span>
-                <span className="font-medium">{formatReportCurrency(balanceSheet.totalLiabilities)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Patrimonio</span>
-                <span className="font-medium">{formatReportCurrency(balanceSheet.totalEquity)}</span>
-              </div>
+              <ReportMetricRows className="divide-blue-200/50">
+                <ReportMetricRow
+                  label="Entradas"
+                  value={formatReportCurrency(cashFlow.cashInProjected)}
+                  valueClassName="font-medium text-green-600"
+                />
+                <ReportMetricRow
+                  label="Salidas"
+                  value={formatReportCurrency(cashFlow.cashOutProjected)}
+                  valueClassName="font-medium text-red-600"
+                />
+                <ReportMetricRow
+                  label="Flujo neto"
+                  value={formatReportCurrency(cashFlow.netCashFlowProjected)}
+                  emphasize
+                  valueClassName={cn(
+                    'font-semibold',
+                    cashFlow.netCashFlowProjected >= 0 ? 'text-green-600' : 'text-red-600'
+                  )}
+                />
+              </ReportMetricRows>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Tendencia últimos 6 meses</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 min-w-0">
+          <CashFlowMonthlyTrend title="Real (aprobadas)" items={cashFlow.monthlyTrend} />
+          <CashFlowMonthlyTrend
+            title="Proyectado (pendientes de aprobación)"
+            items={cashFlow.monthlyTrendProjected}
+          />
+        </CardContent>
+      </Card>
 
       <ReportsCharts data={data} />
     </div>

@@ -10,9 +10,9 @@ import {
   rollupChartBalances,
   type ChartAccountWithBalance,
 } from '@/lib/chart-of-accounts-balances'
-import { CHART_ROOT_SECTIONS, chartSectionForRootCode } from '@/lib/chart-of-accounts-display'
+import { chartAccentClassForRootCode } from '@/lib/chart-of-accounts-display'
 import { cn } from '@/lib/utils'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
 export interface ChartOfAccountsTreeProps {
@@ -93,7 +93,11 @@ function AccountNode({
         <div className="flex flex-wrap items-center gap-2 min-w-0">
           <span className={cn('text-sm truncate', isGroup && 'font-semibold')}>{node.name}</span>
           {node.isPostable ? (
-            <Badge variant="outline" className="text-[10px] font-normal shrink-0">
+            <Badge
+              variant="outline"
+              className="text-[10px] font-normal shrink-0"
+              title="Cuenta imputable: aquí se registran los asientos. Las demás filas solo agrupan y suman."
+            >
               Imputable
             </Badge>
           ) : null}
@@ -130,13 +134,12 @@ function SectionBlock({
   defaultOpen: boolean
 }) {
   const [open, setOpen] = useState(defaultOpen)
-  const meta = chartSectionForRootCode(root.code)
   const postableCount = countPostableUnderRoot(root.code, rows)
   const sectionTotal = rolled.get(root.id) ?? 0
   const children = byParent.get(root.id) ?? []
 
   return (
-    <Card className={cn('border-l-4 overflow-hidden', meta?.accentClass ?? 'border-l-muted')}>
+    <Card className={cn('border-l-4 overflow-hidden', chartAccentClassForRootCode(root.code))}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -154,16 +157,14 @@ function SectionBlock({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <CardTitle className="text-base flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm text-muted-foreground">{root.code}</span>
-                  {meta?.title ?? root.name}
+                  {root.name}
                   <Badge variant="secondary" className="font-normal text-[10px]">
-                    {postableCount} {postableCount === 1 ? 'cuenta' : 'cuentas'}
+                    {postableCount}{' '}
+                    {postableCount === 1 ? 'cuenta imputable' : 'cuentas imputables'}
                   </Badge>
                 </CardTitle>
                 <BalanceCell amount={sectionTotal} currency={currency} emphasize />
               </div>
-              <CardDescription className="text-sm leading-relaxed">
-                {meta?.description ?? root.name}
-              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -223,10 +224,9 @@ export function ChartOfAccountsTree({ rows, currency, asOf }: ChartOfAccountsTre
     )
   }
 
-  const orderedRoots = CHART_ROOT_SECTIONS.map((s) => roots.find((r) => r.code === s.code)).filter(
-    (r): r is ChartAccountWithBalance => !!r
+  const orderedRoots = [...roots].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code)
   )
-  const extraRoots = roots.filter((r) => !CHART_ROOT_SECTIONS.some((s) => s.code === r.code))
 
   return (
     <div className="space-y-4">
@@ -237,27 +237,28 @@ export function ChartOfAccountsTree({ rows, currency, asOf }: ChartOfAccountsTre
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-medium text-foreground">Plan de cuentas con saldos</p>
               <Badge variant="outline" className="text-xs font-normal">
-                Datos reales del diario
+                Datos del diario
               </Badge>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              Cada saldo sale del <strong className="font-medium text-foreground">libro diario</strong>:
-              solo movimientos <strong className="font-medium text-foreground">aprobados</strong> que ya
-              generaron asientos contables. Las cuentas agrupadoras suman sus hijas.
+              Cada saldo refleja movimientos{' '}
+              <strong className="font-medium text-foreground">aprobados</strong>. Las cuentas{' '}
+              <strong className="font-medium text-foreground">imputables</strong> son donde se registran los
+              asientos; el resto agrupa y suma.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              La pestaña{' '}
+              En la pestaña{' '}
               <span className="inline-flex items-center gap-1 font-medium text-foreground">
                 <Wallet className="h-3.5 w-3.5" />
                 Cuentas
               </span>{' '}
-              (caja y bancos) muestra saldos operativos; pueden diferir de esta vista contable hasta que todo
-              quede registrado y aprobado en movimientos.
+              ves caja y bancos operativos. Puede diferir de este plan hasta que todos los movimientos estén
+              aprobados.
             </p>
             <p className="text-xs text-muted-foreground">
               Saldos al {asOfLabel}
               {!hasAnyBalance
-                ? ' · Todavía no hay movimientos aprobados que generen saldos en el plan.'
+                ? ' · Aún no hay movimientos aprobados: los saldos pueden verse en cero.'
                 : null}
             </p>
           </div>
@@ -274,17 +275,6 @@ export function ChartOfAccountsTree({ rows, currency, asOf }: ChartOfAccountsTre
             rolled={rolled}
             currency={currency}
             defaultOpen={i < 2}
-          />
-        ))}
-        {extraRoots.map((root) => (
-          <SectionBlock
-            key={root.id}
-            root={root}
-            rows={rows}
-            byParent={byParent}
-            rolled={rolled}
-            currency={currency}
-            defaultOpen={false}
           />
         ))}
       </div>

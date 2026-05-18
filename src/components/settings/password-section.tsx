@@ -67,7 +67,7 @@ export function PasswordSection({ currentEmail }: PasswordSectionProps) {
         <CardTitle className="text-base">Contraseña</CardTitle>
         <CardDescription>
           Tu correo de acceso es <span className="font-medium text-foreground">{currentEmail}</span>.
-          Acá solo cambiás la contraseña.
+          Aquí solo cambias la contraseña.
         </CardDescription>
       </CardHeader>
       <CardContent>

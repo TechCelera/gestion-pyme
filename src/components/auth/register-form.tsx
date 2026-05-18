@@ -100,7 +100,7 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
           router.refresh()
         } else {
           setRegistered(true)
-          toast.success('Cuenta creada. Revisá tu correo para confirmar.')
+          toast.success('Cuenta creada. Revisa tu correo para confirmar.')
         }
       }
     } catch {
@@ -128,7 +128,7 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
             </div>
             <CardTitle className="text-center text-2xl font-bold text-primary">Cuenta creada</CardTitle>
             <CardDescription className="text-center">
-              Revisá tu correo para confirmar tu cuenta
+              Revisa tu correo para confirmar tu cuenta
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -153,14 +153,14 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
           </CardTitle>
           <CardDescription className="text-center">
             {isInviteMode
-              ? `Te invitaron a ${inviteCompany}. Completá tu acceso.`
-              : 'Creá tu cuenta y empresa'}
+              ? `Te invitaron a ${inviteCompany}. Completa tu acceso.`
+              : 'Crea tu cuenta y empresa'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {inviteExpired ? (
             <p className="text-center text-sm text-destructive">
-              La invitación no es válida. Pedile a tu administrador un enlace nuevo.
+              La invitación no es válida. Pídele a tu administrador un enlace nuevo.
             </p>
           ) : (
             <form onSubmit={handleRegister} className="space-y-4">
@@ -259,9 +259,9 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
             </form>
           )}
           <div className="mt-4 text-center text-sm">
-            ¿Ya tenés cuenta?{' '}
+            ¿Ya tienes cuenta?{' '}
             <Link href="/login" className="text-primary hover:underline">
-              Iniciá sesión
+              Inicia sesión
             </Link>
           </div>
         </CardContent>

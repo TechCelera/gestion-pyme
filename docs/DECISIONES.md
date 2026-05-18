@@ -77,7 +77,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## 5) Terminologia de producto
 
 ### Decision
-- En interfaz y mensajes al usuario se usa **`Movimiento` / `Movimientos`**, según `docs/PROPUESTA_SOCIO.md` (mapeo de dominio: pantalla y menú = movimientos; tabla SQL = `transactions`; código TypeScript = `Movement` / acciones en `movements.ts`).
+- En interfaz y mensajes al usuario se usa **`Movimiento` / `Movimientos`** (mapeo de dominio: pantalla y menú = movimientos; tabla SQL = `transactions`; código TypeScript = `Movement` / acciones en `movements.ts`).
 - La ruta canónica sigue siendo `/operaciones` (URLs en español del repo); el copy visible no tiene que repetir la palabra "operaciones".
 - Se evita `Transaccion` en copy de producto.
 
@@ -312,7 +312,7 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 - Navegacion: sidebar con bloque **Flujo de caja** (Ventas y cobros, Compras y pagos, Todos los movimientos con filtro `?flujo=`); contador de pendientes en sidebar y badge en bottom nav.
 - Reglas de rol: `finalizeMovementSubmission` y `updateMovementStatus` en `src/lib/actions/movements.ts` (aprobar/rechazar/anular solo `admin`; RLS vía `auth_user_is_admin()`).
 - Contactos: alta rapida inline en `operation-form` + `createContact` en `src/lib/actions/contacts.ts` con `client_segment` y `associated_services`; falta ficha/listado dedicado y PDF en Storage.
-- Pendiente: adjunto PDF factura, refinamiento de copy total vs `PROPUESTA_SOCIO.md`, opcion admin “solo enviar a otro admin” sin auto‑aprobar, RPC adicional si se centraliza todo en base.
+- Pendiente: adjunto PDF factura, refinamiento de copy en UI (español neutro, equilibrio técnico/claro), opcion admin “solo enviar a otro admin” sin auto‑aprobar, RPC adicional si se centraliza todo en base.
 
 ### Razon
 - Alinear UX con lenguaje natural del negocio (ventas/compras vs jerga contable).
@@ -366,7 +366,7 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ## 17) Alineacion FE/BE con la vision y refactor estructural
 
 ### Contexto
-- La vision de producto (control de gestion, movimientos con aprobacion, informes por periodo, analisis por proyecto, contactos, etc.) evoluciono en `docs/PROPUESTA_SOCIO.md` y en decisiones de este documento.
+- La vision de producto (control de gestion, movimientos con aprobacion, informes por periodo, analisis por proyecto, contactos, etc.) queda consolidada en este documento.
 - El codigo actual (Next.js, acciones server, Supabase/PostgreSQL, RLS, RPCs) puede tener **desalineacion** respecto a esa vision: nombres, flujos de estado, duplicacion, acoplamientos o deuda tecnica acumulada.
 
 ### Decision

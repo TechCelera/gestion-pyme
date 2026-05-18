@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, Tag, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { TableRowActions } from '@/components/ui/table-row-actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/ui/page-header'
@@ -17,12 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { getCategories, deleteCategory, type Category } from '@/lib/actions/categories'
 import { CATEGORY_TYPES, getCategoryTypeLabel, isCategoryIncomeType } from '@/lib/constants'
 import {
@@ -103,7 +98,7 @@ export function CategoriasPageContent({ tipo }: CategoriasPageContentProps) {
     <div className="p-4 md:p-8 space-y-6">
       <PageHeader
         title="Categorías"
-        description="Clasificá cada movimiento como ingreso o gasto. Los nombres los elegís vos; el tipo define en qué informes entra."
+        description="Clasifica cada movimiento como ingreso o gasto. Tú eliges los nombres; el tipo define en qué informes entra."
       />
 
       <Card>
@@ -169,7 +164,7 @@ export function CategoriasPageContent({ tipo }: CategoriasPageContentProps) {
                   ? 'No hay categorías registradas'
                   : 'No hay categorías con este filtro'}
               </p>
-              <p className="text-xs mt-1">Creá tu primera categoría para comenzar</p>
+              <p className="text-xs mt-1">Crea tu primera categoría para comenzar</p>
             </div>
           ) : (
             <Table>
@@ -177,7 +172,7 @@ export function CategoriasPageContent({ tipo }: CategoriasPageContentProps) {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -198,25 +193,24 @@ export function CategoriasPageContent({ tipo }: CategoriasPageContentProps) {
                           {getCategoryTypeLabel(category.type)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}>
-                            ···
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenCategoryForm(category)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => handleDeleteCategory(category)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell className="text-center">
+                        <TableRowActions
+                          actions={[
+                            {
+                              key: 'edit',
+                              label: 'Editar',
+                              icon: Pencil,
+                              onClick: () => handleOpenCategoryForm(category),
+                            },
+                            {
+                              key: 'delete',
+                              label: 'Eliminar',
+                              icon: Trash2,
+                              destructive: true,
+                              onClick: () => handleDeleteCategory(category),
+                            },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   )
