@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
+import { validateAuthPasswords } from '@/lib/validations/auth'
 
 interface PasswordSectionProps {
   currentEmail: string
@@ -24,13 +25,9 @@ export function PasswordSection({ currentEmail }: PasswordSectionProps) {
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault()
-    if (newPassword.length < 8) {
-      toast.error('La contraseña debe tener al menos 8 caracteres')
-      return
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast.error('Las contraseñas no coinciden')
+    const passwordError = validateAuthPasswords(newPassword, confirmPassword)
+    if (passwordError) {
+      toast.error(passwordError)
       return
     }
 

@@ -1,6 +1,9 @@
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
+  REGISTER: '/register',
+  TERMS: '/terminos',
+  PRIVACY: '/privacidad',
   DASHBOARD: '/dashboard',
   /** Listado de movimientos; ruta canónica (véase DECISIONES §5) */
   MOVEMENTS: '/operaciones',
@@ -10,6 +13,7 @@ export const ROUTES = {
   SETTINGS: '/configuracion',
   FORGOT_PASSWORD: '/recuperar-contrasena',
   RESET_PASSWORD: '/nueva-contrasena',
+  AUTH_CALLBACK: '/auth/callback',
 } as const
 
 export {

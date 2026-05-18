@@ -11,5 +11,8 @@ test.describe('rutas públicas', () => {
   test('registro carga', async ({ page }) => {
     await page.goto('/register')
     await expect(page.getByText('Crea tu cuenta y empresa')).toBeVisible()
+    await expect(page.getByLabel(/confirmar contraseña/i)).toBeVisible()
+    await expect(page.getByLabel(/nombre de la empresa/i)).toBeVisible()
+    await expect(page.getByText(/términos de uso/i)).toBeVisible()
   })
 })

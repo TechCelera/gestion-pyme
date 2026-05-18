@@ -8,3 +8,11 @@ export function getAppOrigin(): string {
 
   return base.startsWith('http') ? base : `https://${base}`
 }
+
+/** Origen en el navegador (redirects de registro / recuperación). */
+export function getClientAppOrigin(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin
+  }
+  return getAppOrigin()
+}
