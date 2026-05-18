@@ -25,7 +25,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { MovementStatusBadge } from './movement-status-badge'
 import type { Movement } from '@/lib/actions/movements'
-import { MOVEMENT_METHODS_LABELS } from '@/lib/constants'
+import { getMovementTypeLabel, MOVEMENT_METHODS_LABELS } from '@/lib/constants'
 
 interface MovementTableProps {
   movements: Movement[]
@@ -40,13 +40,6 @@ interface MovementTableProps {
   onCancel: (id: string) => void
   canManageFinanceActions?: boolean
   isLoading?: boolean
-}
-
-const typeLabels: Record<string, string> = {
-  income: 'Venta / Cobro',
-  expense: 'Compra / Pago',
-  transfer: 'Pasaje entre cuentas',
-  adjustment: 'Ajuste',
 }
 
 const dateRowFormatOpts = { locale: es }
@@ -136,7 +129,7 @@ export function MovementTable({
                 <TableCell className="text-center">
                   {format(new Date(movement.date), 'dd/MM/yyyy', dateRowFormatOpts)}
                 </TableCell>
-                <TableCell className="text-center">{typeLabels[movement.type] || movement.type}</TableCell>
+                <TableCell className="text-center">{getMovementTypeLabel(movement.type)}</TableCell>
                 <TableCell className="text-center">
                   <span className="inline-flex text-xs px-1.5 py-0.5 rounded bg-muted">
                     {MOVEMENT_METHODS_LABELS[movement.method] || movement.method}

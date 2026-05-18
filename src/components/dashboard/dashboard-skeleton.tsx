@@ -15,7 +15,7 @@ export function DashboardSkeleton() {
       </div>
 
       {/* KPI Cards skeleton - matches grid layout */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 min-w-0">
         {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i} className="relative overflow-hidden">
             <CardContent className="p-4 md:p-6">

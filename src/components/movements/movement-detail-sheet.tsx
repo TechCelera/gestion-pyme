@@ -23,20 +23,13 @@ import {
 } from '@/lib/actions/movements'
 import { getAccounts, type Account } from '@/lib/actions/accounts'
 import { getContacts, type ContactRow } from '@/lib/actions/contacts'
-import { MOVEMENT_METHODS_LABELS } from '@/lib/constants'
+import { getMovementTypeLabel, MOVEMENT_METHODS_LABELS } from '@/lib/constants'
 import {
   EXPENSE_COMPONENT_TYPES,
   INCOME_COMPONENT_TYPES,
 } from '@/components/movements/movement-form.types'
 import type { MovementComponentType } from '@/lib/validations/movement'
 import { formatCurrency } from '@/lib/format/currency'
-
-const TYPE_LABELS: Record<string, string> = {
-  income: 'Venta / Cobro',
-  expense: 'Compra / Pago',
-  transfer: 'Pasaje entre cuentas',
-  adjustment: 'Ajuste',
-}
 
 const FUND_OWNER_LABELS: Record<string, string> = {
   company: 'Empresa',
@@ -203,7 +196,7 @@ export function MovementDetailSheet({
             </span>
           </div>
           <SheetTitle className="text-lg leading-tight">
-            {display ? TYPE_LABELS[display.type] ?? display.type : 'Detalle del movimiento'}
+            {display ? getMovementTypeLabel(display.type) : 'Detalle del movimiento'}
           </SheetTitle>
           {display ? (
             <p className="text-base font-semibold text-foreground tabular-nums">

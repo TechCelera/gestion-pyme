@@ -48,6 +48,18 @@ export const MOVEMENT_METHODS_LABELS: Record<string, string> = {
   other: 'Otro',
 }
 
+/** Etiquetas de producto para tipo de movimiento (código: income | expense | …). */
+export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
+  income: 'Ingreso',
+  expense: 'Egreso',
+  transfer: 'Transferencia',
+  adjustment: 'Ajuste',
+}
+
+export function getMovementTypeLabel(type: string): string {
+  return MOVEMENT_TYPE_LABELS[type] ?? type
+}
+
 /** Tipos de categoría en BD — mismo criterio que movimientos income/expense */
 export const CATEGORY_TYPES = {
   INCOME: 'income',
@@ -58,7 +70,7 @@ export type CategoryType = (typeof CATEGORY_TYPES)[keyof typeof CATEGORY_TYPES]
 
 export const CATEGORY_TYPE_OPTIONS: { value: CategoryType; label: string }[] = [
   { value: CATEGORY_TYPES.INCOME, label: 'Ingreso' },
-  { value: CATEGORY_TYPES.EXPENSE, label: 'Gasto' },
+  { value: CATEGORY_TYPES.EXPENSE, label: 'Egreso' },
 ]
 
 export function isCategoryIncomeType(type: string): boolean {
@@ -70,7 +82,7 @@ export function isCategoryExpenseType(type: string): boolean {
 }
 
 export function getCategoryTypeLabel(type: string): string {
-  return isCategoryIncomeType(type) ? 'Ingreso' : 'Gasto'
+  return isCategoryIncomeType(type) ? 'Ingreso' : 'Egreso'
 }
 
 export const ACCOUNT_TYPE_LABELS: Record<string, string> = {
