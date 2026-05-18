@@ -32,6 +32,9 @@ src/**/*.js
 setup-database.sql
 SECURITY.md.playwright-mcp/
 
+# Vitest coverage
+/coverage/
+
 # Playwright
 /test-results/
 /playwright-report/
