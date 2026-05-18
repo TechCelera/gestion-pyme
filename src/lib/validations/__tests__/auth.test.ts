@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  mapPasswordResetErrorMessage,
   mapSignInErrorMessage,
   mapSignUpErrorMessage,
   normalizeAuthEmail,
@@ -54,5 +55,19 @@ describe('mapSignUpErrorMessage', () => {
     expect(mapSignUpErrorMessage({ message: 'User already registered' })).toMatch(
       /No pudimos crear/
     )
+  })
+})
+
+describe('mapPasswordResetErrorMessage', () => {
+  it('avisa rate limit sin revelar si el correo existe', () => {
+    expect(mapPasswordResetErrorMessage({ message: 'email rate limit exceeded' })).toMatch(
+      /Espera unos minutos/
+    )
+  })
+
+  it('avisa redirect URL no permitida', () => {
+    expect(
+      mapPasswordResetErrorMessage({ message: 'redirect_to URL is not allowed' })
+    ).toMatch(/administrador/)
   })
 })

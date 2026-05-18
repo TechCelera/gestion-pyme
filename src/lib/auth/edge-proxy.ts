@@ -1,21 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PREFIXES = [
-  '/login',
-  '/register',
-  '/terminos',
-  '/privacidad',
-  '/recuperar-contrasena',
-  '/nueva-contrasena',
-  '/auth',
-  '/_next',
-  '/api/auth',
-]
-
-function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PREFIXES.some((route) => pathname.startsWith(route))
-}
+import { isPublicAuthPath } from '@/lib/auth/edge-public-paths'
 
 /** Session refresh + redirects at the edge (single source of truth). */
 export async function handleEdgeAuth(request: NextRequest) {
@@ -45,7 +31,7 @@ export async function handleEdgeAuth(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isPublic = isPublicPath(pathname)
+  const isPublic = isPublicAuthPath(pathname)
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))

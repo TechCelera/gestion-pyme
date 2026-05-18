@@ -9,6 +9,7 @@ type AuthSubmitButtonProps = {
   loadingLabel: string
   children: ReactNode
   className?: string
+  disabled?: boolean
 }
 
 export function AuthSubmitButton({
@@ -16,6 +17,7 @@ export function AuthSubmitButton({
   loadingLabel,
   children,
   className,
+  disabled,
 }: AuthSubmitButtonProps) {
   return (
     <Button
@@ -24,7 +26,7 @@ export function AuthSubmitButton({
         'h-10 w-full bg-[#7B68EE] text-white hover:bg-[#7B68EE]/90',
         className
       )}
-      disabled={loading}
+      disabled={loading || disabled}
     >
       {loading ? (
         <>

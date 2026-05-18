@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gestion PYME">
+  <rect width="512" height="512" rx="96" fill="#EDE9FE"/>
+  <text
+    x="256"
+    y="300"
+    text-anchor="middle"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="180"
+    font-weight="700"
+    fill="#7B68EE"
+  >GP</text>
+</svg>

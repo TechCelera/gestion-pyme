@@ -10,7 +10,6 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mon
 export const metadata: Metadata = {
   title: 'Gestion PYME Pro',
   description: 'Sistema de Gestion Economica-Financiera para PYMEs',
-  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

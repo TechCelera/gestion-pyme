@@ -64,6 +64,22 @@ export function mapSignUpErrorMessage(error: { message?: string } | null): strin
   return 'No pudimos crear la cuenta. Revisá los datos e intentá de nuevo.'
 }
 
+/** Mensajes claros en recuperación (rate limit, redirect URL) sin filtrar si el correo existe. */
+export function mapPasswordResetErrorMessage(error: { message?: string } | null): string {
+  const msg = error?.message?.toLowerCase() ?? ''
+  if (
+    msg.includes('rate limit') ||
+    msg.includes('email rate') ||
+    (msg.includes('after') && msg.includes('second'))
+  ) {
+    return 'Enviaste varios correos seguidos. Espera unos minutos e intenta de nuevo.'
+  }
+  if (msg.includes('redirect') && msg.includes('not allowed')) {
+    return 'No pudimos preparar el enlace de recuperación. Contacta al administrador.'
+  }
+  return 'No se pudo enviar el correo. Espera unos minutos e intenta de nuevo.'
+}
+
 /** Supabase puede devolver usuario sin identities si el correo ya está registrado. */
 export function isSignUpDuplicateEmail(
   user: { identities?: readonly unknown[] | null } | null
