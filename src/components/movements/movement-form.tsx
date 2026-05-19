@@ -49,6 +49,7 @@ import { MovementFormFooter } from '@/components/movements/movement-form-footer'
 import { MovementFormFullFields } from '@/components/movements/movement-form-full-fields'
 import { MovementQuickContactDialog } from '@/components/movements/movement-quick-contact-dialog'
 import { flattenProjects } from '@/lib/movements/flatten-projects'
+import { moneyInputToNumber } from '@/lib/utils/money-input'
 import { useAuthStore } from '@/stores/auth-store'
 import { isAdminRole } from '@/lib/constants'
 
@@ -254,21 +255,22 @@ export function MovementForm({
   }, [showAdvanced, usesOptionalComponentBreakdown, accountId, amount, accounts, componentLines])
 
   const buildMovementComponents = (): MovementComponentRow[] => {
-    const total = parseFloat(amount)
+    const total = moneyInputToNumber(amount)
     const rows: MovementComponentRow[] = []
     for (const line of effectiveComponentLines) {
-      const amt = parseFloat(line.amount)
+      const amt = moneyInputToNumber(line.amount)
       if (!line.amount.trim() || Number.isNaN(amt) || amt <= 0) continue
+
+      const isOperative =
+        line.componentType === 'operative_cash' || line.componentType === 'operative_bank'
+
+      if (isOperative && !line.accountId) continue
+      if (!isOperative && !line.contactId) continue
+
       rows.push({
         componentType: line.componentType,
-        accountId:
-          line.componentType === 'operative_cash' || line.componentType === 'operative_bank'
-            ? line.accountId
-            : undefined,
-        contactId:
-          line.componentType === 'client_receivable' || line.componentType === 'supplier_payable'
-            ? line.contactId
-            : undefined,
+        accountId: isOperative ? line.accountId : undefined,
+        contactId: !isOperative ? line.contactId : undefined,
         amount: amt,
         currency,
       })
@@ -281,7 +283,7 @@ export function MovementForm({
   }
 
   const handleSubmit = (asDraft: boolean, submitForReviewOnly = false) => {
-    const parsedAmount = parseFloat(amount)
+    const parsedAmount = moneyInputToNumber(amount)
     if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
       toast.error('Indica un monto mayor a cero')
       return
@@ -314,7 +316,28 @@ export function MovementForm({
     if (type === 'income' || type === 'expense') {
       const built = buildMovementComponents()
       if (!built.length) {
-        toast.error('Revisa el monto y la cuenta: el desglose debe coincidir con el total')
+        if (showAdvanced && componentLines.length > 0) {
+          const missingAccount = componentLines.some(
+            (l) =>
+              (l.componentType === 'operative_cash' || l.componentType === 'operative_bank') &&
+              !l.accountId
+          )
+          const missingContact = componentLines.some(
+            (l) =>
+              (l.componentType === 'client_receivable' ||
+                l.componentType === 'supplier_payable') &&
+              !l.contactId
+          )
+          if (missingAccount) {
+            toast.error('En el desglose, elige la cuenta en cada línea de efectivo o banco')
+            return
+          }
+          if (missingContact) {
+            toast.error('En el desglose, elige el contacto en cada línea de cuenta corriente')
+            return
+          }
+        }
+        toast.error('El desglose debe sumar el mismo monto total del movimiento')
         return
       }
       movementComponents = built

@@ -19,14 +19,17 @@ import type { Account } from '@/lib/actions/accounts'
 import type { Category } from '@/lib/actions/categories'
 import type { ContactRow } from '@/lib/actions/contacts'
 import type { FlatProjectOption } from '@/lib/movements/flatten-projects'
-import { MOVEMENT_CURRENCIES } from '@/components/movements/movement-form.constants'
+import {
+  MOVEMENT_CURRENCIES,
+  MOVEMENT_FORM_CONTROL_H,
+} from '@/components/movements/movement-form.constants'
 import { MovementComponentBreakdown } from '@/components/movements/movement-component-breakdown'
 import { MovementScopeFields } from '@/components/movements/movement-scope-fields'
 import type { ComponentLineDraft } from '@/components/movements/movement-form.types'
 import { cn } from '@/lib/utils'
 
 const fieldLabel = 'text-sm font-medium leading-tight'
-const controlH = 'h-10'
+const controlH = MOVEMENT_FORM_CONTROL_H
 
 export type MovementGuidedFieldsProps = {
   type: 'income' | 'expense'
@@ -268,8 +271,7 @@ export function MovementGuidedFields({
       <Button
         type="button"
         variant="outline"
-        size="sm"
-        className="h-9 w-full justify-between text-muted-foreground"
+        className={cn(controlH, 'w-full justify-between px-4 text-muted-foreground')}
         onClick={onToggleAdvanced}
       >
         Más opciones

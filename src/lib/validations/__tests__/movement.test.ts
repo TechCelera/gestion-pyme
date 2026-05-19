@@ -59,6 +59,21 @@ describe('operation validation', () => {
       const result = createMovementSchema.safeParse(invalid)
       expect(result.success).toBe(false)
     })
+
+    it('acepta accountId vacío en componente como omitido (no Invalid uuid)', () => {
+      const result = createMovementSchema.safeParse({
+        ...validIncome,
+        movementComponents: [
+          {
+            componentType: 'client_receivable',
+            accountId: '',
+            contactId: '550e8400-e29b-41d4-a716-446655440002',
+            amount: 100,
+          },
+        ],
+      })
+      expect(result.success).toBe(true)
+    })
   })
 
   describe('transfer transactions', () => {

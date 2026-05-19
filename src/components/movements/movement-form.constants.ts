@@ -53,6 +53,9 @@ export const MOVEMENT_METHODS: { value: MovementMethod; label: string }[] = [
   { value: 'other', label: 'Otro' },
 ]
 
+/** Altura unificada de inputs/selects en formulario de movimientos. */
+export const MOVEMENT_FORM_CONTROL_H = 'h-10'
+
 export const MOVEMENT_CURRENCIES = [
   { value: 'ARS', label: 'ARS ($)', flag: '🇦🇷' },
   { value: 'USD', label: 'USD ($)', flag: '🇺🇸' },

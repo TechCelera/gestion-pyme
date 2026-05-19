@@ -1,5 +1,13 @@
 import { z } from 'zod'
 
+/** UUID opcional: cadena vacía → undefined (evita "Invalid uuid" en UI). */
+function optionalUuid(message = 'Selecciona un valor válido de la lista') {
+  return z.preprocess(
+    (val) => (val === '' || val == null ? undefined : val),
+    z.string().uuid(message).optional()
+  )
+}
+
 /** Enums: valores alineados a columnas / RPC; nombres en inglés (código). */
 export const MovementTypeEnum = z.enum(['income', 'expense', 'transfer', 'adjustment'])
 export const MovementStatusEnum = z.enum(['draft', 'pending', 'approved', 'rejected', 'cancelled'])
@@ -21,8 +29,8 @@ export const MovementComponentTypeEnum = z.enum([
 export const movementComponentSchema = z
   .object({
     componentType: MovementComponentTypeEnum,
-    accountId: z.string().uuid().optional(),
-    contactId: z.string().uuid().optional(),
+    accountId: optionalUuid('Selecciona la cuenta para efectivo o banco'),
+    contactId: optionalUuid('Selecciona el contacto para cuenta corriente'),
     amount: z.number().positive(),
     currency: z.string().min(3).max(3).optional(),
   })
@@ -72,17 +80,17 @@ const baseMovementSchemaObject = z.object({
     .string()
     .max(500, 'La descripción no puede exceder 500 caracteres'),
   method: MovementMethodEnum.default('cash'),
-  accountId: z.string().uuid().optional(),
-  categoryId: z.string().uuid().optional(),
-  contactId: z.string().uuid().optional(),
+  accountId: optionalUuid('Selecciona la cuenta'),
+  categoryId: optionalUuid('Selecciona la categoría'),
+  contactId: optionalUuid('Selecciona el contacto'),
   contactType: ContactTypeEnum.optional(),
-  sourceAccountId: z.string().uuid().optional(),
-  destinationAccountId: z.string().uuid().optional(),
+  sourceAccountId: optionalUuid('Selecciona la cuenta origen'),
+  destinationAccountId: optionalUuid('Selecciona la cuenta destino'),
   adjustmentReason: AdjustmentReasonEnum.optional(),
   documentType: DocumentTypeEnum.optional(),
   documentNumber: z.string().max(50).optional(),
   attachmentUrl: z.string().url().optional().or(z.literal('')),
-  projectId: z.string().uuid().optional(),
+  projectId: optionalUuid('Selecciona el proyecto'),
   fundOwner: FundOwnerEnum.default('company'),
   movementComponents: z.array(movementComponentSchema).optional(),
 })

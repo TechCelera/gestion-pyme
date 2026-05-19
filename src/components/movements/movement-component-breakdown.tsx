@@ -2,7 +2,7 @@
 
 import { Plus, Trash2, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { MoneyInput } from '@/components/ui/money-input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -14,13 +14,21 @@ import {
 import type { Account } from '@/lib/actions/accounts'
 import type { ContactRow } from '@/lib/actions/contacts'
 import type { MovementComponentType } from '@/lib/validations/movement'
+import {
+  formatMoneyInputFromCanonical,
+  getMoneyFractionDigits,
+} from '@/lib/utils/money-input'
 import { cn } from '@/lib/utils'
+import { MOVEMENT_FORM_CONTROL_H } from '@/components/movements/movement-form.constants'
 import {
   type ComponentLineDraft,
   componentTypesForMovement,
   componentsSumMatchesTotal,
+  lineAmountToNumber,
   newComponentLine,
 } from '@/components/movements/movement-form.types'
+
+const controlClass = `${MOVEMENT_FORM_CONTROL_H} w-full`
 
 export type MovementComponentBreakdownProps = {
   movementType: 'income' | 'expense'
@@ -36,8 +44,21 @@ export type MovementComponentBreakdownProps = {
   isLoadingData?: boolean
   onQuickContact: (lineLocalId: string) => void
   compact?: boolean
-  /** Si false, el panel solo se muestra cuando el usuario lo activó (copy más suave). */
   manualEntry?: boolean
+}
+
+function formatAmountDisplay(value: string | number, currency: string): string {
+  const digits = getMoneyFractionDigits(currency)
+  const canonical = typeof value === 'number' ? String(value) : value
+  const formatted = formatMoneyInputFromCanonical(canonical, digits)
+  if (formatted) return formatted
+  const n = typeof value === 'number' ? value : lineAmountToNumber(canonical)
+  if (Number.isNaN(n)) return '—'
+  return formatMoneyInputFromCanonical(String(n), digits)
+}
+
+function isOperativeComponent(type: MovementComponentType): boolean {
+  return type === 'operative_cash' || type === 'operative_bank'
 }
 
 export function MovementComponentBreakdown({
@@ -57,45 +78,46 @@ export function MovementComponentBreakdown({
   const activeCompTypes = componentTypesForMovement(movementType)
   const sumMatches = componentsSumMatchesTotal(componentLines, totalAmount)
   const componentsSum = componentLines.reduce((acc, line) => {
-    const v = parseFloat(line.amount)
+    const v = lineAmountToNumber(line.amount)
     return acc + (Number.isNaN(v) ? 0 : v)
   }, 0)
-  const parsedTotal = parseFloat(totalAmount)
+  const parsedTotal = lineAmountToNumber(totalAmount)
 
   return (
     <div className={cn('space-y-4', compact && 'pt-2')}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <Wallet className="h-4 w-4" />
+          <Wallet className="h-4 w-4 shrink-0" />
           <span>Desglose de cobro/pago</span>
         </div>
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          className="h-8"
+          className={cn(MOVEMENT_FORM_CONTROL_H, 'px-4')}
           onClick={() => onComponentLinesChange((prev) => [...prev, newComponentLine()])}
           disabled={isLoading}
         >
-          <Plus className="h-3.5 w-3.5 mr-1" />
+          <Plus className="h-4 w-4 mr-1.5" />
           Agregar línea
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
         {manualEntry
           ? `La suma debe coincidir con el monto total (${currency}). Es obligatorio para guardar.`
-          : `Opcional: si no usas líneas, al guardar se toma la cuenta principal del movimiento. Si agregas líneas, la suma debe coincidir con el total (${currency}).`}
+          : `Opcional: si no usas líneas, al guardar se toma la cuenta principal. Si agregas líneas, la suma debe coincidir con el total (${currency}).`}
       </p>
       <div
         className={cn(
-          'rounded-md border px-3 py-2 text-xs font-medium',
+          'rounded-md border px-3 py-2 text-xs font-medium tabular-nums',
           sumMatches
             ? 'border-green-200 bg-green-50 text-green-800'
             : 'border-amber-200 bg-amber-50 text-amber-900'
         )}
       >
-        Suma medios: {Number.isNaN(componentsSum) ? '—' : componentsSum.toFixed(2)} {currency} · Total:{' '}
-        {Number.isNaN(parsedTotal) ? '—' : parsedTotal.toFixed(2)} {currency}
+        Suma medios: {formatAmountDisplay(componentsSum, currency)} {currency} · Total:{' '}
+        {Number.isNaN(parsedTotal)
+          ? '—'
+          : `${formatAmountDisplay(totalAmount, currency)} ${currency}`}
       </div>
 
       <div className="space-y-4">
@@ -105,6 +127,7 @@ export function MovementComponentBreakdown({
             line.componentType
           const selectedAccount = accounts.find((account) => account.id === line.accountId)
           const selectedContact = filteredContacts.find((c) => c.id === line.contactId)
+          const needsAccount = isOperativeComponent(line.componentType)
 
           return (
             <div
@@ -117,46 +140,43 @@ export function MovementComponentBreakdown({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    className="h-8 text-destructive"
+                    size="icon"
+                    className={cn(MOVEMENT_FORM_CONTROL_H, 'w-10 shrink-0 text-destructive')}
                     onClick={() =>
                       onComponentLinesChange((prev) =>
                         prev.filter((l) => l.localId !== line.localId)
                       )
                     }
                     disabled={isLoading}
+                    aria-label="Eliminar línea"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 ) : null}
               </div>
-              <div className="space-y-2">
-                <Label>Tipo</Label>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Tipo</Label>
                 <Select
                   value={line.componentType}
-                  onValueChange={(v) =>
+                  onValueChange={(v) => {
+                    const nextType = v as MovementComponentType
+                    const operative = isOperativeComponent(nextType)
                     onComponentLinesChange((prev) =>
                       prev.map((l) =>
                         l.localId === line.localId
                           ? {
                               ...l,
-                              componentType: v as MovementComponentType,
-                              accountId:
-                                v === 'client_receivable' || v === 'supplier_payable'
-                                  ? ''
-                                  : l.accountId,
-                              contactId:
-                                v === 'operative_cash' || v === 'operative_bank'
-                                  ? ''
-                                  : l.contactId,
+                              componentType: nextType,
+                              accountId: operative ? l.accountId : '',
+                              contactId: operative ? '' : l.contactId,
                             }
                           : l
                       )
                     )
-                  }
+                  }}
                   disabled={isLoading}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className={controlClass}>
                     <SelectValue>
                       <span className="block truncate" title={selectedTypeLabel}>
                         {selectedTypeLabel}
@@ -172,12 +192,11 @@ export function MovementComponentBreakdown({
                   </SelectContent>
                 </Select>
               </div>
-              {line.componentType === 'operative_cash' ||
-              line.componentType === 'operative_bank' ? (
-                <div className="space-y-2">
-                  <Label>Cuenta</Label>
+              {needsAccount ? (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Cuenta</Label>
                   <Select
-                    value={line.accountId}
+                    value={line.accountId || undefined}
                     onValueChange={(v) =>
                       onComponentLinesChange((prev) =>
                         prev.map((l) =>
@@ -187,7 +206,7 @@ export function MovementComponentBreakdown({
                     }
                     disabled={isLoading || isLoadingData}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className={controlClass}>
                       <SelectValue>
                         <span
                           className="block truncate"
@@ -213,21 +232,20 @@ export function MovementComponentBreakdown({
                   </Select>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <Label>Contacto</Label>
+                    <Label className="text-sm font-medium">Contacto</Label>
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs shrink-0"
+                      className="h-8 px-3 text-xs shrink-0"
                       onClick={() => onQuickContact(line.localId)}
                     >
                       + Nuevo
                     </Button>
                   </div>
                   <Select
-                    value={line.contactId}
+                    value={line.contactId || undefined}
                     onValueChange={(v) =>
                       onComponentLinesChange((prev) =>
                         prev.map((l) =>
@@ -237,7 +255,7 @@ export function MovementComponentBreakdown({
                     }
                     disabled={isLoading || isLoadingData}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className={controlClass}>
                       <SelectValue>
                         <span
                           className="block truncate"
@@ -265,21 +283,20 @@ export function MovementComponentBreakdown({
                   </Select>
                 </div>
               )}
-              <div className="space-y-2">
-                <Label>Monto línea</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Monto línea</Label>
+                <MoneyInput
                   value={line.amount}
-                  onChange={(e) =>
+                  onValueChange={(canonical) =>
                     onComponentLinesChange((prev) =>
                       prev.map((l) =>
-                        l.localId === line.localId ? { ...l, amount: e.target.value } : l
+                        l.localId === line.localId ? { ...l, amount: canonical } : l
                       )
                     )
                   }
+                  currency={currency}
                   disabled={isLoading}
+                  className={controlClass}
                 />
               </div>
             </div>

@@ -2,6 +2,10 @@
 
 import { Button } from '@/components/ui/button'
 import { SheetFooter } from '@/components/ui/sheet'
+import { MOVEMENT_FORM_CONTROL_H } from '@/components/movements/movement-form.constants'
+import { cn } from '@/lib/utils'
+
+const footerBtn = cn(MOVEMENT_FORM_CONTROL_H, 'w-full px-4')
 
 export interface MovementFormFooterProps {
   isGuidedCreate: boolean
@@ -48,7 +52,7 @@ export function MovementFormFooter({
           : 'shrink-0 flex-col-reverse gap-2 border-t bg-muted/50 px-6 py-4 md:grid md:grid-cols-3 md:items-center md:gap-3'
       }
     >
-      <Button variant="outline" onClick={onClose} disabled={isLoading} className="w-full">
+      <Button variant="outline" onClick={onClose} disabled={isLoading} className={footerBtn}>
         Cancelar
       </Button>
       {!isEditing && (
@@ -56,7 +60,7 @@ export function MovementFormFooter({
           variant="secondary"
           onClick={() => onSubmit(true)}
           disabled={isLoading || accountsEmpty}
-          className="w-full"
+          className={footerBtn}
         >
           Guardar Borrador
         </Button>
@@ -66,7 +70,7 @@ export function MovementFormFooter({
           variant="outline"
           onClick={() => onSubmit(false, true)}
           disabled={submitDisabled}
-          className="w-full"
+          className={footerBtn}
         >
           Enviar a revisión
         </Button>
@@ -74,7 +78,7 @@ export function MovementFormFooter({
       <Button
         onClick={() => onSubmit(false, false)}
         disabled={submitDisabled}
-        className="bg-[#7B68EE] hover:bg-[#7B68EE]/90 w-full"
+        className={cn(footerBtn, 'bg-[#7B68EE] hover:bg-[#7B68EE]/90')}
       >
         {isLoading
           ? 'Guardando...'
