@@ -110,11 +110,7 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
     setIsModalOpen(true)
   }
 
-  const handleSubmit = async (
-    data: CreateMovementInput,
-    asDraft: boolean,
-    submitForReviewOnly = false
-  ) => {
+  const handleSubmit = async (data: CreateMovementInput, asDraft: boolean) => {
     if (editingMovement) {
       const success = await editMovement(editingMovement.id, data)
       if (!success) {
@@ -143,14 +139,10 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
       return
     }
 
-    const success = await addMovement(data, asDraft, submitForReviewOnly)
+    const success = await addMovement(data, asDraft)
     if (success) {
       if (asDraft) {
         toast.success('Movimiento guardado como borrador')
-      } else if (submitForReviewOnly) {
-        toast.success('Movimiento enviado a revisión (pendiente de aprobación)')
-      } else if (canManageFinanceActions) {
-        toast.success('Movimiento registrado y aprobado')
       } else {
         toast.success('Movimiento enviado a aprobación')
       }

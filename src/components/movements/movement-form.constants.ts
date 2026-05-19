@@ -6,7 +6,6 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { MovementMethod, MovementType } from '@/lib/validations/movement'
-
 export const MOVEMENT_FORM_COPY: Record<
   MovementType,
   { title: string; subtitle: string; submitLabel: string }
@@ -52,9 +51,6 @@ export const MOVEMENT_METHODS: { value: MovementMethod; label: string }[] = [
   { value: 'digital', label: 'Billetera Digital' },
   { value: 'other', label: 'Otro' },
 ]
-
-/** Altura unificada de inputs/selects en formulario de movimientos. */
-export const MOVEMENT_FORM_CONTROL_H = 'h-10'
 
 export const MOVEMENT_CURRENCIES = [
   { value: 'ARS', label: 'ARS ($)', flag: '🇦🇷' },

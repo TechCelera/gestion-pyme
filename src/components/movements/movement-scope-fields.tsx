@@ -1,11 +1,13 @@
 'use client'
 
-import { Label } from '@/components/ui/label'
+import {
+  FormField,
+  FormSelectTrigger,
+} from '@/components/ui/form-controls'
 import {
   Select,
   SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 import type { FlatProjectOption } from '@/lib/movements/flatten-projects'
@@ -44,8 +46,7 @@ export function MovementScopeFields({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor={scopeId}>Ámbito</Label>
+        <FormField label="Ámbito" htmlFor={scopeId} alignControl>
           <Select
             value={movementScope}
             onValueChange={(value) => {
@@ -55,19 +56,18 @@ export function MovementScopeFields({
             }}
             disabled={isLoading}
           >
-            <SelectTrigger id={scopeId} className="w-full">
+            <FormSelectTrigger id={scopeId}>
               <SelectValue>
                 {movementScope === 'general' ? 'General empresa' : 'Proyecto'}
               </SelectValue>
-            </SelectTrigger>
+            </FormSelectTrigger>
             <SelectContent>
               <SelectItem value="general">General empresa</SelectItem>
               <SelectItem value="project">Proyecto</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={fundId}>Origen de fondos</Label>
+        </FormField>
+        <FormField label="Origen de fondos" htmlFor={fundId} alignControl>
           <Select
             value={fundOwner}
             onValueChange={(value) =>
@@ -75,33 +75,32 @@ export function MovementScopeFields({
             }
             disabled={isLoading}
           >
-            <SelectTrigger id={fundId} className="w-full">
+            <FormSelectTrigger id={fundId}>
               <SelectValue>
                 {fundOwner === 'company' ? 'Fondos empresa' : 'Anticipo cliente'}
               </SelectValue>
-            </SelectTrigger>
+            </FormSelectTrigger>
             <SelectContent>
               <SelectItem value="company">Fondos empresa</SelectItem>
               <SelectItem value="client_advance">Anticipo cliente</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
       </div>
-      {movementScope === 'project' && (
-        <div className="space-y-2">
-          <Label htmlFor={projectFieldId}>Proyecto</Label>
+      {movementScope === 'project' ? (
+        <FormField label="Proyecto" htmlFor={projectFieldId} alignControl>
           <Select
             value={projectId}
             onValueChange={(value) => onProjectIdChange(value ?? '')}
             disabled={isLoading || isLoadingData}
           >
-            <SelectTrigger id={projectFieldId} className="w-full">
+            <FormSelectTrigger id={projectFieldId}>
               <SelectValue>
                 <span className="block truncate" title={projectLabel}>
                   {projectLabel || 'Elegí proyecto'}
                 </span>
               </SelectValue>
-            </SelectTrigger>
+            </FormSelectTrigger>
             <SelectContent>
               {flatProjects.map((project) => (
                 <SelectItem key={project.id} value={project.id}>
@@ -110,8 +109,8 @@ export function MovementScopeFields({
               ))}
             </SelectContent>
           </Select>
-        </div>
-      )}
+        </FormField>
+      ) : null}
     </div>
   )
 }

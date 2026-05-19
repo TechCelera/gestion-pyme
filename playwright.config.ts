@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
+import { loadPlaywrightEnv } from './e2e/helpers/load-env'
+
+loadPlaywrightEnv()
+
 /**
  * - `PLAYWRIGHT_SKIP_WEBSERVER=1`: no arranca `next dev` (usá cuando ya tenés `pnpm run dev`).
  * - Sin eso: Playwright intenta levantar el dev (CI / máquina limpia). Next **no** permite dos

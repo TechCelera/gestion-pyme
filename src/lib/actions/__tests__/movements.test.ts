@@ -16,6 +16,7 @@ import {
   createMovement,
   updateMovement,
   getMovementComponents,
+  finalizeMovementSubmission,
 } from '../movements'
 
 const TEST_AUTH = {
@@ -963,5 +964,51 @@ describe('budget flow rules', () => {
       expect(result.error).toContain('requiere aprobación adicional')
     }
     expect(mockRpc).not.toHaveBeenCalled()
+  })
+})
+
+describe('finalizeMovementSubmission', () => {
+  const movementId = '11111111-1111-4111-8111-111111111111'
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    stubAuthenticatedContext(TEST_AUTH)
+  })
+
+  it('sets movement to pending only (no auto-approve for admin)', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    const mockUsersSelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({ data: { role: 'admin_finanzas' }, error: null }),
+      }),
+    })
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'users') return { select: mockUsersSelect }
+      return { select: vi.fn() }
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      from: mockFrom,
+      rpc: mockRpc,
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: TEST_AUTH.userId } },
+          error: null,
+        }),
+      },
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await finalizeMovementSubmission(movementId)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data?.status).toBe('pending')
+    }
+    expect(mockRpc).toHaveBeenCalledTimes(1)
+    expect(mockRpc).toHaveBeenCalledWith('update_transaction_status', {
+      p_transaction_id: movementId,
+      p_new_status: 'pending',
+      p_reason: null,
+    })
   })
 })

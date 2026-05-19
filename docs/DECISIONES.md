@@ -293,7 +293,7 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 
 **Aprobacion**
 - Movimiento creado/enviado por **colaborador** (rol `collaborator` en BD): debe quedar **pendiente** hasta que un **administrador** (`admin`) lo apruebe.
-- Movimiento creado por **administrador**: puede **autoaprobarse** (flujo `finalizeMovementSubmission`) o ser aprobado por **otro** administrador de la misma empresa.
+- Movimiento creado por **administrador**: mismo flujo que colaborador (**pendiente**); lo aprueba un administrador en la tabla (puede ser **otro** admin de la misma empresa; sin autoaprobar al crear).
 
 **Factura en cuenta corriente**
 - La factura oficial es **opcional** (operativa mayoritaria sin factura formal).
@@ -312,7 +312,7 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 - Navegacion: sidebar con bloque **Flujo de caja** (Ventas y cobros, Compras y pagos, Todos los movimientos con filtro `?flujo=`); contador de pendientes en sidebar y badge en bottom nav.
 - Reglas de rol: `finalizeMovementSubmission` y `updateMovementStatus` en `src/lib/actions/movements.ts` (aprobar/rechazar/anular solo `admin`; RLS vía `auth_user_is_admin()`).
 - Contactos: alta rapida inline en `operation-form` + `createContact` en `src/lib/actions/contacts.ts` con `client_segment` y `associated_services`; falta ficha/listado dedicado y PDF en Storage.
-- Pendiente: adjunto PDF factura, refinamiento de copy en UI (español neutro, equilibrio técnico/claro), opcion admin “solo enviar a otro admin” sin auto‑aprobar, RPC adicional si se centraliza todo en base.
+- Pendiente: adjunto PDF factura, refinamiento de copy en UI (español neutro, equilibrio técnico/claro), RPC adicional si se centraliza todo en base.
 
 ### Razon
 - Alinear UX con lenguaje natural del negocio (ventas/compras vs jerga contable).

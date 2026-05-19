@@ -23,9 +23,32 @@ export function hasSupabasePublicEnv(): boolean {
 
 export async function loginViaUi(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login')
-  await page.getByLabel(/^email$/i).fill(email)
-  await page.getByLabel(/^contraseña$/i).fill(password)
+  await expect(page.getByRole('button', { name: /iniciar sesión/i })).toBeVisible()
+
+  await page.locator('#email').fill(email)
+  await page.locator('input#password').fill(password)
   await page.getByRole('button', { name: /iniciar sesión/i }).click()
-  await page.waitForURL(/\/dashboard/, { timeout: 60_000 })
+
+  try {
+    await page.waitForURL(/\/dashboard/, {
+      timeout: 60_000,
+      waitUntil: 'domcontentloaded',
+    })
+  } catch (error) {
+    if (page.url().includes('/login')) {
+      const toastText = await page
+        .locator('[data-sonner-toast]')
+        .first()
+        .textContent()
+        .catch(() => null)
+      throw new Error(
+        `Login E2E falló: ${toastText?.trim() || 'correo o contraseña incorrectos'}. ` +
+          'Actualizá E2E_TEST_EMAIL y E2E_TEST_PASSWORD en .env.local (usuario confirmado en Supabase).',
+        { cause: error }
+      )
+    }
+    throw error
+  }
+
   await expect(page).toHaveURL(/\/dashboard/)
 }

@@ -35,8 +35,14 @@ test.describe('piloto — rutas autenticadas', () => {
 
   test('filtros de período visibles en reportes', async ({ page }) => {
     await page.goto('/reportes')
-    await expect(page.getByRole('tab', { name: /este mes/i })).toBeVisible()
-    await expect(page.getByRole('tab', { name: /trimestre anterior/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /reportes/i }).first()).toBeVisible({
+      timeout: 30_000,
+    })
+    // Las pestañas de período solo montan tras `getReportsData` (no en el skeleton).
+    await expect(page.getByText(/estado de resultados/i)).toBeVisible({ timeout: 30_000 })
+    const periodTabs = page.getByRole('tablist')
+    await expect(periodTabs.getByRole('tab', { name: /este mes/i })).toBeVisible()
+    await expect(periodTabs.getByRole('tab', { name: /trimestre anterior/i })).toBeVisible()
   })
 
   test('filtros de flujo visibles en operaciones', async ({ page }) => {

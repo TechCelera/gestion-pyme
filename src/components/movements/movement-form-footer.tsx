@@ -2,25 +2,26 @@
 
 import { Button } from '@/components/ui/button'
 import { SheetFooter } from '@/components/ui/sheet'
-import { MOVEMENT_FORM_CONTROL_H } from '@/components/movements/movement-form.constants'
+import { formButtonClass } from '@/components/ui/form-controls'
 import { cn } from '@/lib/utils'
 
-const footerBtn = cn(MOVEMENT_FORM_CONTROL_H, 'w-full px-4')
+const footerBtn = cn(
+  formButtonClass,
+  'h-10 w-full min-w-0 px-3 text-sm font-medium sm:px-4'
+)
 
 export interface MovementFormFooterProps {
   isGuidedCreate: boolean
   isLoading: boolean
   isEditing: boolean
   isRejectedCorrection: boolean
-  isAdmin: boolean
   accountsEmpty: boolean
   type: string
   accountId: string
   categoryId: string
   sumMatchesComponents: boolean
-  submitLabel?: string
   onClose: () => void
-  onSubmit: (asDraft: boolean, submitForReviewOnly?: boolean) => void
+  onSubmit: (asDraft: boolean) => void
 }
 
 export function MovementFormFooter({
@@ -28,13 +29,11 @@ export function MovementFormFooter({
   isLoading,
   isEditing,
   isRejectedCorrection,
-  isAdmin,
   accountsEmpty,
   type,
   accountId,
   categoryId,
   sumMatchesComponents,
-  submitLabel,
   onClose,
   onSubmit,
 }: MovementFormFooterProps) {
@@ -44,51 +43,61 @@ export function MovementFormFooter({
     accountsEmpty ||
     (needsIncomeExpenseFields && (!accountId || !categoryId || !sumMatchesComponents))
 
+  const primaryText = isLoading
+    ? 'Guardando...'
+    : isRejectedCorrection
+      ? 'Corregir y reenviar'
+      : isEditing
+        ? 'Guardar cambios'
+        : 'Enviar a aprobación'
+
+  const showDraft = !isEditing && !isRejectedCorrection
+
   return (
     <SheetFooter
-      className={
-        isGuidedCreate
-          ? 'shrink-0 flex-col-reverse gap-2 border-t bg-muted/50 px-4 py-3 sm:grid sm:grid-cols-3 sm:items-center sm:gap-2'
-          : 'shrink-0 flex-col-reverse gap-2 border-t bg-muted/50 px-6 py-4 md:grid md:grid-cols-3 md:items-center md:gap-3'
-      }
+      className={cn(
+        'mt-auto shrink-0 w-full border-t bg-muted/50 px-4 py-3',
+        '!flex-none grid gap-2',
+        isEditing || isRejectedCorrection
+          ? 'grid-cols-2'
+          : 'grid-cols-2 sm:grid-cols-3',
+        isGuidedCreate ? 'sm:px-4' : 'sm:px-6'
+      )}
     >
-      <Button variant="outline" onClick={onClose} disabled={isLoading} className={footerBtn}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onClose}
+        disabled={isLoading}
+        className={cn(footerBtn, !isEditing && showDraft && 'sm:order-1')}
+      >
         Cancelar
       </Button>
-      {!isEditing && (
+
+      {showDraft ? (
         <Button
+          type="button"
           variant="secondary"
           onClick={() => onSubmit(true)}
           disabled={isLoading || accountsEmpty}
-          className={footerBtn}
+          className={cn(footerBtn, 'sm:order-2')}
         >
-          Guardar Borrador
-        </Button>
-      )}
-      {!isEditing && !isRejectedCorrection && isAdmin ? (
-        <Button
-          variant="outline"
-          onClick={() => onSubmit(false, true)}
-          disabled={submitDisabled}
-          className={footerBtn}
-        >
-          Enviar a revisión
+          Borrador
         </Button>
       ) : null}
+
       <Button
-        onClick={() => onSubmit(false, false)}
+        type="button"
+        onClick={() => onSubmit(false)}
         disabled={submitDisabled}
-        className={cn(footerBtn, 'bg-[#7B68EE] hover:bg-[#7B68EE]/90')}
+        className={cn(
+          footerBtn,
+          'bg-[#7B68EE] text-white hover:bg-[#7B68EE]/90',
+          showDraft && 'col-span-2 sm:col-span-1 sm:order-3',
+          (isEditing || isRejectedCorrection) && 'sm:order-2'
+        )}
       >
-        {isLoading
-          ? 'Guardando...'
-          : isRejectedCorrection
-            ? 'Corregir y reenviar'
-            : isEditing
-              ? 'Guardar cambios'
-              : isAdmin
-                ? `${submitLabel ?? 'Registrar'} y aprobar`
-                : 'Enviar a aprobación'}
+        <span className="truncate">{primaryText}</span>
       </Button>
     </SheetFooter>
   )

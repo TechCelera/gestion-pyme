@@ -13,15 +13,20 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import {
+  FormField,
+  FormInput,
+  FormMoneyInput,
+  FormSelectTrigger,
+} from '@/components/ui/form-controls'
 import {
   Select,
   SelectContent,
   SelectItem,
-  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select'
 import { createProject, updateProject, type Project } from '@/lib/actions/projects'
+import { moneyInputToNumber } from '@/lib/utils/money-input'
 
 interface ProjectFormProps {
   isOpen: boolean
@@ -93,7 +98,7 @@ export function ProjectForm({ isOpen, onClose, onSaved, project, projects }: Pro
       const payload = {
         name: name.trim(),
         parentProjectId: parentProjectId === 'none' ? null : parentProjectId,
-        budgetAmount: Number(budgetAmount || 0),
+        budgetAmount: moneyInputToNumber(budgetAmount) || 0,
         startDate: startDate || null,
         endDate: endDate || null,
       }
@@ -135,29 +140,29 @@ export function ProjectForm({ isOpen, onClose, onSaved, project, projects }: Pro
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="projectName">Nombre</Label>
-              <Input
+            <FormField label="Nombre" htmlFor="projectName" alignControl>
+              <FormInput
                 id="projectName"
                 value={name}
                 placeholder="Ej: Expansión Sede Norte"
                 onChange={(event) => setName(event.target.value)}
                 disabled={isSaving}
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label htmlFor="parentProject">Proyecto padre</Label>
+            <FormField label="Proyecto padre" htmlFor="parentProject" alignControl>
               <Select
                 value={parentProjectId}
                 onValueChange={(value) => setParentProjectId(value ?? 'none')}
                 disabled={isSaving}
               >
-                <SelectTrigger id="parentProject" className="w-full">
-                  {parentProjectId === 'none'
-                    ? 'Sin padre (proyecto raíz)'
-                    : parentLabel ?? 'Seleccione'}
-                </SelectTrigger>
+                <FormSelectTrigger id="parentProject">
+                  <SelectValue>
+                    {parentProjectId === 'none'
+                      ? 'Sin padre (proyecto raíz)'
+                      : (parentLabel ?? 'Seleccione')}
+                  </SelectValue>
+                </FormSelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sin padre (proyecto raíz)</SelectItem>
                   {availableParents.map((item) => (
@@ -167,42 +172,37 @@ export function ProjectForm({ isOpen, onClose, onSaved, project, projects }: Pro
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label htmlFor="budget">Presupuesto</Label>
-              <Input
+            <FormField label="Presupuesto" htmlFor="budget" alignControl>
+              <FormMoneyInput
                 id="budget"
-                type="number"
-                min="0"
-                step="0.01"
                 value={budgetAmount}
-                onChange={(event) => setBudgetAmount(event.target.value)}
+                onValueChange={setBudgetAmount}
+                currency="ARS"
                 disabled={isSaving}
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Inicio</Label>
-              <Input
+            <FormField label="Inicio" htmlFor="startDate" alignControl>
+              <FormInput
                 id="startDate"
                 type="date"
                 value={startDate}
                 onChange={(event) => setStartDate(event.target.value)}
                 disabled={isSaving}
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label htmlFor="endDate">Fin</Label>
-              <Input
+            <FormField label="Fin" htmlFor="endDate" alignControl>
+              <FormInput
                 id="endDate"
                 type="date"
                 value={endDate}
                 onChange={(event) => setEndDate(event.target.value)}
                 disabled={isSaving}
               />
-            </div>
+            </FormField>
           </div>
         </div>
 

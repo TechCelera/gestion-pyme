@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Generated runtime artifacts during local dev
     "tmp/**",
     "coverage/**",
+    "playwright-report/**",
+    "test-results/**",
     // Script Node suelto (CommonJS) fuera del bundle Next
     "run-migrations.js",
   ]),

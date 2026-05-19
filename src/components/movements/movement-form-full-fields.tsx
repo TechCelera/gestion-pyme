@@ -14,14 +14,16 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { MoneyInput } from '@/components/ui/money-input'
 import { Label } from '@/components/ui/label'
+import {
+  FormInput,
+  FormMoneyInput,
+  FormSelectTrigger,
+} from '@/components/ui/form-controls'
 import {
   Select,
   SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
@@ -145,7 +147,7 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
               <div className={`grid grid-cols-1 gap-4 ${type === 'income' || type === 'expense' ? '' : 'sm:grid-cols-2'}`}>
                 <div className="space-y-2">
                   <Label htmlFor="date">Fecha</Label>
-                  <Input
+                  <FormInput
                     id="date"
                     type="date"
                     value={date}
@@ -161,13 +163,13 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                       onValueChange={(v) => onMethodChange(v as MovementMethod)}
                       disabled={isLoading}
                     >
-                      <SelectTrigger id="method" className="w-full">
+                      <FormSelectTrigger id="method">
                         <SelectValue>
                           <span className="block truncate" title={methodLabel}>
                             {methodLabel || 'Seleccione método'}
                           </span>
                         </SelectValue>
-                      </SelectTrigger>
+                      </FormSelectTrigger>
                       <SelectContent>
                         {MOVEMENT_METHODS.map((m) => (
                           <SelectItem key={m.value} value={m.value}>
@@ -192,13 +194,13 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                     }}
                     disabled={isLoading}
                   >
-                    <SelectTrigger id="scope" className="w-full">
+                    <FormSelectTrigger id="scope">
                       <SelectValue>
                         <span className="block truncate">
                           {movementScope === 'general' ? 'General empresa' : 'Proyecto/Subproyecto'}
                         </span>
                       </SelectValue>
-                    </SelectTrigger>
+                    </FormSelectTrigger>
                     <SelectContent>
                       <SelectItem value="general">General empresa</SelectItem>
                       <SelectItem value="project">Proyecto/Subproyecto</SelectItem>
@@ -212,13 +214,13 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                     onValueChange={(value) => onFundOwnerChange((value as 'company' | 'client_advance') ?? 'company')}
                     disabled={isLoading}
                   >
-                    <SelectTrigger id="fundOwner" className="w-full">
+                    <FormSelectTrigger id="fundOwner">
                       <SelectValue>
                         <span className="block truncate">
                           {fundOwner === 'company' ? 'Fondos empresa' : 'Anticipo cliente'}
                         </span>
                       </SelectValue>
-                    </SelectTrigger>
+                    </FormSelectTrigger>
                     <SelectContent>
                       <SelectItem value="company">Fondos empresa</SelectItem>
                       <SelectItem value="client_advance">Anticipo cliente</SelectItem>
@@ -235,13 +237,13 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                     onValueChange={(value) => onProjectIdChange(value ?? '')}
                     disabled={isLoading || isLoadingData}
                   >
-                    <SelectTrigger id="project" className="w-full">
+                    <FormSelectTrigger id="project">
                       <SelectValue>
                         <span className="block truncate" title={projectLabel}>
                           {projectLabel || 'Seleccione proyecto'}
                         </span>
                       </SelectValue>
-                    </SelectTrigger>
+                    </FormSelectTrigger>
                     <SelectContent>
                       {flatProjects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
@@ -289,13 +291,13 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                       onValueChange={(v) => onSourceAccountIdChange(v ?? '')}
                       disabled={isLoading || isLoadingData}
                     >
-                      <SelectTrigger id="sourceAccount" className="w-full">
+                      <FormSelectTrigger id="sourceAccount">
                         <SelectValue>
                           <span className="block truncate" title={sourceAccountLabel}>
                             {sourceAccountLabel || (isLoadingData ? 'Cargando...' : 'Seleccione cuenta')}
                           </span>
                         </SelectValue>
-                      </SelectTrigger>
+                      </FormSelectTrigger>
                       <SelectContent>
                         {accounts.map((account) => (
                           <SelectItem key={account.id} value={account.id}>
@@ -312,13 +314,13 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                       onValueChange={(v) => onDestinationAccountIdChange(v ?? '')}
                       disabled={isLoading || isLoadingData}
                     >
-                      <SelectTrigger id="destAccount" className="w-full">
+                      <FormSelectTrigger id="destAccount">
                         <SelectValue>
                           <span className="block truncate" title={destAccountLabel}>
                             {destAccountLabel || (isLoadingData ? 'Cargando...' : 'Seleccione cuenta')}
                           </span>
                         </SelectValue>
-                      </SelectTrigger>
+                      </FormSelectTrigger>
                       <SelectContent>
                         {accounts.map((account) => (
                           <SelectItem key={account.id} value={account.id}>
@@ -339,13 +341,13 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                     onValueChange={(v) => onAccountIdChange(v ?? '')}
                     disabled={isLoading || isLoadingData}
                   >
-                    <SelectTrigger id="account" className="w-full">
+                    <FormSelectTrigger id="account">
                       <SelectValue>
                         <span className="block truncate" title={accountLabel}>
                           {accountLabel || (isLoadingData ? 'Cargando...' : 'Seleccione cuenta')}
                         </span>
                       </SelectValue>
-                    </SelectTrigger>
+                    </FormSelectTrigger>
                     <SelectContent>
                       {accounts.map((account) => (
                         <SelectItem key={account.id} value={account.id}>
@@ -394,13 +396,13 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                         onValueChange={(v) => onCategoryIdChange(v ?? '')}
                         disabled={isLoading || isLoadingData}
                       >
-                        <SelectTrigger id="category" className="w-full">
+                        <FormSelectTrigger id="category">
                           <SelectValue>
                             <span className="block truncate" title={categoryLabel}>
                               {categoryLabel || (isLoadingData ? 'Cargando...' : 'Seleccione categoría')}
                             </span>
                           </SelectValue>
-                        </SelectTrigger>
+                        </FormSelectTrigger>
                         <SelectContent>
                           {filteredCategories.map((cat) => (
                             <SelectItem key={cat.id} value={cat.id}>
@@ -430,13 +432,13 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                       onValueChange={(value) => onAdjustmentReasonChange(value ?? '')}
                       disabled={isLoading}
                     >
-                      <SelectTrigger className="w-full">
+                      <FormSelectTrigger>
                         <SelectValue>
                           <span className="block truncate" title={adjustmentReasonLabel}>
                             {adjustmentReasonLabel || 'Seleccione motivo'}
                           </span>
                         </SelectValue>
-                      </SelectTrigger>
+                      </FormSelectTrigger>
                       <SelectContent>
                         <SelectItem value="reconciliation">Conciliación</SelectItem>
                         <SelectItem value="correction">Corrección</SelectItem>
@@ -460,7 +462,7 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
               <div className="grid grid-cols-[1fr,auto] gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="amount">Valor</Label>
-                  <MoneyInput
+                  <FormMoneyInput
                     id="amount"
                     value={amount}
                     onValueChange={onAmountChange}
@@ -476,7 +478,7 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                     onValueChange={(value) => onCurrencyChange(value ?? 'ARS')}
                     disabled={isLoading}
                   >
-                    <SelectTrigger id="currency" className="w-full">
+                    <FormSelectTrigger id="currency">
                       <SelectValue>
                         {(() => {
                           const c = MOVEMENT_CURRENCIES.find(cur => cur.value === currency)
@@ -487,7 +489,7 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                           )
                         })()}
                       </SelectValue>
-                    </SelectTrigger>
+                    </FormSelectTrigger>
                     <SelectContent>
                       {MOVEMENT_CURRENCIES.map((c) => (
                         <SelectItem key={c.value} value={c.value}>
@@ -544,7 +546,7 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                 <span>Descripción</span>
               </div>
               <div className="space-y-2">
-                <Input
+                <FormInput
                   placeholder="Describe el movimiento..."
                   value={description}
                   onChange={(e) => onDescriptionChange(e.target.value)}

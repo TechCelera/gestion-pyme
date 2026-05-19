@@ -2,7 +2,7 @@
 
 import type { ComponentProps } from 'react'
 
-import { Input } from '@/components/ui/input'
+import { Input, type InputProps } from '@/components/ui/input'
 import {
   formatMoneyInputFromCanonical,
   getMoneyFractionDigits,
@@ -11,7 +11,8 @@ import {
 import { cn } from '@/lib/utils'
 
 export interface MoneyInputProps
-  extends Omit<ComponentProps<typeof Input>, 'type' | 'value' | 'onChange' | 'inputMode'> {
+  extends Omit<ComponentProps<typeof Input>, 'type' | 'value' | 'onChange' | 'inputMode'>,
+    Pick<InputProps, 'controlSize'> {
   value: string
   onValueChange: (canonical: string) => void
   currency?: string
@@ -23,6 +24,7 @@ export function MoneyInput({
   currency,
   className,
   placeholder,
+  controlSize,
   ...props
 }: MoneyInputProps) {
   const fractionDigits = getMoneyFractionDigits(currency)
@@ -34,6 +36,7 @@ export function MoneyInput({
       type="text"
       inputMode="decimal"
       autoComplete="off"
+      controlSize={controlSize}
       placeholder={placeholder ?? defaultPlaceholder}
       value={display}
       onChange={(e) => onValueChange(parseMoneyInputToCanonical(e.target.value, fractionDigits))}

@@ -35,8 +35,7 @@ interface MovementStoreState {
   fetchMovements: () => Promise<void>
   addMovement: (
     data: CreateMovementInput,
-    asDraft?: boolean,
-    submitForReviewOnly?: boolean
+    asDraft?: boolean
   ) => Promise<boolean>
   editMovement: (id: string, data: CreateMovementInput) => Promise<boolean>
   changeStatus: (id: string, status: MovementStatus, reason?: string) => Promise<boolean>
@@ -116,7 +115,7 @@ export const useMovementStore = create<MovementStoreState>()(
         }
       },
 
-      addMovement: async (data, asDraft = true, submitForReviewOnly = false) => {
+      addMovement: async (data, asDraft = true) => {
         set({ isLoading: true, error: null })
 
         try {
@@ -124,9 +123,7 @@ export const useMovementStore = create<MovementStoreState>()(
 
           if (result.success) {
             if (!asDraft && result.data?.id) {
-              const fin = await finalizeMovementSubmission(result.data.id, {
-                approveImmediately: !submitForReviewOnly,
-              })
+              const fin = await finalizeMovementSubmission(result.data.id)
 
               if (!fin.success) {
                 const stuckPending = fin.data?.status === 'pending'

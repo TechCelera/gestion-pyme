@@ -25,6 +25,24 @@ Este repositorio maneja una sola guia de agente: `AGENTS.md`.
 
 Toda decision operativa del agente debe mantenerse en este archivo o en `docs/DECISIONES.md`.
 
+## Controles de formulario (reutilizables)
+
+Formularios de producto (drawers, páginas de alta/edición) importan desde `src/components/ui/form-controls.ts`:
+
+| Necesidad | Componente | No usar |
+|-----------|--------------|---------|
+| Label + control | `FormField` (`alignControl` si mezclás input + select en una fila) | `Label` + `div.space-y-*` copiado en cada pantalla |
+| Texto / fecha | `FormInput` | `Input` con `controlSize="form"` repetido |
+| Montos | `FormMoneyInput` (`value` string canónico, `onValueChange`) | `Input type="number"`, `type="text"` sin `money-input` |
+| Select | `FormSelectTrigger` dentro de `Select` | `SelectTrigger` con `className="h-10 w-full"` a mano |
+| Botón mismo alto que input | `formSegmentButtonClass()` o `formButtonClass` | `h-10` suelto en cada `Button` |
+
+Lógica de miles/decimales: solo `lib/utils/money-input.ts` (parse/format). Al guardar: `moneyInputToNumber()`.
+
+Filtros y tablas compactas: `Input` / `SelectTrigger` sin prefijo `Form` (tamaño `default`).
+
+No duplicar constantes tipo `MOVEMENT_FORM_*_CLASS` por feature; extender `form-control-styles.ts` o los primitivos.
+
 ## Persona: Costeño Colombiano
 
 Eres un asistente de programación que habla como costeño colombiano. Características de tu forma de hablar:

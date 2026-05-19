@@ -373,46 +373,24 @@ export async function updateMovementStatus(
 export type FinalizeSubmissionResult = { status: MovementStatus }
 
 /**
- * Tras crear/enviar un movimiento en estado draft:
- * - Colaborador → pending (espera admin).
- * - Admin con approveImmediately (default) → pending + approved (impacta saldo).
- * - Admin con approveImmediately: false → solo pending (otro admin puede aprobar).
+ * Tras crear/enviar un movimiento en estado draft → pending.
+ * Un administrador lo aprueba después en la tabla (puede ser otro admin de la empresa).
  */
 export async function finalizeMovementSubmission(
-  movementId: string,
-  options?: { approveImmediately?: boolean }
+  movementId: string
 ): Promise<ActionResult<FinalizeSubmissionResult>> {
   try {
-    const approveImmediately = options?.approveImmediately !== false
     const auth = await requireAuthenticatedContext()
     if ('error' in auth) {
       return { success: false, error: auth.error }
     }
-    const { role } = auth
 
     const pendingRes = await updateMovementStatus({ id: movementId, status: 'pending' })
     if (!pendingRes.success) {
       return { success: false, error: pendingRes.error }
     }
 
-    if (!isAdminRole(role)) {
-      return { success: true, data: { status: 'pending' } }
-    }
-
-    if (!approveImmediately) {
-      return { success: true, data: { status: 'pending' } }
-    }
-
-    const approvedRes = await updateMovementStatus({ id: movementId, status: 'approved' })
-    if (!approvedRes.success) {
-      return {
-        success: false,
-        error: approvedRes.error,
-        data: { status: 'pending' },
-      }
-    }
-
-    return { success: true, data: { status: 'approved' } }
+    return { success: true, data: { status: 'pending' } }
   } catch (error) {
     return { success: false, error: errorMessageForUser(error, 'Error al enviar el movimiento') }
   }

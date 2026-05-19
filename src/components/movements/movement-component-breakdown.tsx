@@ -2,13 +2,16 @@
 
 import { Plus, Trash2, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { MoneyInput } from '@/components/ui/money-input'
 import { Label } from '@/components/ui/label'
+import {
+  FormMoneyInput,
+  FormSelectTrigger,
+  formControlHeightClass,
+} from '@/components/ui/form-controls'
 import {
   Select,
   SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 import type { Account } from '@/lib/actions/accounts'
@@ -19,7 +22,6 @@ import {
   getMoneyFractionDigits,
 } from '@/lib/utils/money-input'
 import { cn } from '@/lib/utils'
-import { MOVEMENT_FORM_CONTROL_H } from '@/components/movements/movement-form.constants'
 import {
   type ComponentLineDraft,
   componentTypesForMovement,
@@ -27,8 +29,6 @@ import {
   lineAmountToNumber,
   newComponentLine,
 } from '@/components/movements/movement-form.types'
-
-const controlClass = `${MOVEMENT_FORM_CONTROL_H} w-full`
 
 export type MovementComponentBreakdownProps = {
   movementType: 'income' | 'expense'
@@ -93,7 +93,7 @@ export function MovementComponentBreakdown({
         <Button
           type="button"
           variant="outline"
-          className={cn(MOVEMENT_FORM_CONTROL_H, 'px-4')}
+          className={cn(formControlHeightClass, 'px-4')}
           onClick={() => onComponentLinesChange((prev) => [...prev, newComponentLine()])}
           disabled={isLoading}
         >
@@ -141,7 +141,7 @@ export function MovementComponentBreakdown({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className={cn(MOVEMENT_FORM_CONTROL_H, 'w-10 shrink-0 text-destructive')}
+                    className={cn(formControlHeightClass, 'w-10 shrink-0 text-destructive')}
                     onClick={() =>
                       onComponentLinesChange((prev) =>
                         prev.filter((l) => l.localId !== line.localId)
@@ -176,13 +176,13 @@ export function MovementComponentBreakdown({
                   }}
                   disabled={isLoading}
                 >
-                  <SelectTrigger className={controlClass}>
+                  <FormSelectTrigger>
                     <SelectValue>
                       <span className="block truncate" title={selectedTypeLabel}>
                         {selectedTypeLabel}
                       </span>
                     </SelectValue>
-                  </SelectTrigger>
+                  </FormSelectTrigger>
                   <SelectContent>
                     {activeCompTypes.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
@@ -206,7 +206,7 @@ export function MovementComponentBreakdown({
                     }
                     disabled={isLoading || isLoadingData}
                   >
-                    <SelectTrigger className={controlClass}>
+                    <FormSelectTrigger>
                       <SelectValue>
                         <span
                           className="block truncate"
@@ -221,7 +221,7 @@ export function MovementComponentBreakdown({
                             : 'Seleccione cuenta'}
                         </span>
                       </SelectValue>
-                    </SelectTrigger>
+                    </FormSelectTrigger>
                     <SelectContent>
                       {accounts.map((account) => (
                         <SelectItem key={account.id} value={account.id}>
@@ -255,7 +255,7 @@ export function MovementComponentBreakdown({
                     }
                     disabled={isLoading || isLoadingData}
                   >
-                    <SelectTrigger className={controlClass}>
+                    <FormSelectTrigger>
                       <SelectValue>
                         <span
                           className="block truncate"
@@ -272,7 +272,7 @@ export function MovementComponentBreakdown({
                               : 'Sin contactos — crealos en Configuración')}
                         </span>
                       </SelectValue>
-                    </SelectTrigger>
+                    </FormSelectTrigger>
                     <SelectContent>
                       {filteredContacts.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
@@ -285,7 +285,7 @@ export function MovementComponentBreakdown({
               )}
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Monto línea</Label>
-                <MoneyInput
+                <FormMoneyInput
                   value={line.amount}
                   onValueChange={(canonical) =>
                     onComponentLinesChange((prev) =>
@@ -296,7 +296,6 @@ export function MovementComponentBreakdown({
                   }
                   currency={currency}
                   disabled={isLoading}
-                  className={controlClass}
                 />
               </div>
             </div>

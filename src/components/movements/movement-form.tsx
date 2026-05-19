@@ -50,13 +50,10 @@ import { MovementFormFullFields } from '@/components/movements/movement-form-ful
 import { MovementQuickContactDialog } from '@/components/movements/movement-quick-contact-dialog'
 import { flattenProjects } from '@/lib/movements/flatten-projects'
 import { moneyInputToNumber } from '@/lib/utils/money-input'
-import { useAuthStore } from '@/stores/auth-store'
-import { isAdminRole } from '@/lib/constants'
-
 interface MovementFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: CreateMovementInput, asDraft: boolean, submitForReviewOnly?: boolean) => void
+  onSubmit: (data: CreateMovementInput, asDraft: boolean) => void
   movement?: Movement | null
   isLoading?: boolean
   /** Al crear: fija el tipo y oculta el selector (ingreso/egreso/transferencia/ajuste). */
@@ -102,8 +99,6 @@ export function MovementForm({
   const [quickServices, setQuickServices] = useState('')
   const [quickSaving, setQuickSaving] = useState(false)
 
-  const role = useAuthStore((state) => state.role)
-  const isAdmin = isAdminRole(role)
   const isEditing = !!movement
   const isRejectedCorrection = movement?.status === 'rejected'
   const selectedType = MOVEMENT_TYPE_OPTIONS.find((t) => t.value === type)
@@ -250,11 +245,19 @@ export function MovementForm({
   }, [showPaymentSplit, usesOptionalComponentBreakdown, accountId, amount, accounts, componentLines])
 
   function togglePaymentSplit() {
-    setShowPaymentSplit((prev) => {
-      if (prev) return false
-      setComponentLines([buildMainComponentLine(accountId, amount, accounts)])
-      return true
-    })
+    setPaymentMode(!showPaymentSplit)
+  }
+
+  function setPaymentMode(split: boolean) {
+    if (split === showPaymentSplit) return
+    if (split) {
+      setAccountId('')
+      setComponentLines([newComponentLine({ amount })])
+      setShowPaymentSplit(true)
+      return
+    }
+    setShowPaymentSplit(false)
+    setComponentLines([newComponentLine()])
   }
 
   function resolvePrimaryAccountId(
@@ -297,7 +300,7 @@ export function MovementForm({
     return rows
   }
 
-  const handleSubmit = (asDraft: boolean, submitForReviewOnly = false) => {
+  const handleSubmit = (asDraft: boolean) => {
     const parsedAmount = moneyInputToNumber(amount)
     if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
       toast.error('Indica un monto mayor a cero')
@@ -390,7 +393,7 @@ export function MovementForm({
       projectId: movementScope === 'project' ? projectId || undefined : undefined,
     }
 
-    onSubmit(data, asDraft, submitForReviewOnly)
+    onSubmit(data, asDraft)
     if (!isEditing) {
       resetForm(fixedType ?? 'income')
     }
@@ -612,7 +615,7 @@ export function MovementForm({
                 showScopeOptions={showScopeOptions}
                 onToggleScopeOptions={() => setShowScopeOptions((v) => !v)}
                 showPaymentSplit={showPaymentSplit}
-                onTogglePaymentSplit={togglePaymentSplit}
+                onPaymentModeChange={setPaymentMode}
                 isLoading={isLoading}
                 isLoadingData={isLoadingData}
                 onNavigateToConfig={handleClose}
@@ -680,13 +683,11 @@ export function MovementForm({
           isLoading={Boolean(isLoading)}
           isEditing={isEditing}
           isRejectedCorrection={isRejectedCorrection}
-          isAdmin={isAdmin}
           accountsEmpty={accounts.length === 0}
           type={type}
           accountId={accountId}
           categoryId={categoryId}
           sumMatchesComponents={sumMatchesComponents}
-          submitLabel={formCopy?.submitLabel}
           onClose={handleClose}
           onSubmit={handleSubmit}
         />
