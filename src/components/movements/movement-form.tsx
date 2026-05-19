@@ -31,7 +31,6 @@ import type {
 } from '@/lib/validations/movement'
 import { toast } from 'sonner'
 import {
-  defaultComponentTypeForAccount,
   movementHasCustomComponentBreakdown,
   resolveMovementDescription,
 } from '@/lib/movements/form-defaults'
@@ -41,6 +40,7 @@ import {
 } from '@/components/movements/movement-form.constants'
 import {
   type ComponentLineDraft,
+  buildMainComponentLine,
   componentsSumMatchesTotal,
   newComponentLine,
 } from '@/components/movements/movement-form.types'
@@ -71,7 +71,8 @@ export function MovementForm({
   isLoading,
   fixedType = null,
 }: MovementFormProps) {
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showScopeOptions, setShowScopeOptions] = useState(false)
+  const [showPaymentSplit, setShowPaymentSplit] = useState(false)
   const [type, setType] = useState<MovementType>('income')
   const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
   const [accountId, setAccountId] = useState('')
@@ -128,7 +129,8 @@ export function MovementForm({
     setProjectId('')
     setMovementScope('general')
     setComponentLines([newComponentLine()])
-    setShowAdvanced(false)
+    setShowScopeOptions(false)
+    setShowPaymentSplit(false)
   }, [])
 
   // Fetch accounts and categories on open
@@ -173,7 +175,8 @@ export function MovementForm({
     queueMicrotask(() => {
       setType(fixedType)
       if (fixedType === 'income' || fixedType === 'expense') {
-        setShowAdvanced(false)
+        setShowScopeOptions(false)
+        setShowPaymentSplit(false)
       }
     })
   }, [isOpen, fixedType, movement])
@@ -212,7 +215,10 @@ export function MovementForm({
         movement.accountId,
         movement.amount
       )
-      setShowAdvanced(custom)
+      setShowScopeOptions(
+        Boolean(movement.projectId) || movement.fundOwner === 'client_advance'
+      )
+      setShowPaymentSplit(custom)
       if (custom && rows.length > 0) {
         setComponentLines(
           rows.map((c) =>
@@ -238,21 +244,30 @@ export function MovementForm({
     type === 'income' || type === 'expense'
 
   const effectiveComponentLines = useMemo((): ComponentLineDraft[] => {
-    if (
-      showAdvanced ||
-      !usesOptionalComponentBreakdown
-    ) {
-      return componentLines
-    }
-    const account = accounts.find((a) => a.id === accountId)
-    return [
-      newComponentLine({
-        componentType: defaultComponentTypeForAccount(account?.type),
-        accountId,
-        amount,
-      }),
-    ]
-  }, [showAdvanced, usesOptionalComponentBreakdown, accountId, amount, accounts, componentLines])
+    if (!usesOptionalComponentBreakdown) return componentLines
+    if (showPaymentSplit) return componentLines
+    return [buildMainComponentLine(accountId, amount, accounts)]
+  }, [showPaymentSplit, usesOptionalComponentBreakdown, accountId, amount, accounts, componentLines])
+
+  function togglePaymentSplit() {
+    setShowPaymentSplit((prev) => {
+      if (prev) return false
+      setComponentLines([buildMainComponentLine(accountId, amount, accounts)])
+      return true
+    })
+  }
+
+  function resolvePrimaryAccountId(
+    rows: MovementComponentRow[],
+    fallbackAccountId: string
+  ): string {
+    const operative = rows.find(
+      (c) =>
+        (c.componentType === 'operative_cash' || c.componentType === 'operative_bank') &&
+        c.accountId
+    )
+    return operative?.accountId ?? fallbackAccountId
+  }
 
   const buildMovementComponents = (): MovementComponentRow[] => {
     const total = moneyInputToNumber(amount)
@@ -290,7 +305,7 @@ export function MovementForm({
     }
 
     if (type === 'income' || type === 'expense') {
-      if (!accountId) {
+      if (!showPaymentSplit && !accountId) {
         toast.error('Elige la cuenta')
         return
       }
@@ -313,10 +328,11 @@ export function MovementForm({
     }
 
     let movementComponents: MovementComponentRow[] | undefined
+    let resolvedAccountId = accountId
     if (type === 'income' || type === 'expense') {
       const built = buildMovementComponents()
       if (!built.length) {
-        if (showAdvanced && componentLines.length > 0) {
+        if (showPaymentSplit) {
           const missingAccount = componentLines.some(
             (l) =>
               (l.componentType === 'operative_cash' || l.componentType === 'operative_bank') &&
@@ -329,18 +345,25 @@ export function MovementForm({
               !l.contactId
           )
           if (missingAccount) {
-            toast.error('En el desglose, elige la cuenta en cada línea de efectivo o banco')
+            toast.error('En cada línea de efectivo o banco, elige la cuenta')
             return
           }
           if (missingContact) {
-            toast.error('En el desglose, elige el contacto en cada línea de cuenta corriente')
+            toast.error('En cada línea de cuenta corriente, elige el contacto')
             return
           }
+          toast.error('La suma de las líneas debe coincidir con el monto total')
+        } else {
+          toast.error('Indica un monto y una cuenta válidos')
         }
-        toast.error('El desglose debe sumar el mismo monto total del movimiento')
         return
       }
       movementComponents = built
+      resolvedAccountId = resolvePrimaryAccountId(built, accountId)
+      if (!resolvedAccountId) {
+        toast.error('Indicá al menos una línea con cuenta de efectivo o banco')
+        return
+      }
     }
 
     const data: CreateMovementInput = {
@@ -351,7 +374,11 @@ export function MovementForm({
       description: finalDescription,
       method,
       ...(type === 'income' || type === 'expense'
-        ? { accountId, categoryId: categoryId || undefined, movementComponents }
+        ? {
+            accountId: resolvedAccountId,
+            categoryId: categoryId || undefined,
+            movementComponents,
+          }
         : {}),
       ...(type === 'transfer'
         ? { sourceAccountId, destinationAccountId }
@@ -371,7 +398,8 @@ export function MovementForm({
 
   const handleClose = () => {
     resetForm(fixedType ?? 'income')
-    setShowAdvanced(false)
+    setShowScopeOptions(false)
+    setShowPaymentSplit(false)
     onClose()
   }
 
@@ -418,7 +446,7 @@ export function MovementForm({
   const sumMatchesComponents =
     type !== 'income' && type !== 'expense'
       ? true
-      : componentsSumMatchesTotal(effectiveComponentLines, amount)
+      : !showPaymentSplit || componentsSumMatchesTotal(componentLines, amount)
 
   function defaultQuickContactKind(): ContactRow['kind'] {
     if (type === 'income') return 'client'
@@ -581,8 +609,10 @@ export function MovementForm({
                 accountLabel={accountLabel}
                 categoryLabel={categoryLabel}
                 projectLabel={projectLabel}
-                showAdvanced={showAdvanced}
-                onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+                showScopeOptions={showScopeOptions}
+                onToggleScopeOptions={() => setShowScopeOptions((v) => !v)}
+                showPaymentSplit={showPaymentSplit}
+                onTogglePaymentSplit={togglePaymentSplit}
                 isLoading={isLoading}
                 isLoadingData={isLoadingData}
                 onNavigateToConfig={handleClose}
@@ -590,11 +620,11 @@ export function MovementForm({
               />
             ) : (
               <MovementFormFullFields
-                showComponentBreakdown={usesOptionalComponentBreakdown ? showAdvanced : undefined}
+                showComponentBreakdown={
+                  usesOptionalComponentBreakdown ? showPaymentSplit : undefined
+                }
                 onToggleComponentBreakdown={
-                  usesOptionalComponentBreakdown
-                    ? () => setShowAdvanced((v) => !v)
-                    : undefined
+                  usesOptionalComponentBreakdown ? togglePaymentSplit : undefined
                 }
                 type={type}
                 date={date}

@@ -530,7 +530,7 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                     isLoading={isLoading}
                     isLoadingData={isLoadingData}
                     onQuickContact={onQuickContact}
-                    manualEntry
+                    splitEntry
                   />
                 ) : null}
               </div>

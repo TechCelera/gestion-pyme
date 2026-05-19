@@ -44,7 +44,7 @@ export type MovementComponentBreakdownProps = {
   isLoadingData?: boolean
   onQuickContact: (lineLocalId: string) => void
   compact?: boolean
-  manualEntry?: boolean
+  splitEntry?: boolean
 }
 
 function formatAmountDisplay(value: string | number, currency: string): string {
@@ -73,7 +73,7 @@ export function MovementComponentBreakdown({
   isLoadingData,
   onQuickContact,
   compact,
-  manualEntry = true,
+  splitEntry = false,
 }: MovementComponentBreakdownProps) {
   const activeCompTypes = componentTypesForMovement(movementType)
   const sumMatches = componentsSumMatchesTotal(componentLines, totalAmount)
@@ -102,9 +102,9 @@ export function MovementComponentBreakdown({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {manualEntry
-          ? `La suma debe coincidir con el monto total (${currency}). Es obligatorio para guardar.`
-          : `Opcional: si no usas líneas, al guardar se toma la cuenta principal. Si agregas líneas, la suma debe coincidir con el total (${currency}).`}
+        {splitEntry
+          ? `Indicá en qué cuentas o medios se repartió el total (${currency}). La suma de las líneas debe coincidir.`
+          : `Opcional: si no usas líneas, al guardar se toma la cuenta principal del movimiento.`}
       </p>
       <div
         className={cn(

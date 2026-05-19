@@ -1,4 +1,6 @@
+import type { Account } from '@/lib/actions/accounts'
 import type { MovementComponentType } from '@/lib/validations/movement'
+import { defaultComponentTypeForAccount } from '@/lib/movements/form-defaults'
 import { moneyInputToNumber } from '@/lib/utils/money-input'
 
 export type ComponentLineDraft = {
@@ -37,6 +39,20 @@ export function componentTypesForMovement(type: 'income' | 'expense') {
 
 export function lineAmountToNumber(amount: string): number {
   return moneyInputToNumber(amount)
+}
+
+/** Una línea operativa a partir de la cuenta y monto principal (pago en un solo medio). */
+export function buildMainComponentLine(
+  accountId: string,
+  amount: string,
+  accounts: Pick<Account, 'id' | 'type'>[]
+): ComponentLineDraft {
+  const account = accounts.find((a) => a.id === accountId)
+  return newComponentLine({
+    componentType: defaultComponentTypeForAccount(account?.type),
+    accountId,
+    amount,
+  })
 }
 
 export function componentsSumMatchesTotal(

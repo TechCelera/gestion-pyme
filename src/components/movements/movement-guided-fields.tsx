@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import type { Account } from '@/lib/actions/accounts'
 import type { Category } from '@/lib/actions/categories'
 import type { ContactRow } from '@/lib/actions/contacts'
@@ -30,6 +29,7 @@ import { cn } from '@/lib/utils'
 
 const fieldLabel = 'text-sm font-medium leading-tight'
 const controlH = MOVEMENT_FORM_CONTROL_H
+const toggleBtn = cn(controlH, 'w-full justify-between px-4 text-muted-foreground')
 
 export type MovementGuidedFieldsProps = {
   type: 'income' | 'expense'
@@ -62,8 +62,10 @@ export type MovementGuidedFieldsProps = {
   accountLabel: string
   categoryLabel: string
   projectLabel: string
-  showAdvanced: boolean
-  onToggleAdvanced: () => void
+  showScopeOptions: boolean
+  onToggleScopeOptions: () => void
+  showPaymentSplit: boolean
+  onTogglePaymentSplit: () => void
   isLoading?: boolean
   isLoadingData?: boolean
   onNavigateToConfig: () => void
@@ -120,8 +122,10 @@ export function MovementGuidedFields({
   accountLabel,
   categoryLabel,
   projectLabel,
-  showAdvanced,
-  onToggleAdvanced,
+  showScopeOptions,
+  onToggleScopeOptions,
+  showPaymentSplit,
+  onTogglePaymentSplit,
   isLoading,
   isLoadingData,
   onNavigateToConfig,
@@ -191,7 +195,7 @@ export function MovementGuidedFields({
               <Select
                 value={accountId}
                 onValueChange={(v) => onAccountIdChange(v ?? '')}
-                disabled={isLoading || isLoadingData}
+                disabled={isLoading || isLoadingData || showPaymentSplit}
               >
                 <SelectTrigger id="account-guided" className={cn('w-full', controlH)}>
                   <SelectValue>
@@ -211,6 +215,12 @@ export function MovementGuidedFields({
             )}
           </FieldGroup>
         </div>
+
+        {showPaymentSplit ? (
+          <p className="text-xs text-muted-foreground">
+            Pagás en partes: indicá abajo en qué cuentas o medios se repartió el monto.
+          </p>
+        ) : null}
 
         <FieldGroup label="Categoría" htmlFor="category-guided">
           {!isLoadingData && categories.length === 0 ? (
@@ -271,32 +281,16 @@ export function MovementGuidedFields({
       <Button
         type="button"
         variant="outline"
-        className={cn(controlH, 'w-full justify-between px-4 text-muted-foreground')}
-        onClick={onToggleAdvanced}
+        className={toggleBtn}
+        onClick={onTogglePaymentSplit}
+        disabled={isLoading}
       >
-        Más opciones
-        {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        {showPaymentSplit ? 'Pago en un solo medio' : 'Pagó en partes o varias cuentas'}
+        {showPaymentSplit ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </Button>
 
-      {showAdvanced ? (
+      {showPaymentSplit ? (
         <section className="space-y-3 rounded-lg border bg-muted/30 p-3">
-          <p className="text-xs text-muted-foreground leading-snug">
-            Proyecto, anticipos o desglose por medios de pago.
-          </p>
-          <MovementScopeFields
-            idPrefix="guided-"
-            movementScope={movementScope}
-            onMovementScopeChange={onMovementScopeChange}
-            fundOwner={fundOwner}
-            onFundOwnerChange={onFundOwnerChange}
-            projectId={projectId}
-            onProjectIdChange={onProjectIdChange}
-            flatProjects={flatProjects}
-            projectLabel={projectLabel}
-            isLoading={isLoading}
-            isLoadingData={isLoadingData}
-          />
-          <Separator />
           <MovementComponentBreakdown
             movementType={type}
             componentLines={componentLines}
@@ -309,7 +303,36 @@ export function MovementGuidedFields({
             isLoadingData={isLoadingData}
             onQuickContact={onQuickContact}
             compact
-            manualEntry
+            splitEntry
+          />
+        </section>
+      ) : null}
+
+      <Button
+        type="button"
+        variant="ghost"
+        className={cn(toggleBtn, 'text-muted-foreground/90')}
+        onClick={onToggleScopeOptions}
+        disabled={isLoading}
+      >
+        Proyecto o anticipo de cliente
+        {showScopeOptions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </Button>
+
+      {showScopeOptions ? (
+        <section className="space-y-3 rounded-lg border border-dashed bg-muted/20 p-3">
+          <MovementScopeFields
+            idPrefix="guided-"
+            movementScope={movementScope}
+            onMovementScopeChange={onMovementScopeChange}
+            fundOwner={fundOwner}
+            onFundOwnerChange={onFundOwnerChange}
+            projectId={projectId}
+            onProjectIdChange={onProjectIdChange}
+            flatProjects={flatProjects}
+            projectLabel={projectLabel}
+            isLoading={isLoading}
+            isLoadingData={isLoadingData}
           />
         </section>
       ) : null}
