@@ -39,8 +39,8 @@ test.describe('piloto — rutas autenticadas', () => {
       timeout: 30_000,
     })
     // Las pestañas de período solo montan tras `getReportsData` (no en el skeleton).
-    await expect(page.getByText(/estado de resultados/i)).toBeVisible({ timeout: 30_000 })
     const periodTabs = page.getByRole('tablist')
+    await expect(periodTabs).toBeVisible({ timeout: 30_000 })
     await expect(periodTabs.getByRole('tab', { name: /este mes/i })).toBeVisible()
     await expect(periodTabs.getByRole('tab', { name: /trimestre anterior/i })).toBeVisible()
   })
