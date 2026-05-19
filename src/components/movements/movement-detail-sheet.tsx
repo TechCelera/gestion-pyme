@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ExternalLink, Loader2, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 
 import {
   Sheet,
@@ -77,6 +78,30 @@ function DetailRow({
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </div>
+  )
+}
+
+function MovementInternalReference({ id }: { id: string }) {
+  const suffix = id.slice(-8)
+
+  async function copyId() {
+    try {
+      await navigator.clipboard.writeText(id)
+      toast.success('Referencia copiada')
+    } catch {
+      toast.error('No se pudo copiar la referencia')
+    }
+  }
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span className="font-mono text-xs text-muted-foreground" title={id}>
+        …{suffix}
+      </span>
+      <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={copyId}>
+        Copiar ID
+      </Button>
+    </span>
   )
 }
 
@@ -191,9 +216,6 @@ export function MovementDetailSheet({
         <SheetHeader className="shrink-0 space-y-2 border-b px-6 py-4 text-left">
           <div className="flex flex-wrap items-center gap-2 pr-8">
             {display ? <MovementStatusBadge status={display.status} /> : null}
-            <span className="text-xs text-muted-foreground font-mono truncate max-w-[12rem]">
-              {display?.id}
-            </span>
           </div>
           <SheetTitle className="text-lg leading-tight">
             {display ? getMovementTypeLabel(display.type) : 'Detalle del movimiento'}
@@ -327,6 +349,9 @@ export function MovementDetailSheet({
               ) : null}
 
               <DetailSection title="Registro y flujo">
+                <DetailRow label="Referencia interna">
+                  <MovementInternalReference id={display.id} />
+                </DetailRow>
                 <DetailRow label="Creado">
                   {display.creatorName ?? '—'}
                   {display.createdAt

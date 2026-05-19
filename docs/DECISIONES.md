@@ -305,6 +305,7 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 - En ficha de contacto: **servicios asociados** (texto libre o lista; ejemplos de negocio: honorarios por diseno, direccion de obra, ejecucion, administracion financiera del presupuesto).
 
 **Terminologia de producto (pantalla)**
+- Estado `cancelled` en codigo/BD se muestra como **Anulado** (accion: anular movimiento aprobado; motivo en detalle). No usar "Cancelado" en badges para evitar confusion con cancelar un dialogo o un cobro del mundo real.
 - Agrupacion o panel izquierdo: **Ventas y cobros** y **Compras y pagos** (sustituye la percepcion de "Ingreso / Egreso" como bloques de navegacion).
 - Selector al crear movimiento: **Venta/Cobro**, **Compra/Pago**, y **Pasaje entre cuentas** cuando aplique (movimiento entre cuentas propias; nombre de producto ya acordado como "Pasaje entre cuentas" en propuesta).
 

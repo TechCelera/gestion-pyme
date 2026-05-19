@@ -25,7 +25,7 @@ const statusConfig: Record<MovementStatus, { label: string; className: string }>
     className: 'bg-orange-100 text-orange-800 border-orange-200',
   },
   cancelled: {
-    label: 'Cancelado',
+    label: 'Anulado',
     className: 'bg-red-100 text-red-800 border-red-200',
   },
 }
