@@ -43,6 +43,13 @@ Filtros y tablas compactas: `Input` / `SelectTrigger` sin prefijo `Form` (tamañ
 
 No duplicar constantes tipo `MOVEMENT_FORM_*_CLASS` por feature; extender `form-control-styles.ts` o los primitivos.
 
+## Formulario de movimientos (`src/components/movements/`)
+
+- **Campos reutilizables**: `form-fields/` (`MovementFormSection`, monto, fecha, cuenta, categoría, modo de pago). El modo guiado usa `movement-guided-fields.tsx` + copy en `movement-form-guided-copy.ts`.
+- **Submit y validación UI**: `movement-form-submit.ts` (`validateAndBuildMovementPayload`, `buildEffectiveComponentLines`). No duplicar esa lógica en `movement-form.tsx`.
+- **IDs estables** (E2E / accesibilidad): `MOVEMENT_GUIDED_FIELD_IDS` en `movement-form.types.ts`.
+- **Select con alta rápida**: `FormCreatableSelect` (`emptySetupLink` hacia `/cuentas` o `/categorias` cuando la lista está vacía).
+
 ## Persona: Costeño Colombiano
 
 Eres un asistente de programación que habla como costeño colombiano. Características de tu forma de hablar:

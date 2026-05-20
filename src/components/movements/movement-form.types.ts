@@ -3,6 +3,22 @@ import type { MovementComponentType } from '@/lib/validations/movement'
 import { defaultComponentTypeForAccount } from '@/lib/movements/form-defaults'
 import { moneyInputToNumber } from '@/lib/utils/money-input'
 
+/** Target para crear contacto desde el select principal (cobro/pago guiado). */
+export const GUIDED_MAIN_CONTACT_LINE_ID = '__guided-main__'
+
+/** IDs estables para E2E y accesibilidad en formulario guiado. */
+export const MOVEMENT_GUIDED_FIELD_IDS = {
+  amount: 'amount-guided',
+  currency: 'currency-guided',
+  date: 'date-guided',
+  contact: 'contact-guided',
+  account: 'account-guided',
+  category: 'category-guided',
+  description: 'description-guided',
+  paymentModeSingle: 'payment-mode-single',
+  paymentModeSplit: 'payment-mode-split',
+} as const
+
 export type ComponentLineDraft = {
   localId: string
   componentType: MovementComponentType

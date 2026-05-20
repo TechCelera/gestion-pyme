@@ -21,3 +21,8 @@ export {
   FormSelectTrigger,
   formSegmentButtonClass,
 } from '@/components/ui/form-primitives'
+export {
+  FormCreatableSelect,
+  type FormCreatableSelectOption,
+  type FormCreatableSelectProps,
+} from '@/components/ui/form-creatable-select'

@@ -307,7 +307,7 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
 
       {/* Header */}
       <header className="space-y-3">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">Movimientos</h1>
             <p className="text-sm text-muted-foreground">
@@ -315,8 +315,8 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
             </p>
           </div>
 
-          <div className="flex w-full flex-col gap-2 sm:w-auto lg:min-w-[min(100%,28rem)]">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="flex w-full min-w-0 flex-col gap-2 lg:flex-1 lg:max-w-3xl">
+            <div className="flex w-full min-w-0 flex-row items-stretch gap-1.5 sm:gap-2">
               {OPERATION_CREATE_BUTTONS.map(({ kind, label, variant, icon: Icon }) => (
                 <Button
                   key={kind}
@@ -328,28 +328,33 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
                   <span className="truncate text-xs sm:text-sm">{label}</span>
                 </Button>
               ))}
+              <div className="flex min-w-0 flex-1">
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="outline"
+                        className="h-10 w-full min-w-0 flex-1 px-1.5 sm:px-2"
+                      >
+                        <SlidersHorizontal className="h-4 w-4 shrink-0 sm:mr-1" />
+                        <span className="truncate text-xs sm:text-sm">Otras</span>
+                        <ChevronDown className="ml-0.5 h-3.5 w-3.5 shrink-0 opacity-60 sm:ml-1" />
+                      </Button>
+                    }
+                  />
+                  <DropdownMenuContent align="end" className="min-w-[14rem]">
+                    <DropdownMenuItem onClick={() => openForm('transfer')}>
+                      <ArrowLeftRight className="mr-2 h-4 w-4" />
+                      Pasaje entre cuentas
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => openForm('adjustment')}>
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      Ajuste de saldo
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
-            <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button variant="outline" className="h-10 w-full px-2 sm:px-3">
-                      <SlidersHorizontal className="h-4 w-4 shrink-0 sm:mr-1.5" />
-                      <span className="truncate text-xs sm:text-sm">Otras</span>
-                      <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-60" />
-                    </Button>
-                  }
-                />
-                <DropdownMenuContent align="end" className="min-w-[14rem]">
-                  <DropdownMenuItem onClick={() => openForm('transfer')}>
-                    <ArrowLeftRight className="mr-2 h-4 w-4" />
-                    Pasaje entre cuentas
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => openForm('adjustment')}>
-                    <SlidersHorizontal className="mr-2 h-4 w-4" />
-                    Ajuste de saldo
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
 
             <Button asChild variant="outline" size="sm" className="w-full md:hidden">
               <Link href={ROUTES.CATEGORIES}>

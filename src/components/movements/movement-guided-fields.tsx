@@ -1,39 +1,43 @@
 'use client'
 
-import Link from 'next/link'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FormCreatableSelect, FormField, FormInput } from '@/components/ui/form-controls'
+import { MovementComponentBreakdown } from '@/components/movements/movement-component-breakdown'
+import { MovementScopeFields } from '@/components/movements/movement-scope-fields'
 import {
-  FormField,
-  FormInput,
-  FormMoneyInput,
-  FormSelectTrigger,
-  formSegmentButtonClass,
-} from '@/components/ui/form-controls'
+  MovementAccountField,
+  MovementAmountCurrencyFields,
+  MovementCategoryField,
+  MovementDateField,
+  MovementFormSection,
+  MovementPaymentModeField,
+} from '@/components/movements/form-fields'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from '@/components/ui/select'
+  guidedAccountLabel,
+  guidedDescriptionPlaceholder,
+  guidedPaymentModeQuestion,
+  guidedSingleAccountLabel,
+} from '@/components/movements/movement-form-guided-copy'
+import {
+  GUIDED_MAIN_CONTACT_LINE_ID,
+  MOVEMENT_GUIDED_FIELD_IDS,
+  type ComponentLineDraft,
+} from '@/components/movements/movement-form.types'
+import { buildCashDateContext } from '@/lib/movements/cash-date-context'
+import {
+  OPERATION_CONTACT_HELP_COPY,
+} from '@/lib/movements/movement-config'
+import { isCollectionOrPaymentKind, isSaleOrPurchaseKind } from '@/lib/movements/operation-kind'
 import type { Account } from '@/lib/actions/accounts'
 import type { Category } from '@/lib/actions/categories'
 import type { ContactRow } from '@/lib/actions/contacts'
 import type { FlatProjectOption } from '@/lib/movements/flatten-projects'
-import { MOVEMENT_CURRENCIES } from '@/components/movements/movement-form.constants'
-import { MovementComponentBreakdown } from '@/components/movements/movement-component-breakdown'
-import { MovementScopeFields } from '@/components/movements/movement-scope-fields'
-import type { ComponentLineDraft } from '@/components/movements/movement-form.types'
-import { buildCashDateContext } from '@/lib/movements/cash-date-context'
-import {
-  OPERATION_CASH_DATE_HINT_COPY,
-  OPERATION_CONTACT_HELP_COPY,
-} from '@/lib/movements/movement-config'
-import { isCollectionOrPaymentKind, isSaleOrPurchaseKind } from '@/lib/movements/operation-kind'
 import type { OperationKind } from '@/lib/validations/movement'
 import { cn } from '@/lib/utils'
+import { formSegmentButtonClass } from '@/components/ui/form-controls'
 
-const toggleBtn = cn(formSegmentButtonClass(), 'w-full justify-between px-4 text-muted-foreground')
+const scopeToggleClass = cn(formSegmentButtonClass(), 'w-full justify-between px-4 text-muted-foreground')
 
 export type MovementGuidedFieldsProps = {
   type: 'income' | 'expense'
@@ -80,48 +84,50 @@ export type MovementGuidedFieldsProps = {
   onQuickContact: (lineLocalId: string) => void
 }
 
-export function MovementGuidedFields({
-  type,
-  operationKind,
-  amount,
-  onAmountChange,
-  currency,
-  onCurrencyChange,
-  date,
-  onDateChange,
-  accountId,
-  onAccountIdChange,
-  categoryId,
-  onCategoryIdChange,
-  contactId,
-  onContactIdChange,
-  description,
-  onDescriptionChange,
-  movementScope,
-  onMovementScopeChange,
-  fundOwner,
-  onFundOwnerChange,
-  projectId,
-  onProjectIdChange,
-  componentLines,
-  onComponentLinesChange,
-  accounts,
-  categories,
-  filteredContacts,
-  flatProjects,
-  accountLabel,
-  categoryLabel,
-  contactLabel,
-  projectLabel,
-  showScopeOptions,
-  onToggleScopeOptions,
-  showPaymentSplit,
-  onPaymentModeChange,
-  isLoading,
-  isLoadingData,
-  onNavigateToConfig,
-  onQuickContact,
-}: MovementGuidedFieldsProps) {
+export function MovementGuidedFields(props: MovementGuidedFieldsProps) {
+  const {
+    type,
+    operationKind,
+    amount,
+    onAmountChange,
+    currency,
+    onCurrencyChange,
+    date,
+    onDateChange,
+    accountId,
+    onAccountIdChange,
+    categoryId,
+    onCategoryIdChange,
+    contactId,
+    onContactIdChange,
+    description,
+    onDescriptionChange,
+    movementScope,
+    onMovementScopeChange,
+    fundOwner,
+    onFundOwnerChange,
+    projectId,
+    onProjectIdChange,
+    componentLines,
+    onComponentLinesChange,
+    accounts,
+    categories,
+    filteredContacts,
+    flatProjects,
+    accountLabel,
+    categoryLabel,
+    contactLabel,
+    projectLabel,
+    showScopeOptions,
+    onToggleScopeOptions,
+    showPaymentSplit,
+    onPaymentModeChange,
+    isLoading,
+    isLoadingData,
+    onNavigateToConfig,
+    onQuickContact,
+  } = props
+
   const isCollectionPayment = isCollectionOrPaymentKind(operationKind)
   const isSalePurchase = isSaleOrPurchaseKind(operationKind)
 
@@ -134,177 +140,69 @@ export function MovementGuidedFields({
     date,
   })
 
-  const accountLabelText =
-    operationKind === 'collection'
-      ? '¿En qué cuenta entró?'
-      : operationKind === 'payment'
-        ? '¿De qué cuenta salió?'
-        : type === 'income'
-          ? '¿Dónde entró?'
-          : '¿De dónde salió?'
-
-  const paymentModeQuestion = isCollectionPayment
-    ? '¿Se cobró en más de una cuenta?'
-    : type === 'income'
-      ? '¿Entró todo de una vez?'
-      : '¿Salió todo de una vez?'
-
-  const singleAccountLabel = isCollectionPayment
-    ? 'En una cuenta'
-    : type === 'income'
-      ? 'En una cuenta'
-      : 'De una cuenta'
-  const splitAccountsLabel = 'Repartido en varias'
-
   return (
     <div className="space-y-3">
-      <section className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-3">
-        <div className="grid grid-cols-[1fr,5.25rem] gap-2.5">
-          <FormField label="¿Cuánto?" htmlFor="amount-guided" alignControl>
-            <FormMoneyInput
-              id="amount-guided"
-              value={amount}
-              onValueChange={onAmountChange}
-              currency={currency}
-              disabled={isLoading}
-              className="text-lg font-medium"
-            />
-          </FormField>
-          <FormField label="Moneda" htmlFor="currency-guided" alignControl>
-            <Select
-              value={currency}
-              onValueChange={(value) => onCurrencyChange(value ?? 'ARS')}
-              disabled={isLoading}
-            >
-              <FormSelectTrigger id="currency-guided">
-                <SelectValue>
-                  {MOVEMENT_CURRENCIES.find((c) => c.value === currency)?.value ?? currency}
-                </SelectValue>
-              </FormSelectTrigger>
-              <SelectContent>
-                {MOVEMENT_CURRENCIES.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.flag} {c.value}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-        </div>
+      <MovementFormSection>
+        <MovementAmountCurrencyFields
+          amount={amount}
+          onAmountChange={onAmountChange}
+          currency={currency}
+          onCurrencyChange={onCurrencyChange}
+          disabled={isLoading}
+        />
 
-        <FormField label="¿Cuándo?" htmlFor="date-guided" alignControl>
-          <FormInput
-            id="date-guided"
-            type="date"
-            value={date}
-            min={dateBounds?.min}
-            max={dateBounds?.max}
-            onChange={(e) => onDateChange(e.target.value)}
-            disabled={isLoading}
-          />
-        </FormField>
-        {dateBounds ? (
-          <p className="text-xs text-muted-foreground">{OPERATION_CASH_DATE_HINT_COPY}</p>
-        ) : null}
+        <MovementDateField
+          date={date}
+          onDateChange={onDateChange}
+          min={dateBounds?.min}
+          max={dateBounds?.max}
+          showCashHint={Boolean(dateBounds)}
+          disabled={isLoading}
+        />
 
         {isCollectionPayment ? (
-          <FormField
+          <FormCreatableSelect
             label={operationKind === 'collection' ? 'Cliente' : 'Proveedor'}
-            htmlFor="contact-guided"
+            htmlFor={MOVEMENT_GUIDED_FIELD_IDS.contact}
             alignControl
-          >
-            <Select
-              value={contactId}
-              onValueChange={(v) => onContactIdChange(v ?? '')}
-              disabled={isLoading || isLoadingData}
-            >
-              <FormSelectTrigger id="contact-guided">
-                <SelectValue>
-                  <span className="block truncate" title={contactLabel}>
-                    {contactLabel || 'Elegí contacto'}
-                  </span>
-                </SelectValue>
-              </FormSelectTrigger>
-              <SelectContent>
-                {filteredContacts.map((contact) => (
-                  <SelectItem key={contact.id} value={contact.id}>
-                    {contact.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {OPERATION_CONTACT_HELP_COPY}
-            </p>
-          </FormField>
+            value={contactId}
+            onValueChange={onContactIdChange}
+            options={filteredContacts.map((contact) => ({
+              value: contact.id,
+              label: contact.name,
+            }))}
+            placeholder="Elegí contacto"
+            selectedLabel={contactLabel}
+            hint={OPERATION_CONTACT_HELP_COPY}
+            disabled={isLoading}
+            isLoading={isLoadingData}
+            onCreateNew={() => onQuickContact(GUIDED_MAIN_CONTACT_LINE_ID)}
+            createNewLabel="+ Nuevo"
+            emptyCreateLabel={
+              operationKind === 'collection' ? 'Crear cliente' : 'Crear proveedor'
+            }
+          />
         ) : null}
 
-        <FormField label={paymentModeQuestion} htmlFor="payment-mode-single">
-          <div
-            role="group"
-            aria-label={paymentModeQuestion}
-            className="grid grid-cols-2 gap-2"
-          >
-            <Button
-              id="payment-mode-single"
-              type="button"
-              variant={showPaymentSplit ? 'outline' : 'default'}
-              className={formSegmentButtonClass()}
-              onClick={() => onPaymentModeChange(false)}
-              disabled={isLoading}
-              aria-pressed={!showPaymentSplit}
-            >
-              {singleAccountLabel}
-            </Button>
-            <Button
-              id="payment-mode-split"
-              type="button"
-              variant={showPaymentSplit ? 'default' : 'outline'}
-              className={formSegmentButtonClass()}
-              onClick={() => onPaymentModeChange(true)}
-              disabled={isLoading}
-              aria-pressed={showPaymentSplit}
-            >
-              {splitAccountsLabel}
-            </Button>
-          </div>
-        </FormField>
+        <MovementPaymentModeField
+          question={guidedPaymentModeQuestion(operationKind, type)}
+          singleLabel={guidedSingleAccountLabel(operationKind, type)}
+          showPaymentSplit={showPaymentSplit}
+          onPaymentModeChange={onPaymentModeChange}
+          disabled={isLoading}
+        />
 
         {!showPaymentSplit ? (
-          <FormField label={accountLabelText} htmlFor="account-guided" alignControl>
-            {!isLoadingData && accounts.length === 0 ? (
-              <div className="flex h-10 items-center justify-center rounded-lg border border-dashed px-2 text-center text-xs text-muted-foreground">
-                <Link
-                  href="/cuentas"
-                  onClick={onNavigateToConfig}
-                  className="text-[#7B68EE] font-medium hover:underline"
-                >
-                  Crear cuenta
-                </Link>
-              </div>
-            ) : (
-              <Select
-                value={accountId}
-                onValueChange={(v) => onAccountIdChange(v ?? '')}
-                disabled={isLoading || isLoadingData}
-              >
-                <FormSelectTrigger id="account-guided">
-                  <SelectValue>
-                    <span className="block truncate" title={accountLabel}>
-                      {accountLabel || 'Elige cuenta'}
-                    </span>
-                  </SelectValue>
-                </FormSelectTrigger>
-                <SelectContent>
-                  {accounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.name} ({account.currency})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </FormField>
+          <MovementAccountField
+            label={guidedAccountLabel(operationKind, type)}
+            accountId={accountId}
+            onAccountIdChange={onAccountIdChange}
+            accounts={accounts}
+            accountLabel={accountLabel}
+            disabled={isLoading}
+            isLoadingData={isLoadingData}
+            onNavigateToSetup={onNavigateToConfig}
+          />
         ) : null}
 
         {showPaymentSplit ? (
@@ -328,75 +226,40 @@ export function MovementGuidedFields({
         ) : null}
 
         {isSalePurchase ? (
-          <FormField
-            label="Categoría"
-            htmlFor="category-guided"
-            alignControl={isLoadingData || categories.length > 0}
-          >
-            {!isLoadingData && categories.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-2">
-                Sin categorías.{' '}
-                <Link
-                  href="/categorias"
-                  onClick={onNavigateToConfig}
-                  className="text-[#7B68EE] hover:underline"
-                >
-                  Crear en Categorías
-                </Link>
-              </p>
-            ) : (
-              <Select
-                value={categoryId}
-                onValueChange={(v) => onCategoryIdChange(v ?? '')}
-                disabled={isLoading || isLoadingData}
-              >
-                <FormSelectTrigger id="category-guided">
-                  <SelectValue>
-                    <span className="block truncate" title={categoryLabel}>
-                      {categoryLabel || 'Elige categoría'}
-                    </span>
-                  </SelectValue>
-                </FormSelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </FormField>
+          <MovementCategoryField
+            categoryId={categoryId}
+            onCategoryIdChange={onCategoryIdChange}
+            categories={categories}
+            categoryLabel={categoryLabel}
+            disabled={isLoading}
+            isLoadingData={isLoadingData}
+            onNavigateToSetup={onNavigateToConfig}
+          />
         ) : null}
 
         <FormField
           label={
             <>
-              Nota{' '}
-              <span className="font-normal text-muted-foreground">(opcional)</span>
+              Nota <span className="font-normal text-muted-foreground">(opcional)</span>
             </>
           }
-          htmlFor="description-guided"
+          htmlFor={MOVEMENT_GUIDED_FIELD_IDS.description}
           alignControl
         >
           <FormInput
-            id="description-guided"
-            placeholder={
-              isCollectionPayment
-                ? 'Ej: cobro parcial factura 120'
-                : 'Ej: venta mostrador'
-            }
+            id={MOVEMENT_GUIDED_FIELD_IDS.description}
+            placeholder={guidedDescriptionPlaceholder(operationKind)}
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
             disabled={isLoading}
           />
         </FormField>
-      </section>
+      </MovementFormSection>
 
       <Button
         type="button"
         variant="ghost"
-        className={cn(toggleBtn, 'text-muted-foreground/90')}
+        className={cn(scopeToggleClass, 'text-muted-foreground/90')}
         onClick={onToggleScopeOptions}
         disabled={isLoading}
       >

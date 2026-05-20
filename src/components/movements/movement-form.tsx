@@ -26,33 +26,28 @@ import type {
   CreateMovementInput,
   MovementType,
   MovementMethod,
-  MovementComponentRow,
-  AdjustmentReason,
   OperationKind,
 } from '@/lib/validations/movement'
-import {
-  operationKindToMovementType,
-  isCollectionOrPaymentKind,
-  isSaleOrPurchaseKind,
-} from '@/lib/movements/operation-kind'
-import { CASH_DATE_GENERAL_ERROR_MESSAGE } from '@/lib/movements/cash-date-policy'
+import { operationKindToMovementType } from '@/lib/movements/operation-kind'
+import { todayCalendarDate } from '@/lib/movements/cash-date-policy'
 import {
   buildCashDateContext,
   clampDateToBounds,
 } from '@/lib/movements/cash-date-context'
 import { toast } from 'sonner'
-import {
-  movementHasCustomComponentBreakdown,
-  resolveMovementDescription,
-} from '@/lib/movements/form-defaults'
+import { movementHasCustomComponentBreakdown } from '@/lib/movements/form-defaults'
 import {
   MOVEMENT_FORM_COPY,
   MOVEMENT_TYPE_OPTIONS,
   OPERATION_KIND_FORM_COPY,
 } from '@/components/movements/movement-form.constants'
 import {
+  buildEffectiveComponentLines,
+  validateAndBuildMovementPayload,
+} from '@/components/movements/movement-form-submit'
+import {
+  GUIDED_MAIN_CONTACT_LINE_ID,
   type ComponentLineDraft,
-  buildMainComponentLine,
   componentsSumMatchesTotal,
   newComponentLine,
 } from '@/components/movements/movement-form.types'
@@ -61,7 +56,6 @@ import { MovementFormFooter } from '@/components/movements/movement-form-footer'
 import { MovementFormFullFields } from '@/components/movements/movement-form-full-fields'
 import { MovementQuickContactDialog } from '@/components/movements/movement-quick-contact-dialog'
 import { flattenProjects } from '@/lib/movements/flatten-projects'
-import { moneyInputToNumber } from '@/lib/utils/money-input'
 interface MovementFormProps {
   isOpen: boolean
   onClose: () => void
@@ -92,7 +86,7 @@ export function MovementForm({
     fixedOperationKind ?? 'sale'
   )
   const [contactId, setContactId] = useState('')
-  const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
+  const [date, setDate] = useState<string>(todayCalendarDate())
   const [accountId, setAccountId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [amount, setAmount] = useState('')
@@ -141,7 +135,7 @@ export function MovementForm({
     setType(nextType)
     setOperationKind(kind)
     setContactId('')
-    setDate(format(new Date(), 'yyyy-MM-dd'))
+    setDate(todayCalendarDate())
     setAccountId('')
     setCategoryId('')
     setAmount('')
@@ -286,11 +280,18 @@ export function MovementForm({
   const usesOptionalComponentBreakdown =
     type === 'income' || type === 'expense'
 
-  const effectiveComponentLines = useMemo((): ComponentLineDraft[] => {
-    if (!usesOptionalComponentBreakdown) return componentLines
-    if (showPaymentSplit) return componentLines
-    return [buildMainComponentLine(accountId, amount, accounts)]
-  }, [showPaymentSplit, usesOptionalComponentBreakdown, accountId, amount, accounts, componentLines])
+  const effectiveComponentLines = useMemo(
+    (): ComponentLineDraft[] =>
+      buildEffectiveComponentLines({
+        type,
+        showPaymentSplit,
+        componentLines,
+        accountId,
+        amount,
+        accounts,
+      }),
+    [type, showPaymentSplit, componentLines, accountId, amount, accounts]
+  )
 
   const cashDateContext = useMemo(() => {
     if (type !== 'income' && type !== 'expense') return null
@@ -360,160 +361,39 @@ export function MovementForm({
     }
   }
 
-  function resolvePrimaryAccountId(
-    rows: MovementComponentRow[],
-    fallbackAccountId: string
-  ): string {
-    const operative = rows.find(
-      (c) =>
-        (c.componentType === 'operative_cash' || c.componentType === 'operative_bank') &&
-        c.accountId
-    )
-    return operative?.accountId ?? fallbackAccountId
-  }
-
-  const buildMovementComponents = (): MovementComponentRow[] => {
-    const total = moneyInputToNumber(amount)
-    const rows: MovementComponentRow[] = []
-    for (const line of effectiveComponentLines) {
-      const amt = moneyInputToNumber(line.amount)
-      if (!line.amount.trim() || Number.isNaN(amt) || amt <= 0) continue
-
-      const isOperative =
-        line.componentType === 'operative_cash' || line.componentType === 'operative_bank'
-
-      if (isOperative && !line.accountId) continue
-      if (!isOperative && !line.contactId) continue
-
-      rows.push({
-        componentType: line.componentType,
-        accountId: isOperative ? line.accountId : undefined,
-        contactId: !isOperative ? line.contactId : undefined,
-        amount: amt,
-        currency,
-      })
-    }
-    const sum = rows.reduce((a, r) => a + r.amount, 0)
-    if (rows.length === 0 || Math.round(sum * 100) !== Math.round(total * 100)) {
-      return []
-    }
-    return rows
-  }
-
   const handleSubmit = (asDraft: boolean) => {
-    const parsedAmount = moneyInputToNumber(amount)
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Indica un monto mayor a cero')
-      return
-    }
-
-    if (type === 'income' || type === 'expense') {
-      if (!showPaymentSplit && !accountId) {
-        toast.error('Elige la cuenta')
-        return
-      }
-      if (isSaleOrPurchaseKind(operationKind) && !categoryId) {
-        toast.error('Elige una categoría')
-        return
-      }
-      if (isCollectionOrPaymentKind(operationKind) && !contactId) {
-        toast.error('Elige el contacto para cobros y pagos')
-        return
-      }
-
-      if (cashDateContext && !cashDateContext.isAllowed) {
-        toast.error(CASH_DATE_GENERAL_ERROR_MESSAGE)
-        return
-      }
-    }
-
-    const categoryName = categories.find((c) => c.id === categoryId)?.name
-    const contactName = contacts.find((c) => c.id === contactId)?.name
-    const finalDescription = resolveMovementDescription({
-      type,
-      operationKind,
-      description,
-      categoryName,
-      contactName,
-    })
-
-    if (type !== 'transfer' && finalDescription.trim().length < 3) {
-      toast.error('Escribe una nota de al menos 3 caracteres o elige una categoría')
-      return
-    }
-
-    let movementComponents: MovementComponentRow[] | undefined
-    let resolvedAccountId = accountId
-    if (type === 'income' || type === 'expense') {
-      const built = buildMovementComponents()
-      if (!built.length) {
-        if (showPaymentSplit) {
-          const missingAccount = componentLines.some(
-            (l) =>
-              (l.componentType === 'operative_cash' || l.componentType === 'operative_bank') &&
-              !l.accountId
-          )
-          const missingContact = componentLines.some(
-            (l) =>
-              (l.componentType === 'client_receivable' ||
-                l.componentType === 'supplier_payable') &&
-              !l.contactId
-          )
-          if (missingAccount) {
-            toast.error('En cada línea de efectivo o banco, elige la cuenta')
-            return
-          }
-          if (missingContact) {
-            toast.error('En cada línea de cuenta corriente, elige el contacto')
-            return
-          }
-          toast.error('La suma de las líneas debe coincidir con el monto total')
-        } else {
-          toast.error('Indica un monto y una cuenta válidos')
-        }
-        return
-      }
-      movementComponents = built
-      resolvedAccountId = resolvePrimaryAccountId(built, accountId)
-      if (!resolvedAccountId) {
-        toast.error('Indicá al menos una línea con cuenta de efectivo o banco')
-        return
-      }
-    }
-
-    const data: CreateMovementInput = {
+    const result = validateAndBuildMovementPayload({
       type,
       operationKind,
       movementScope,
-      date: new Date(date),
-      amount: parsedAmount,
+      date,
+      amount,
       currency,
-      description: finalDescription,
+      description,
       method,
-      ...(type === 'income' || type === 'expense'
-        ? {
-            accountId: resolvedAccountId,
-            categoryId: isSaleOrPurchaseKind(operationKind) ? categoryId || undefined : undefined,
-            contactId: isCollectionOrPaymentKind(operationKind) ? contactId : undefined,
-            contactType: isCollectionOrPaymentKind(operationKind)
-              ? operationKind === 'collection'
-                ? 'cliente'
-                : 'proveedor'
-              : undefined,
-            movementComponents,
-          }
-        : {}),
-      ...(type === 'transfer'
-        ? { sourceAccountId, destinationAccountId }
-        : {}),
-      ...(type === 'adjustment'
-        ? { accountId, adjustmentReason: adjustmentReason as AdjustmentReason }
-        : {}),
+      accountId,
+      categoryId,
+      contactId,
+      sourceAccountId,
+      destinationAccountId,
+      adjustmentReason,
       fundOwner,
-      projectId: movementScope === 'project' ? projectId || undefined : undefined,
+      projectId,
+      showPaymentSplit,
+      componentLines,
+      effectiveComponentLines,
+      accounts,
+      categories,
+      contacts,
+      cashDateContext,
+    })
+
+    if (!result.ok) {
+      toast.error(result.message)
+      return
     }
 
-    onSubmit(data, asDraft)
+    onSubmit(result.data, asDraft)
     if (!isEditing) {
       resetForm(
         fixedOperationKind
@@ -617,7 +497,9 @@ export function MovementForm({
         return
       }
       setContacts((prev) => [...prev, res.data!].sort((a, b) => a.name.localeCompare(b.name)))
-      if (quickContactLineId) {
+      if (quickContactLineId === GUIDED_MAIN_CONTACT_LINE_ID) {
+        setContactId(res.data!.id)
+      } else if (quickContactLineId) {
         setComponentLines((prev) =>
           prev.map((l) => (l.localId === quickContactLineId ? { ...l, contactId: res.data!.id } : l))
         )

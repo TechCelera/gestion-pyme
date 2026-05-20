@@ -1,24 +1,26 @@
 import { cn } from '@/lib/utils'
 import type { OperationCreateButtonVariant } from '@/lib/movements/movement-config'
 
-const OPERATION_BUTTON_BASE = 'h-10 w-full px-2 sm:px-3'
+/** Botones de alta rápida en fila: reparten el ancho disponible. */
+export const OPERATION_CREATE_ROW_BUTTON_CLASS =
+  'h-10 min-w-0 flex-1 px-1.5 sm:px-2'
 
 export function operationCreateButtonClassName(variant: OperationCreateButtonVariant): string {
   switch (variant) {
     case 'income-primary':
-      return cn(OPERATION_BUTTON_BASE, 'bg-green-600 hover:bg-green-600/90')
+      return cn(OPERATION_CREATE_ROW_BUTTON_CLASS, 'bg-green-600 hover:bg-green-600/90')
     case 'income-outline':
       return cn(
-        OPERATION_BUTTON_BASE,
+        OPERATION_CREATE_ROW_BUTTON_CLASS,
         'border-green-200 text-green-800 hover:bg-green-50 dark:border-green-900 dark:text-green-300'
       )
     case 'expense-outline':
       return cn(
-        OPERATION_BUTTON_BASE,
+        OPERATION_CREATE_ROW_BUTTON_CLASS,
         'border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40'
       )
     default:
-      return OPERATION_BUTTON_BASE
+      return OPERATION_CREATE_ROW_BUTTON_CLASS
   }
 }
 
