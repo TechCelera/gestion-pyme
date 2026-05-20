@@ -50,6 +50,21 @@ No duplicar constantes tipo `MOVEMENT_FORM_*_CLASS` por feature; extender `form-
 - **IDs estables** (E2E / accesibilidad): `MOVEMENT_GUIDED_FIELD_IDS` en `movement-form.types.ts`.
 - **Select con alta rápida**: `FormCreatableSelect` (`emptySetupLink` hacia `/cuentas` o `/categorias` cuando la lista está vacía).
 
+### Calidad y tests del formulario de movimientos
+
+Antes de cerrar cambios en el flujo de alta/edición de movimientos:
+
+1. **Lógica de submit** (`movement-form-submit.ts`): tests en `src/components/movements/__tests__/movement-form-submit.test.ts` (fixture en `movement-form-submit.fixture.ts`). Cubrir venta/cobro/compra/pago, montos inválidos, contacto/categoría obligatorios según `operation_kind`, descripción autogenerada, desglose que cuadre, fecha efectivo.
+2. **Store** (`movement-store.ts`): tests de `addMovement` con `asDraft` true/false, `finalizeMovementSubmission`, y fallo sin `id` en `src/stores/__tests__/movement-store.test.ts`.
+3. **Footer / diálogo contacto**: `movement-form-footer.test.tsx`, `movement-quick-contact-dialog.test.tsx`.
+4. **Dominio compartido**: `src/lib/movements/__tests__/` (form-defaults, operation-kind, cash-date, persistence) y `src/lib/validations/__tests__/movement.test.ts`.
+5. **Server actions**: `src/lib/actions/__tests__/movements.test.ts` (create + finalize + status).
+6. **E2E** (con credenciales): `e2e/authenticated/operaciones-flows.spec.ts` — borrador y envío a aprobación por tipo guiado; helpers en `e2e/helpers/operaciones.ts` (`submitMovementDraft`, `submitMovementToApproval`).
+
+Regla: no mover validación de negocio solo a la UI; debe existir test en submit o Zod que falle si se regresa el requisito.
+
+**Detalle del movimiento** (`movement-detail-sheet.tsx`): reglas en `src/lib/movements/movement-detail-display.ts` (tests en `movement-detail-display.test.ts`). El RPC `get_transaction_by_id` / `get_transactions` deben traer `contact_name` vía join a `contacts` (migración `20260523140000_rpc_contact_name_join.sql`). Si falla el detalle ampliado, mostrar datos del listado + aviso; no pantalla solo de error.
+
 ## Persona: Costeño Colombiano
 
 Eres un asistente de programación que habla como costeño colombiano. Características de tu forma de hablar:
@@ -81,7 +96,7 @@ Eso ejecuta **eslint**, **TypeScript** (`tsc --noEmit`), **tests unitarios** (Vi
 Antes de un piloto con cliente: `pnpm run verify:trial` (verify + E2E si hay secrets + recordatorio `sb:push`).
 
 - Flujos críticos de UI: `pnpm run test:e2e` (con `pnpm run dev` en otra terminal) o `pnpm run verify:all` en CI.
-- Migraciones Supabase: CLI **del sistema** en PATH (`supabase --version`), no el paquete npm (segfault en algunos Linux). Flujo: `pnpm sb:push:dry` → `pnpm sb:push` (o `--yes`).
+- Migraciones Supabase: CLI **del sistema** en PATH (`supabase --version`), no el paquete npm (segfault en algunos Linux). Releases ≥2.100: extraer el `.tar.gz` completo en un directorio del PATH (p. ej. `~/.local/share/supabase`) — el shim `supabase` requiere `supabase-go` en el mismo directorio. Flujo: `pnpm sb:push:dry` → `pnpm sb:push`. Los timestamps de migraciones nuevas deben ser **posteriores** a la última aplicada en remoto (si no, `db push --include-all`).
 - En desarrollo no hay datos que preservar: migraciones de reset pueden vaciar movimientos/cuentas/categorías; el mínimo operativo (Caja, banco, categorías típicas) se repone con `seedCompanyDefaults` al entrar al dashboard y con migraciones idempotentes de backfill.
 - No desactivar `typecheck` ni subir código con errores de tipos “a mano”: el build puede omitir TS, pero `verify` no.
 - Tests nuevos para lógica de dominio (validaciones Zod, rollups, server actions mockeadas), no solo para componentes visuales.

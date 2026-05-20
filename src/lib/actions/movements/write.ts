@@ -110,10 +110,11 @@ export async function createMovement(
       }
     }
 
+    const transactionId = typeof data === 'string' ? data : String(data)
+
     if (validated.type === 'income' || validated.type === 'expense') {
-      const tid = typeof data === 'string' ? data : String(data)
       const { error: compError } = await supabase.rpc('set_operation_components', {
-        p_transaction_id: tid,
+        p_transaction_id: transactionId,
         p_components: mapMovementComponentsToRpcJson(
           validated.movementComponents ?? [],
           validated.currency ?? 'ARS'
@@ -150,19 +151,44 @@ export async function createMovement(
         fund_owner,
         requires_budget_approval
       `)
-      .eq('id', data)
+      .eq('id', transactionId)
       .single()
 
     if (fetchError || !createdRow) {
       console.error('Error fetching created movimiento:', fetchError)
-      return { success: true }
+      return {
+        success: true,
+        data: mapMovement({
+          id: transactionId,
+          account_id: accountId,
+          accounts: { name: '' },
+          category_id: persistence?.categoryId ?? validated.categoryId ?? null,
+          categories: null,
+          type: validated.type,
+          operation_kind: persistence?.operationKind ?? null,
+          status: 'draft',
+          method: validated.method,
+          contact_id: persistence?.contactId ?? validated.contactId ?? null,
+          amount: validated.amount,
+          currency: validated.currency,
+          date: validated.date.toISOString().split('T')[0],
+          description: validated.description,
+          created_at: new Date().toISOString(),
+          created_by: userId,
+          users: { full_name: null },
+          project_id: validated.projectId ?? null,
+          projects: null,
+          fund_owner: validated.fundOwner ?? 'company',
+          requires_budget_approval: requiresBudgetApproval,
+        }),
+      }
     }
 
     const mapped = mapMovement(createdRow)
 
-    return { 
-      success: true, 
-      data: mapped 
+    return {
+      success: true,
+      data: mapped,
     }
   } catch (error) {
     return { success: false, error: errorMessageForUser(error, 'Error al crear el movimiento') }

@@ -20,6 +20,12 @@ const baseProps = {
 }
 
 describe('MovementFormFooter', () => {
+  it('uses primarySubmitLabel when provided', () => {
+    render(<MovementFormFooter {...baseProps} primarySubmitLabel="Registrar cobro" />)
+
+    expect(screen.getByRole('button', { name: 'Registrar cobro' })).toBeInTheDocument()
+  })
+
   it('shows Enviar a aprobación and Borrador when creating', () => {
     render(<MovementFormFooter {...baseProps} />)
 

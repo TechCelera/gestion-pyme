@@ -16,6 +16,7 @@ import {
   requireOperationalAccounts,
   saveQuickContactDialog,
   submitMovementDraft,
+  submitMovementToApproval,
   uniqueE2eLabel,
   waitGuidedFormReady,
 } from '../helpers/operaciones'
@@ -80,6 +81,24 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
     await assertGuidedIncomeExpenseReady(page, { contactName })
 
     await submitMovementDraft(page)
+  })
+
+  test('cobro: envía a aprobación (pendiente) con cliente y cuenta', async ({ page }) => {
+    await requireOperationalAccounts(page)
+    const contactName = uniqueE2eLabel('E2E Cliente Pending')
+
+    await openGuidedOperation(page, 'Cobro')
+    await waitGuidedFormReady(page)
+    await openQuickContactFromGuided(page)
+    await saveQuickContactDialog(page, contactName)
+    await ensureGuidedContactSelected(page, contactName)
+    await ensureSingleAccountMode(page)
+
+    await fillGuidedAmount(page, '3300')
+    await pickGuidedBankAccount(page)
+    await assertGuidedIncomeExpenseReady(page, { contactName })
+
+    await submitMovementToApproval(page)
   })
 
   test('pago: crea proveedor inline y guarda borrador', async ({ page }) => {

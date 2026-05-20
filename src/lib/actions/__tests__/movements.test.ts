@@ -575,6 +575,68 @@ describe('createMovement con movementComponents', () => {
     )
   })
 
+  it('devuelve id aunque falle el fetch posterior (para enviar a aprobación)', async () => {
+    const txId = '44444444-4444-4444-8444-444444444444'
+    const accountId = '550e8400-e29b-41d4-a716-446655440001'
+    const contactId = '550e8400-e29b-41d4-a716-446655440003'
+
+    const mockRpc = vi.fn((name: string) => {
+      if (name === 'create_transaction') {
+        return Promise.resolve({ data: txId, error: null })
+      }
+      if (name === 'set_operation_components') {
+        return Promise.resolve({ data: null, error: null })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'transactions') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: null, error: { message: 'fetch failed' } }),
+            }),
+          }),
+        }
+      }
+      return { select: vi.fn() }
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: TEST_AUTH.userId } },
+          error: null,
+        }),
+      },
+      from: mockFrom,
+      rpc: mockRpc,
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await createMovement({
+      type: 'income',
+      operationKind: 'collection',
+      movementScope: 'general',
+      date: new Date('2026-05-10'),
+      amount: 500,
+      currency: 'ARS',
+      description: 'Cobro test',
+      method: 'cash',
+      accountId,
+      contactId,
+      movementComponents: [
+        { componentType: 'operative_bank', accountId, amount: 500 },
+      ],
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data?.id).toBe(txId)
+      expect(result.data?.status).toBe('draft')
+    }
+  })
+
   it('transferencia: descripción vacía llega al RPC como texto por defecto', async () => {
     const companyId = 'company-123'
     const txId = '33333333-3333-4333-8333-333333333333'

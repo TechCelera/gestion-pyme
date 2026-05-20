@@ -17,10 +17,7 @@ export interface MovementQuickContactDialogProps {
   onOpenChange: (open: boolean) => void
   name: string
   onNameChange: (value: string) => void
-  clientSegment: string
-  onClientSegmentChange: (value: string) => void
-  services: string
-  onServicesChange: (value: string) => void
+  contactKindLabel: 'cliente' | 'proveedor' | 'contacto'
   saving: boolean
   onSave: () => void
 }
@@ -30,10 +27,7 @@ export function MovementQuickContactDialog({
   onOpenChange,
   name,
   onNameChange,
-  clientSegment,
-  onClientSegmentChange,
-  services,
-  onServicesChange,
+  contactKindLabel,
   saving,
   onSave,
 }: MovementQuickContactDialogProps) {
@@ -41,34 +35,20 @@ export function MovementQuickContactDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Nuevo contacto</DialogTitle>
+          <DialogTitle>Nuevo {contactKindLabel}</DialogTitle>
           <DialogDescription>
-            Queda en tu empresa y seleccionado en esta línea. El tipo cliente/proveedor sigue el movimiento.
+            Solo necesitamos el nombre. Queda guardado en tu empresa y seleccionado en este movimiento.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 py-2">
+        <div className="py-2">
           <div className="space-y-1">
-            <Label>Nombre</Label>
+            <Label htmlFor="quick-contact-name">Nombre</Label>
             <Input
+              id="quick-contact-name"
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
               placeholder="Nombre o razón social"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Segmento (opcional)</Label>
-            <Input
-              value={clientSegment}
-              onChange={(e) => onClientSegmentChange(e.target.value)}
-              placeholder="ej. particular, corporativo"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Servicios asociados (opcional)</Label>
-            <Input
-              value={services}
-              onChange={(e) => onServicesChange(e.target.value)}
-              placeholder="Texto libre"
+              autoFocus
             />
           </div>
         </div>
@@ -79,10 +59,10 @@ export function MovementQuickContactDialog({
           <Button
             type="button"
             onClick={onSave}
-            disabled={saving}
+            disabled={saving || !name.trim()}
             className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
           >
-            {saving ? 'Guardando...' : 'Crear contacto'}
+            {saving ? 'Guardando...' : `Crear ${contactKindLabel}`}
           </Button>
         </DialogFooter>
       </DialogContent>

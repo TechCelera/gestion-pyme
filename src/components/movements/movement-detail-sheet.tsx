@@ -31,6 +31,14 @@ import {
 } from '@/components/movements/movement-form.types'
 import type { MovementComponentType } from '@/lib/validations/movement'
 import { formatCurrency } from '@/lib/format/currency'
+import {
+  categoryDetailValue,
+  contactFieldLabel,
+  operationKindDetailLabel,
+  resolveDisplayedContactName,
+  shouldShowCategoryInDetail,
+  shouldShowContactInDetail,
+} from '@/lib/movements/movement-detail-display'
 
 const FUND_OWNER_LABELS: Record<string, string> = {
   company: 'Empresa',
@@ -68,15 +76,20 @@ function formatDateTime(value: string | null | undefined) {
 function DetailRow({
   label,
   children,
+  alwaysShow = false,
+  emptyLabel = '—',
 }: {
   label: string
   children: React.ReactNode
+  alwaysShow?: boolean
+  emptyLabel?: string
 }) {
-  if (children == null || children === '') return null
+  const isEmpty = children == null || children === ''
+  if (!alwaysShow && isEmpty) return null
   return (
     <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-[minmax(0,9rem)_1fr] sm:gap-3 text-sm">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-words">{children}</dd>
+      <dd className="min-w-0 break-words">{isEmpty ? emptyLabel : children}</dd>
     </div>
   )
 }
@@ -198,6 +211,14 @@ export function MovementDetailSheet({
   }, [open, movement])
 
   const display = detail ?? movement
+  const partialDetailLoad = Boolean(error && movement && !detail)
+  const operationKind = display?.operationKind ?? null
+  const contactId = detail?.contactId ?? display?.contactId ?? null
+  const displayedContactName = resolveDisplayedContactName({
+    contactId,
+    contactName: detail?.contactName,
+    contacts,
+  })
   const isCreator = currentUserId && display?.createdBy === currentUserId
   const canCorrectRejected =
     display?.status === 'rejected' &&
@@ -207,8 +228,10 @@ export function MovementDetailSheet({
   const resolveAccountName = (accountId?: string) =>
     accountId ? accounts.find((a) => a.id === accountId)?.name ?? accountId : null
 
-  const resolveContactName = (contactId?: string) =>
-    contactId ? contacts.find((c) => c.id === contactId)?.name ?? contactId : null
+  const resolveContactName = (lineContactId?: string) =>
+    lineContactId
+      ? contacts.find((c) => c.id === lineContactId)?.name ?? lineContactId
+      : null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -235,23 +258,50 @@ export function MovementDetailSheet({
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Cargando detalle...
             </div>
-          ) : error ? (
+          ) : !display && error ? (
             <p className="text-sm text-destructive">{error}</p>
           ) : display ? (
             <div className="space-y-5">
+              {partialDetailLoad || error ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                  {partialDetailLoad
+                    ? 'No se cargó el detalle completo. Mostramos los datos del listado.'
+                    : error}
+                </p>
+              ) : null}
               <DetailSection title="General">
-                <DetailRow label="Fecha">{formatDate(display.date)}</DetailRow>
-                <DetailRow label="Descripción">{display.description}</DetailRow>
-                <DetailRow label="Método">
+                <DetailRow label="Fecha" alwaysShow>
+                  {formatDate(display.date)}
+                </DetailRow>
+                {operationKindDetailLabel(operationKind) ? (
+                  <DetailRow label="Tipo de operación" alwaysShow>
+                    {operationKindDetailLabel(operationKind)}
+                  </DetailRow>
+                ) : null}
+                <DetailRow label="Descripción" alwaysShow>
+                  {display.description}
+                </DetailRow>
+                <DetailRow label="Método" alwaysShow>
                   {MOVEMENT_METHODS_LABELS[display.method] ?? display.method}
                 </DetailRow>
-                <DetailRow label="Moneda">{display.currency}</DetailRow>
+                <DetailRow label="Moneda" alwaysShow>
+                  {display.currency}
+                </DetailRow>
                 {display.type === 'income' || display.type === 'expense' ? (
                   <>
-                    <DetailRow label="Cuenta">{display.accountName}</DetailRow>
-                    <DetailRow label="Categoría">
-                      {display.categoryName ?? '—'}
+                    <DetailRow label="Cuenta" alwaysShow>
+                      {display.accountName}
                     </DetailRow>
+                    {shouldShowContactInDetail(operationKind, contactId) ? (
+                      <DetailRow label={contactFieldLabel(operationKind)} alwaysShow>
+                        {displayedContactName ?? '—'}
+                      </DetailRow>
+                    ) : null}
+                    {shouldShowCategoryInDetail(operationKind) ? (
+                      <DetailRow label="Categoría" alwaysShow>
+                        {categoryDetailValue(operationKind, display.categoryName)}
+                      </DetailRow>
+                    ) : null}
                   </>
                 ) : null}
                 {display.type === 'transfer' ? (
@@ -317,36 +367,41 @@ export function MovementDetailSheet({
                 </DetailSection>
               )}
 
-              {(display.type === 'income' || display.type === 'expense') &&
-              components &&
-              components.length > 0 ? (
+              {display.type === 'income' || display.type === 'expense' ? (
                 <DetailSection title="Medios de cobro / pago">
-                  <ul className="space-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
-                    {components.map((line, idx) => (
-                      <li
-                        key={line.id ?? idx}
-                        className="flex flex-wrap items-baseline justify-between gap-2"
-                      >
-                        <span>
-                          {componentTypeLabel(line.componentType, display.type)}
-                          {line.componentType === 'operative_cash' ||
-                          line.componentType === 'operative_bank'
-                            ? ` · ${resolveAccountName(line.accountId) ?? ''}`
-                            : null}
-                          {line.componentType === 'client_receivable' ||
-                          line.componentType === 'supplier_payable'
-                            ? ` · ${resolveContactName(line.contactId) ?? ''}`
-                            : null}
-                        </span>
-                        <span className="font-medium tabular-nums">
-                          {formatCurrency(
-                            line.amount,
-                            line.currency ?? display.currency
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  {components.length > 0 ? (
+                    <ul className="space-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
+                      {components.map((line, idx) => (
+                        <li
+                          key={line.id ?? idx}
+                          className="flex flex-wrap items-baseline justify-between gap-2"
+                        >
+                          <span>
+                            {componentTypeLabel(line.componentType, display.type)}
+                            {line.componentType === 'operative_cash' ||
+                            line.componentType === 'operative_bank'
+                              ? ` · ${resolveAccountName(line.accountId) ?? ''}`
+                              : null}
+                            {line.componentType === 'client_receivable' ||
+                            line.componentType === 'supplier_payable'
+                              ? ` · ${resolveContactName(line.contactId) ?? ''}`
+                              : null}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {formatCurrency(
+                              line.amount,
+                              line.currency ?? display.currency
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground rounded-lg border border-dashed bg-muted/20 px-3 py-2">
+                      Medio único: {display.accountName || '—'} ·{' '}
+                      {formatCurrency(display.amount, display.currency)}
+                    </p>
+                  )}
                 </DetailSection>
               ) : null}
 

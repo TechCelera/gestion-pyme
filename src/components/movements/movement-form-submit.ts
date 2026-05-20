@@ -148,9 +148,14 @@ export function validateAndBuildMovementPayload(
   })
 
   if (input.type !== 'transfer' && finalDescription.trim().length < 3) {
+    const fallbackHint = isCollectionOrPaymentKind(input.operationKind)
+      ? 'elige un contacto'
+      : isSaleOrPurchaseKind(input.operationKind)
+        ? 'elige una categoría'
+        : 'elige una categoría o escribe una nota'
     return {
       ok: false,
-      message: 'Escribe una nota de al menos 3 caracteres o elige una categoría',
+      message: `Escribe una nota de al menos 3 caracteres o ${fallbackHint}`,
     }
   }
 

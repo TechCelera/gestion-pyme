@@ -209,7 +209,8 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
     if (success) {
       toast.success('Movimiento enviado a aprobación')
     } else {
-      toast.error('Error al enviar el movimiento a aprobación')
+      const msg = useMovementStore.getState().error
+      toast.error(msg ?? 'Error al enviar el movimiento a aprobación')
     }
   }
 

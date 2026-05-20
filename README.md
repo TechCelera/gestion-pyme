@@ -73,7 +73,9 @@ Copiá `.env.example` → `.env.local` y completá Supabase. Para E2E autenticad
 
 **CI (GitHub):** secrets `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`. Sin ellos, CI sigue pasando con specs públicos.
 
-**Migraciones:** `pnpm sb:push:dry` → `pnpm sb:push`. Roles canónicos: `20260518140000_canonical_user_roles_rls.sql` (ver `docs/DECISIONES.md` §20–22).
+**Migraciones:** `pnpm sb:push:dry` → `pnpm sb:push`. Roles canónicos: `20260518140000_canonical_user_roles_rls.sql` (ver `docs/DECISIONES.md` §20–22). Pendiente en remoto si aplica: `20260523140000_rpc_contact_name_join.sql` (nombre de contacto en listado/detalle).
+
+**Supabase CLI (Linux):** binario del sistema en PATH, no `npm i -g supabase`. En releases recientes hace falta el par `supabase` + `supabase-go` del mismo `.tar.gz` (p. ej. extraer en `~/.local/share/supabase` y `export PATH="$HOME/.local/share/supabase:$PATH"`). En CachyOS/Arch, `supabase-bin` del AUR a veces falla checksums; usar tarball oficial.
 
 ## Scripts
 

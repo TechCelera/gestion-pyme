@@ -122,8 +122,18 @@ export const useMovementStore = create<MovementStoreState>()(
           const result = await createMovement(data)
 
           if (result.success) {
-            if (!asDraft && result.data?.id) {
-              const fin = await finalizeMovementSubmission(result.data.id)
+            if (!asDraft) {
+              const movementId = result.data?.id
+              if (!movementId) {
+                set({
+                  error:
+                    'Movimiento creado, pero no se pudo enviar a aprobación. Revisa la tabla y envíalo de nuevo.',
+                  isLoading: false,
+                })
+                return false
+              }
+
+              const fin = await finalizeMovementSubmission(movementId)
 
               if (!fin.success) {
                 const stuckPending = fin.data?.status === 'pending'

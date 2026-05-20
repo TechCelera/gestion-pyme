@@ -110,8 +110,6 @@ export function MovementForm({
   const [quickContactOpen, setQuickContactOpen] = useState(false)
   const [quickContactLineId, setQuickContactLineId] = useState<string | null>(null)
   const [quickContactName, setQuickContactName] = useState('')
-  const [quickClientSegment, setQuickClientSegment] = useState('')
-  const [quickServices, setQuickServices] = useState('')
   const [quickSaving, setQuickSaving] = useState(false)
 
   const isEditing = !!movement
@@ -473,8 +471,6 @@ export function MovementForm({
   function openQuickContact(lineLocalId: string) {
     setQuickContactLineId(lineLocalId)
     setQuickContactName('')
-    setQuickClientSegment('')
-    setQuickServices('')
     setQuickContactOpen(true)
   }
 
@@ -489,8 +485,6 @@ export function MovementForm({
       const res = await createContact({
         name: trimmed,
         kind: defaultQuickContactKind(),
-        clientSegment: quickClientSegment.trim() || null,
-        associatedServices: quickServices.trim() || null,
       })
       if (!res.success || !res.data) {
         toast.error(res.error ?? 'No se pudo crear el contacto')
@@ -711,6 +705,7 @@ export function MovementForm({
           categoryId={categoryId}
           contactId={contactId}
           sumMatchesComponents={sumMatchesComponents}
+          primarySubmitLabel={formCopy?.submitLabel}
           onClose={handleClose}
           onSubmit={handleSubmit}
         />
@@ -722,10 +717,9 @@ export function MovementForm({
       onOpenChange={setQuickContactOpen}
       name={quickContactName}
       onNameChange={setQuickContactName}
-      clientSegment={quickClientSegment}
-      onClientSegmentChange={setQuickClientSegment}
-      services={quickServices}
-      onServicesChange={setQuickServices}
+      contactKindLabel={
+        type === 'income' ? 'cliente' : type === 'expense' ? 'proveedor' : 'contacto'
+      }
       saving={quickSaving}
       onSave={() => void saveQuickContact()}
     />

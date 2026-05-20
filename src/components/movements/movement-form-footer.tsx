@@ -27,6 +27,8 @@ export interface MovementFormFooterProps {
   categoryId: string
   contactId: string
   sumMatchesComponents: boolean
+  /** Cobro/pago guiado: "Registrar cobro", etc. Si no hay, "Enviar a aprobación". */
+  primarySubmitLabel?: string
   onClose: () => void
   onSubmit: (asDraft: boolean) => void
 }
@@ -43,6 +45,7 @@ export function MovementFormFooter({
   categoryId,
   contactId,
   sumMatchesComponents,
+  primarySubmitLabel,
   onClose,
   onSubmit,
 }: MovementFormFooterProps) {
@@ -66,7 +69,7 @@ export function MovementFormFooter({
       ? 'Corregir y reenviar'
       : isEditing
         ? 'Guardar cambios'
-        : 'Enviar a aprobación'
+        : (primarySubmitLabel ?? 'Enviar a aprobación')
 
   const showDraft = !isEditing && !isRejectedCorrection
 

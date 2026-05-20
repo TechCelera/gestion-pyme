@@ -134,13 +134,13 @@ export async function openQuickContactFromGuided(page: Page): Promise<void> {
     .or(sheet.getByRole('button', { name: /crear proveedor/i }))
   await expect(createBtn.first()).toBeVisible({ timeout: 10_000 })
   await createBtn.first().click()
-  await expect(page.getByRole('dialog', { name: /nuevo contacto/i })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: /nuevo (cliente|proveedor|contacto)/i })).toBeVisible()
 }
 
 export async function saveQuickContactDialog(page: Page, name: string): Promise<void> {
-  const dialog = page.getByRole('dialog', { name: /nuevo contacto/i })
+  const dialog = page.getByRole('dialog', { name: /nuevo (cliente|proveedor|contacto)/i })
   await dialog.getByPlaceholder(/nombre o razón social/i).fill(name)
-  await dialog.getByRole('button', { name: /crear contacto/i }).click()
+  await dialog.getByRole('button', { name: /crear (cliente|proveedor|contacto)/i }).click()
   await expect(dialog).toBeHidden({ timeout: 15_000 })
 }
 
@@ -179,8 +179,13 @@ export async function assertGuidedIncomeExpenseReady(
   const digits = (await sheet.locator('#amount-guided').inputValue()).replace(/\D/g, '')
   expect(digits.length).toBeGreaterThan(0)
 
-  await expect(sheet.getByRole('button', { name: /enviar a aprobación/i })).toBeEnabled({
-    timeout: 10_000,
+  await expect(guidedPrimarySubmitButton(sheet)).toBeEnabled({ timeout: 10_000 })
+}
+
+/** Botón principal del formulario guiado (enviar o registrar cobro/pago/venta/compra). */
+export function guidedPrimarySubmitButton(sheet: ReturnType<typeof movementSheet>) {
+  return sheet.getByRole('button', {
+    name: /^(enviar a aprobación|registrar (cobro|pago|venta|compra))$/i,
   })
 }
 
@@ -214,6 +219,57 @@ export async function submitMovementDraft(page: Page): Promise<void> {
   if (!outcome.res.ok()) {
     const body = await outcome.res.text()
     throw new Error(`RPC falló (${outcome.res.status()}): ${body.slice(0, 500)}`)
+  }
+
+  await expect(sheet).toBeHidden({ timeout: 20_000 })
+}
+
+/** Crea el movimiento y lo envía a pendiente (no borrador). */
+export async function submitMovementToApproval(page: Page): Promise<void> {
+  const sheet = movementSheet(page)
+  const primaryBtn = guidedPrimarySubmitButton(sheet)
+  await expect(primaryBtn).toBeEnabled({ timeout: 10_000 })
+
+  const createRpc = page.waitForResponse(
+    (res) =>
+      res.request().method() === 'POST' &&
+      res.url().includes('/rest/v1/rpc/') &&
+      (res.url().includes('create_transaction') || res.url().includes('set_operation_components')),
+    { timeout: 60_000 }
+  )
+
+  const statusRpc = page
+    .waitForResponse(
+      (res) =>
+        res.request().method() === 'POST' &&
+        res.url().includes('/rest/v1/rpc/update_transaction_status'),
+      { timeout: 60_000 }
+    )
+    .catch(() => null)
+
+  await primaryBtn.click()
+
+  const validationToast = page.locator('[data-sonner-toast]').first()
+  const outcome = await Promise.race([
+    createRpc.then((res) => ({ kind: 'rpc' as const, res })),
+    validationToast
+      .waitFor({ state: 'visible', timeout: 8_000 })
+      .then(async () => ({ kind: 'toast' as const, text: await validationToast.textContent() })),
+  ])
+
+  if (outcome.kind === 'toast') {
+    throw new Error(`Validación en cliente: ${outcome.text?.trim() ?? 'toast sin texto'}`)
+  }
+
+  if (!outcome.res.ok()) {
+    const body = await outcome.res.text()
+    throw new Error(`RPC create falló (${outcome.res.status()}): ${body.slice(0, 500)}`)
+  }
+
+  const statusRes = await statusRpc
+  if (statusRes && !statusRes.ok()) {
+    const body = await statusRes.text()
+    throw new Error(`RPC status falló (${statusRes.status()}): ${body.slice(0, 500)}`)
   }
 
   await expect(sheet).toBeHidden({ timeout: 20_000 })

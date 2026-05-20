@@ -5,7 +5,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## Estado
 
 - Activo
-- Ultima actualizacion: 2026-05-17
+- Ultima actualizacion: 2026-05-20 (detalle movimientos, RPC contact_name, tests formulario)
 
 ## 1) Caja unica por empresa
 
@@ -299,10 +299,17 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 - La factura oficial es **opcional** (operativa mayoritaria sin factura formal).
 - Debe existir opcion de marcar factura oficial y **adjuntar PDF** cuando el usuario la tenga.
 
-**Contactos**
-- Permitir **crear cliente/proveedor inline** desde el formulario de movimiento sin abandonar el flujo.
-- En ficha de contacto: **tipo de cliente** (al menos: cliente final particular / cliente corporativo; extensible).
-- En ficha de contacto: **servicios asociados** (texto libre o lista; ejemplos de negocio: honorarios por diseno, direccion de obra, ejecucion, administracion financiera del presupuesto).
+**Contactos — obligatorio vs opcional (sin fricción en el flujo)**
+
+| Momento | Obligatorio | Opcional (no pedir en alta rápida) |
+|---------|-------------|-------------------------------------|
+| **Alta rápida** desde cobro/pago (diálogo inline) | Solo **nombre**; `kind` se infiere del movimiento (cliente / proveedor). | Segmento, servicios, CUIT, notas, email, teléfono. |
+| **Registrar cobro/pago** | **Quién** (contacto elegido o recién creado), **monto**, **fecha**, **cuenta** (caja/banco), desglose que cuadre con el monto. | Nota del movimiento (si falta, la app arma `Cobro: {nombre}` / `Pago: {nombre}`); categoría P&L; proyecto/anticipo; factura PDF. |
+| **Ficha de contacto** (pantalla dedicada — pendiente) | Nombre. | Segmento (`client_segment`), servicios asociados, CUIT (`tax_id`), notas; útiles para reportes y CRM, no para cerrar un cobro. |
+
+- Permitir **crear cliente/proveedor inline** desde el formulario de movimiento sin abandonar el flujo (**solo nombre**).
+- Segmento y servicios asociados viven en la **ficha** del contacto cuando exista listado/edición; no en el diálogo de alta rápida.
+- En BD los campos `client_segment` y `associated_services` siguen disponibles; el servidor los acepta como `null` si no se envían.
 
 **Terminologia de producto (pantalla)**
 - Estado `cancelled` en codigo/BD se muestra como **Anulado** (accion: anular movimiento aprobado; motivo en detalle). No usar "Cancelado" en badges para evitar confusion con cancelar un dialogo o un cobro del mundo real.
@@ -315,7 +322,9 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ### Implementacion (parcial — 2026-05)
 - Navegacion: sidebar con bloque **Flujo de caja** (Ventas y cobros, Compras y pagos, Todos los movimientos con filtro `?flujo=`); contador de pendientes en sidebar y badge en bottom nav.
 - Reglas de rol: `finalizeMovementSubmission` y `updateMovementStatus` en `src/lib/actions/movements.ts` (aprobar/rechazar/anular solo `admin`; RLS vía `auth_user_is_admin()`).
-- Contactos: alta rapida inline en `operation-form` + `createContact` en `src/lib/actions/contacts.ts` con `client_segment` y `associated_services`; falta ficha/listado dedicado y PDF en Storage.
+- Contactos: alta rápida inline (`movement-quick-contact-dialog.tsx`, solo nombre) + `createContact` en `src/lib/actions/contacts.ts`; columnas `client_segment` / `associated_services` para ficha futura; falta listado/edición dedicado y PDF en Storage.
+- Detalle de movimiento: `movement-detail-sheet.tsx` + reglas en `movement-detail-display.ts` (cliente en cobro/pago, categoría solo venta/compra, desglose o fallback de cuenta única, aviso si falla RPC de detalle). RPC `get_transactions` / `get_transaction_by_id` con join a `contacts` → `contact_name` (migración `20260523140000_rpc_contact_name_join.sql`; aplicar con `pnpm sb:push` tras `sb:push:dry`).
+- Envío a aprobación al crear: `addMovement(..., asDraft: false)` llama `finalizeMovementSubmission`; `createMovement` devuelve `id` aunque falle el SELECT posterior.
 - Subtipo `operation_kind` en `transactions` + asiento diferenciado en `fn_post_journal_for_transaction` (migración `20260523120000`).
 - Botones Venta/Cobro/Compra/Pago en `/operaciones`; regla de fecha efectivo en `src/lib/movements/cash-date-policy.ts`.
 - Pendiente: adjunto PDF factura, vínculo cobro ↔ venta abierta.
@@ -323,7 +332,7 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ### Razon
 - Alinear UX con lenguaje natural del negocio (ventas/compras vs jerga contable).
 - Control sin rigidez excesiva: factura opcional pero trazable cuando existe.
-- Datos de cliente utiles para servicios y segmentacion sin salir del flujo de carga.
+- Separar **identificar** al cliente en un cobro (mínimo: nombre) de **enriquecer** la ficha (segmento, servicios) para no bloquear la operación diaria.
 
 ## 15) Analisis por proyecto: presupuestado vs real
 
