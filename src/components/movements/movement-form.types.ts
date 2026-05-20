@@ -33,7 +33,18 @@ export const EXPENSE_COMPONENT_TYPES: { value: MovementComponentType; label: str
   { value: 'supplier_payable', label: 'Proveedor (cuenta corriente)' },
 ]
 
-export function componentTypesForMovement(type: 'income' | 'expense') {
+const COLLECTION_PAYMENT_COMPONENT_TYPES: { value: MovementComponentType; label: string }[] = [
+  { value: 'operative_cash', label: 'Efectivo (caja)' },
+  { value: 'operative_bank', label: 'Banco / cuenta' },
+]
+
+export function componentTypesForMovement(
+  type: 'income' | 'expense',
+  operationKind?: 'sale' | 'purchase' | 'collection' | 'payment' | null
+) {
+  if (operationKind === 'collection' || operationKind === 'payment') {
+    return COLLECTION_PAYMENT_COMPONENT_TYPES
+  }
   return type === 'income' ? INCOME_COMPONENT_TYPES : EXPENSE_COMPONENT_TYPES
 }
 

@@ -19,6 +19,7 @@ import { errorMessageForUser } from '@/lib/utils/errors'
 import type { Movement } from './types'
 import { mapMovement } from './mappers'
 import { getProjectBudgetContext } from './budget'
+import { resolveIncomeExpensePersistenceFields } from '@/lib/movements/movement-persistence'
 
 // CREATE
 export async function createMovement(
@@ -55,6 +56,11 @@ export async function createMovement(
       }
     }
 
+    const persistence =
+      validated.type === 'income' || validated.type === 'expense'
+        ? resolveIncomeExpensePersistenceFields(validated)
+        : null
+
     const { data, error } = await supabase.rpc('create_transaction', {
       p_company_id: companyId,
       p_account_id: accountId,
@@ -62,12 +68,13 @@ export async function createMovement(
       p_amount: validated.amount,
       p_date: validated.date.toISOString().split('T')[0],
       p_description: validated.description,
-      p_category_id: validated.categoryId ?? null,
+      p_category_id: persistence?.categoryId ?? validated.categoryId ?? null,
       p_method: validated.method,
       p_currency: validated.currency,
       p_exchange_rate: 1,
-      p_contact_id: validated.contactId ?? null,
-      p_contact_type: validated.contactType ?? null,
+      p_contact_id: persistence?.contactId ?? validated.contactId ?? null,
+      p_contact_type: persistence?.contactType ?? validated.contactType ?? null,
+      p_operation_kind: persistence?.operationKind ?? null,
       p_source_account_id: validated.sourceAccountId ?? null,
       p_destination_account_id: validated.destinationAccountId ?? null,
       p_adjustment_reason: validated.adjustmentReason ?? null,
@@ -127,8 +134,10 @@ export async function createMovement(
         category_id,
         categories(name),
         type,
+        operation_kind,
         status,
         method,
+        contact_id,
         amount,
         currency,
         date,
@@ -219,13 +228,21 @@ export async function updateMovement(
       }
     }
 
+    const persistence =
+      validated.type === 'income' || validated.type === 'expense'
+        ? resolveIncomeExpensePersistenceFields(validated)
+        : null
+
     const updatePayload: Record<string, unknown> = {
       account_id: accountId,
       type: validated.type,
+      operation_kind: persistence?.operationKind ?? null,
       amount: validated.amount,
       date: validated.date.toISOString().split('T')[0],
       description: validated.description,
-      category_id: validated.categoryId ?? null,
+      category_id: persistence?.categoryId ?? validated.categoryId ?? null,
+      contact_id: persistence?.contactId ?? validated.contactId ?? null,
+      contact_type: persistence?.contactType ?? validated.contactType ?? null,
       method: validated.method,
       currency: validated.currency,
       project_id: validated.projectId ?? null,
@@ -278,8 +295,10 @@ export async function updateMovement(
         category_id,
         categories(name),
         type,
+        operation_kind,
         status,
         method,
+        contact_id,
         amount,
         currency,
         date,

@@ -1,5 +1,6 @@
 import { DEFAULT_TRANSFER_DESCRIPTION } from '@/lib/validations/movement'
-import type { MovementType } from '@/lib/validations/movement'
+import type { MovementType, OperationKind } from '@/lib/validations/movement'
+import { isCollectionOrPaymentKind } from '@/lib/movements/operation-kind'
 import type { MovementComponentType } from '@/lib/validations/movement'
 
 export function defaultComponentTypeForAccount(
@@ -11,8 +12,10 @@ export function defaultComponentTypeForAccount(
 /** Descripción válida (≥3 chars) para ingresos/egresos; transferencias tienen default propio. */
 export function resolveMovementDescription(input: {
   type: MovementType
+  operationKind?: OperationKind | null
   description: string
   categoryName?: string | null
+  contactName?: string | null
 }): string {
   const trimmed = input.description.trim()
 
@@ -22,9 +25,21 @@ export function resolveMovementDescription(input: {
 
   if (trimmed.length >= 3) return trimmed
 
+  if (isCollectionOrPaymentKind(input.operationKind) && input.contactName) {
+    const label = input.operationKind === 'collection' ? 'Cobro' : 'Pago'
+    return `${label}: ${input.contactName}`.slice(0, 500)
+  }
+
   if (input.categoryName) {
+    const prefixByKind: Record<string, string> = {
+      sale: 'Venta',
+      purchase: 'Compra',
+      collection: 'Cobro',
+      payment: 'Pago',
+    }
     const prefix =
-      input.type === 'income' ? 'Ingreso' : input.type === 'expense' ? 'Egreso' : 'Movimiento'
+      (input.operationKind && prefixByKind[input.operationKind]) ||
+      (input.type === 'income' ? 'Ingreso' : input.type === 'expense' ? 'Egreso' : 'Movimiento')
     return `${prefix}: ${input.categoryName}`.slice(0, 500)
   }
 

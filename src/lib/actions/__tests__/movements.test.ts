@@ -540,6 +540,8 @@ describe('createMovement con movementComponents', () => {
 
     const result = await createMovement({
       type: 'income',
+      operationKind: 'sale',
+      movementScope: 'project',
       date: new Date('2026-05-01'),
       amount: 150,
       currency: 'ARS',
@@ -554,6 +556,13 @@ describe('createMovement con movementComponents', () => {
     })
 
     expect(result.success).toBe(true)
+    expect(mockRpc).toHaveBeenCalledWith(
+      'create_transaction',
+      expect.objectContaining({
+        p_type: 'income',
+        p_operation_kind: 'sale',
+      })
+    )
     expect(mockRpc).toHaveBeenCalledWith(
       'set_operation_components',
       expect.objectContaining({
@@ -660,6 +669,8 @@ describe('updateMovement', () => {
     accountId,
     categoryId,
     type: 'income' as const,
+    operationKind: 'sale' as const,
+    movementScope: 'project' as const,
     amount: 200,
     date: new Date('2026-05-02'),
     description: 'Actualizado',

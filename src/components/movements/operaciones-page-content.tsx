@@ -3,14 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import {
-  ArrowDownLeft,
-  ArrowLeftRight,
-  ArrowUpRight,
-  ChevronDown,
-  SlidersHorizontal,
-  Tag,
-} from 'lucide-react'
+import { ArrowLeftRight, ChevronDown, SlidersHorizontal, Tag } from 'lucide-react'
 import { OperacionesFilterTabs } from '@/components/movements/operaciones-filter-tabs'
 import { isAdminRole } from '@/lib/auth/roles'
 import { ROUTES } from '@/lib/constants'
@@ -28,7 +21,13 @@ import { approveBudgetException, type Movement } from '@/lib/actions/movements'
 import { UserRoleBadge } from '@/components/layout/user-role-badge'
 import { useMovementStore } from '@/stores/movement-store'
 import { useAuthStore } from '@/stores/auth-store'
-import type { CreateMovementInput, MovementType } from '@/lib/validations/movement'
+import type { CreateMovementInput, MovementType, OperationKind } from '@/lib/validations/movement'
+import { OPERATION_CREATE_BUTTONS } from '@/lib/movements/movement-config'
+import { operationKindToMovementType } from '@/lib/movements/operation-kind'
+import {
+  operationCreateButtonClassName,
+  operationCreateIconClassName,
+} from '@/lib/movements/operaciones-create-ui'
 import {
   operacionesFlowToTypeFilter,
   parseOperacionesFlow,
@@ -44,6 +43,7 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
   const router = useRouter()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formMode, setFormMode] = useState<MovementType | null>(null)
+  const [formOperationKind, setFormOperationKind] = useState<OperationKind | null>(null)
   const [cancelMovementId, setCancelMovementId] = useState<string | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
   const [rejectMovementId, setRejectMovementId] = useState<string | null>(null)
@@ -76,12 +76,19 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
 
   const openForm = useCallback((mode: MovementType) => {
     setFormMode(mode)
+    setFormOperationKind(null)
+    setIsModalOpen(true)
+  }, [])
+
+  const openOperationKind = useCallback((kind: OperationKind) => {
+    setFormOperationKind(kind)
+    setFormMode(operationKindToMovementType(kind))
     setIsModalOpen(true)
   }, [])
 
   const handleOpenModal = useCallback(() => {
-    openForm('income')
-  }, [openForm])
+    openOperationKind('sale')
+  }, [openOperationKind])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -101,12 +108,14 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setFormMode(null)
+    setFormOperationKind(null)
     setEditingMovement(null)
   }
 
   const handleCorrectRejected = (movement: Movement) => {
     setEditingMovement(movement)
     setFormMode(movement.type)
+    setFormOperationKind(movement.operationKind)
     setIsModalOpen(true)
   }
 
@@ -302,34 +311,25 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
           <div className="min-w-0 space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">Movimientos</h1>
             <p className="text-sm text-muted-foreground">
-              Registra ingresos y egresos de tu empresa
+              Ventas, compras, cobros y pagos de tu empresa
             </p>
           </div>
 
           <div className="flex w-full flex-col gap-2 sm:w-auto lg:min-w-[min(100%,28rem)]">
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                onClick={() => openForm('income')}
-                className="h-10 w-full bg-green-600 px-2 hover:bg-green-600/90 sm:px-3"
-              >
-                <ArrowDownLeft className="h-4 w-4 shrink-0 sm:mr-1.5" />
-                <span className="truncate text-xs sm:text-sm">
-                  <span className="hidden min-[420px]:inline">Registrar </span>
-                  ingreso
-                </span>
-              </Button>
-              <Button
-                onClick={() => openForm('expense')}
-                variant="outline"
-                className="h-10 w-full border-red-200 px-2 text-red-700 hover:bg-red-50 sm:px-3 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
-              >
-                <ArrowUpRight className="h-4 w-4 shrink-0 sm:mr-1.5" />
-                <span className="truncate text-xs sm:text-sm">
-                  <span className="hidden min-[420px]:inline">Registrar </span>
-                  egreso
-                </span>
-              </Button>
-              <DropdownMenu>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {OPERATION_CREATE_BUTTONS.map(({ kind, label, variant, icon: Icon }) => (
+                <Button
+                  key={kind}
+                  onClick={() => openOperationKind(kind)}
+                  variant={variant === 'income-primary' ? 'default' : 'outline'}
+                  className={operationCreateButtonClassName(variant)}
+                >
+                  <Icon className={operationCreateIconClassName(variant)} />
+                  <span className="truncate text-xs sm:text-sm">{label}</span>
+                </Button>
+              ))}
+            </div>
+            <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
                     <Button variant="outline" className="h-10 w-full px-2 sm:px-3">
@@ -342,7 +342,7 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
                 <DropdownMenuContent align="end" className="min-w-[14rem]">
                   <DropdownMenuItem onClick={() => openForm('transfer')}>
                     <ArrowLeftRight className="mr-2 h-4 w-4" />
-                    Transferencia entre cuentas
+                    Pasaje entre cuentas
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => openForm('adjustment')}>
                     <SlidersHorizontal className="mr-2 h-4 w-4" />
@@ -350,7 +350,6 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
 
             <Button asChild variant="outline" size="sm" className="w-full md:hidden">
               <Link href={ROUTES.CATEGORIES}>
@@ -502,7 +501,14 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
         onSubmit={handleSubmit}
         movement={editingMovement}
         isLoading={isLoading}
-        fixedType={editingMovement ? null : formMode}
+        fixedType={
+          editingMovement
+            ? null
+            : formOperationKind
+              ? operationKindToMovementType(formOperationKind)
+              : formMode
+        }
+        fixedOperationKind={editingMovement ? null : formOperationKind}
       />
     </div>
   )

@@ -55,7 +55,7 @@
 |------|--------------|--------|-------------------|
 | 4.1 | Rutas en español; código en convención repo. | **PARCIAL** | Rutas `/operaciones`, `/reportes`, etc. OK. Sidebar aún “Dashboard”, “Configuracion” sin tilde; mejorable. |
 | 4.2 | Menú **Ventas y cobros** / **Compras y pagos**. | **PARCIAL** | Sidebar: entradas dedicadas con `?flujo=ventas` / `?flujo=compras` hacia `/operaciones`; bloque “Flujo de caja”. Bottom nav sigue compacto (un ítem Movimientos + badge pendientes). |
-| 4.3 | Nuevo registro: **Venta/Cobro**, **Compra/Pago**, **Pasaje entre cuentas**. | **GAP** | `constants.ts` y formularios usan Ingreso/Gasto/Transferencia y tipos `income`/`expense`/`transfer`. |
+| 4.3 | Nuevo registro: **Venta/Cobro**, **Compra/Pago**, **Pasaje entre cuentas**. | **OK** | Cuatro botones + `operation_kind`; copy Pasaje entre cuentas; tipos BD `income`/`expense` + subtipo. |
 | 4.4 | Informes + control gestión; presets **mensual** y **trimestral**. | **OK** | `ReportsPeriodTabs` + `reports-period.ts`; hints de período. Rango libre = mejora futura. |
 | 4.5 | Análisis por proyecto (presupuesto vs real, mes/trimestre). | **OK** | Mismos presets que reportes en análisis por proyecto. |
 | 4.6 | Plan de cuentas (solo lectura) en Cuentas. | **OK** | Tab **Plan de cuentas** + árbol `ChartOfAccountsTree`. |

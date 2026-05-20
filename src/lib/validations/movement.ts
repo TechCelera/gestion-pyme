@@ -1,4 +1,14 @@
 import { z } from 'zod'
+import {
+  CASH_DATE_GENERAL_ERROR_MESSAGE,
+  isDateAllowedForCashInGeneral,
+} from '@/lib/movements/cash-date-policy'
+import {
+  isCollectionOrPaymentKind,
+  requiresCategoryForKind,
+  requiresContactForKind,
+  validateOperationKindMatchesType,
+} from '@/lib/movements/operation-kind'
 
 /** UUID opcional: cadena vacía → undefined (evita "Invalid uuid" en UI). */
 function optionalUuid(message = 'Selecciona un valor válido de la lista') {
@@ -10,6 +20,8 @@ function optionalUuid(message = 'Selecciona un valor válido de la lista') {
 
 /** Enums: valores alineados a columnas / RPC; nombres en inglés (código). */
 export const MovementTypeEnum = z.enum(['income', 'expense', 'transfer', 'adjustment'])
+export const OperationKindEnum = z.enum(['sale', 'purchase', 'collection', 'payment'])
+export const MovementScopeEnum = z.enum(['general', 'project'])
 export const MovementStatusEnum = z.enum(['draft', 'pending', 'approved', 'rejected', 'cancelled'])
 export const MovementMethodEnum = z.enum(['cash', 'transfer', 'card', 'digital', 'other'])
 export const ContactTypeEnum = z.enum(['cliente', 'proveedor'])
@@ -92,8 +104,97 @@ const baseMovementSchemaObject = z.object({
   attachmentUrl: z.string().url().optional().or(z.literal('')),
   projectId: optionalUuid('Selecciona el proyecto'),
   fundOwner: FundOwnerEnum.default('company'),
+  movementScope: MovementScopeEnum.default('general'),
+  operationKind: OperationKindEnum.optional(),
   movementComponents: z.array(movementComponentSchema).optional(),
 })
+
+function movementHasCashInComponents(
+  components: { componentType: string }[] | undefined
+): boolean {
+  return (components ?? []).some((c) => c.componentType === 'operative_cash')
+}
+
+function refineIncomeExpenseRules(
+  data: z.infer<typeof baseMovementSchemaObject>,
+  ctx: z.RefinementCtx
+) {
+  const kind = data.operationKind
+  const isIncomeExpense = data.type === 'income' || data.type === 'expense'
+  if (!isIncomeExpense) return
+
+  if (!kind) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Selecciona el tipo de operación',
+      path: ['operationKind'],
+    })
+    return
+  }
+
+  const typeMismatch = validateOperationKindMatchesType(kind, data.type)
+  if (typeMismatch) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: typeMismatch.message,
+      path: ['type'],
+    })
+  }
+
+  if (!data.accountId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'La cuenta es requerida',
+      path: ['accountId'],
+    })
+  }
+
+  if (requiresCategoryForKind(kind) && !data.categoryId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'La categoría es requerida para ventas y compras',
+      path: ['categoryId'],
+    })
+  }
+
+  if (requiresContactForKind(kind) && !data.contactId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Selecciona el contacto para cobros y pagos',
+      path: ['contactId'],
+    })
+  }
+
+  if (!data.movementComponents?.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'El desglose de medios de pago es obligatorio',
+      path: ['movementComponents'],
+    })
+  }
+
+  if (isCollectionOrPaymentKind(kind) && data.movementComponents?.length) {
+    data.movementComponents.forEach((c, i) => {
+      if (c.componentType === 'client_receivable' || c.componentType === 'supplier_payable') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'En cobros y pagos solo se usan caja o banco',
+          path: ['movementComponents', i, 'componentType'],
+        })
+      }
+    })
+  }
+
+  const scope = data.movementScope ?? 'general'
+  const hasCash = movementHasCashInComponents(data.movementComponents)
+  if (!isDateAllowedForCashInGeneral(data.date, scope, hasCash)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: CASH_DATE_GENERAL_ERROR_MESSAGE,
+      path: ['date'],
+    })
+  }
+}
 
 export const createMovementSchema = baseMovementSchemaObject
   .superRefine((data, ctx) => {
@@ -110,27 +211,7 @@ export const createMovementSchema = baseMovementSchemaObject
   }
 
   if (data.type === 'income' || data.type === 'expense') {
-    if (!data.accountId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'La cuenta es requerida para ingresos y egresos',
-        path: ['accountId'],
-      })
-    }
-    if (!data.categoryId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'La categoría es requerida para ingresos y egresos',
-        path: ['categoryId'],
-      })
-    }
-    if (!data.movementComponents?.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'El desglose de medios de pago es obligatorio para ingresos y egresos',
-        path: ['movementComponents'],
-      })
-    }
+    refineIncomeExpenseRules(data, ctx)
   }
 
   if (data.type === 'transfer') {
@@ -185,6 +266,7 @@ export const createMovementSchema = baseMovementSchemaObject
     })
   }
 
+  const kind = data.operationKind
   data.movementComponents.forEach((c, i) => {
     if (data.type === 'income' && c.componentType === 'supplier_payable') {
       ctx.addIssue({
@@ -197,6 +279,13 @@ export const createMovementSchema = baseMovementSchemaObject
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'En egresos no se usa cuenta corriente de cliente',
+        path: ['movementComponents', i, 'componentType'],
+      })
+    }
+    if (isCollectionOrPaymentKind(kind) && c.componentType !== 'operative_cash' && c.componentType !== 'operative_bank') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'En cobros y pagos solo se usan caja o banco',
         path: ['movementComponents', i, 'componentType'],
       })
     }
@@ -305,3 +394,5 @@ export type MovementStatus = z.infer<typeof MovementStatusEnum>
 export type MovementMethod = z.infer<typeof MovementMethodEnum>
 export type FundOwner = z.infer<typeof FundOwnerEnum>
 export type MovementComponentType = z.infer<typeof MovementComponentTypeEnum>
+export type OperationKind = z.infer<typeof OperationKindEnum>
+export type MovementScope = z.infer<typeof MovementScopeEnum>

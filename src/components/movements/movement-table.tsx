@@ -129,7 +129,9 @@ export function MovementTable({
                 <TableCell className="text-center">
                   {format(new Date(movement.date), 'dd/MM/yyyy', dateRowFormatOpts)}
                 </TableCell>
-                <TableCell className="text-center">{getMovementTypeLabel(movement.type)}</TableCell>
+                <TableCell className="text-center">
+                  {getMovementTypeLabel(movement.type, movement.operationKind)}
+                </TableCell>
                 <TableCell className="text-center">
                   <span className="inline-flex text-xs px-1.5 py-0.5 rounded bg-muted">
                     {MOVEMENT_METHODS_LABELS[movement.method] || movement.method}

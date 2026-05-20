@@ -6,6 +6,11 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { MovementMethod, MovementType } from '@/lib/validations/movement'
+export {
+  OPERATION_KIND_FORM_COPY,
+  OPERATION_KIND_PRODUCT_LABELS,
+} from '@/lib/movements/movement-config'
+
 export const MOVEMENT_FORM_COPY: Record<
   MovementType,
   { title: string; subtitle: string; submitLabel: string }

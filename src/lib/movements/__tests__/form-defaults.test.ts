@@ -10,10 +10,22 @@ describe('form-defaults', () => {
     expect(
       resolveMovementDescription({
         type: 'income',
+        operationKind: 'sale',
         description: '',
         categoryName: 'Ventas',
       })
-    ).toBe('Ingreso: Ventas')
+    ).toBe('Venta: Ventas')
+  })
+
+  it('usa contacto en cobro si falta nota', () => {
+    expect(
+      resolveMovementDescription({
+        type: 'income',
+        operationKind: 'collection',
+        description: '',
+        contactName: 'Juan Pérez',
+      })
+    ).toBe('Cobro: Juan Pérez')
   })
 
   it('respeta nota del usuario', () => {

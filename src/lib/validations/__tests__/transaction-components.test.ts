@@ -36,6 +36,8 @@ describe('movementComponentSchema', () => {
 describe('createMovementSchema + movementComponents', () => {
   const base = {
     type: 'income' as const,
+    operationKind: 'sale' as const,
+    movementScope: 'project' as const,
     date: new Date('2026-05-01'),
     amount: 150,
     currency: 'ARS',

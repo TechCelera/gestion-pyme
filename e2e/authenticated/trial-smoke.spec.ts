@@ -51,4 +51,14 @@ test.describe('piloto — rutas autenticadas', () => {
     await expect(page.getByRole('tab', { name: /ingresos/i })).toBeVisible()
     await expect(page.getByRole('tab', { name: /egresos/i })).toBeVisible()
   })
+
+  test('botones de alta por tipo de operación en operaciones', async ({ page }) => {
+    await page.goto('/operaciones')
+    await expect(page.getByRole('button', { name: /^venta$/i })).toBeVisible({
+      timeout: 30_000,
+    })
+    await expect(page.getByRole('button', { name: /^cobro$/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^compra$/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^pago$/i })).toBeVisible()
+  })
 })

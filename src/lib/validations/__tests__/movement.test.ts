@@ -11,6 +11,8 @@ describe('operation validation', () => {
   describe('createMovementSchema', () => {
     const validIncome = {
       type: 'income',
+      operationKind: 'sale',
+      movementScope: 'project',
       date: new Date(),
       amount: 100,
       description: 'Venta de producto',
@@ -57,6 +59,50 @@ describe('operation validation', () => {
     it('should require operation components for income/expense', () => {
       const invalid = { ...validIncome, movementComponents: undefined }
       const result = createMovementSchema.safeParse(invalid)
+      expect(result.success).toBe(false)
+    })
+
+    it('valida cobro con contacto y sin categoría', () => {
+      const result = createMovementSchema.safeParse({
+        type: 'income',
+        operationKind: 'collection',
+        movementScope: 'project',
+        date: new Date(),
+        amount: 200,
+        description: 'Cobro cliente',
+        accountId: '550e8400-e29b-41d4-a716-446655440000',
+        contactId: '550e8400-e29b-41d4-a716-446655440002',
+        movementComponents: [
+          {
+            componentType: 'operative_bank',
+            accountId: '550e8400-e29b-41d4-a716-446655440000',
+            amount: 200,
+          },
+        ],
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('rechaza efectivo en general con fecha anterior a ayer', () => {
+      const result = createMovementSchema.safeParse({
+        ...validIncome,
+        movementScope: 'general',
+        date: new Date('2020-01-15'),
+      })
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        const dateIssue = result.error.issues.find((i) => i.path.includes('date'))
+        expect(dateIssue?.message).toMatch(/hoy o ayer/i)
+      }
+    })
+
+    it('rechaza cobro sin contacto', () => {
+      const result = createMovementSchema.safeParse({
+        ...validIncome,
+        operationKind: 'collection',
+        categoryId: undefined,
+        contactId: undefined,
+      })
       expect(result.success).toBe(false)
     })
 

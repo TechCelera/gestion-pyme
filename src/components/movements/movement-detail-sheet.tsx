@@ -218,7 +218,9 @@ export function MovementDetailSheet({
             {display ? <MovementStatusBadge status={display.status} /> : null}
           </div>
           <SheetTitle className="text-lg leading-tight">
-            {display ? getMovementTypeLabel(display.type) : 'Detalle del movimiento'}
+            {display
+              ? getMovementTypeLabel(display.type, display.operationKind)
+              : 'Detalle del movimiento'}
           </SheetTitle>
           {display ? (
             <p className="text-base font-semibold text-foreground tabular-nums">

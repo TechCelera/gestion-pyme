@@ -63,7 +63,24 @@ export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   adjustment: 'Ajuste',
 }
 
-export function getMovementTypeLabel(type: string): string {
+import {
+  getOperationKindProductLabel,
+  OPERATION_KIND_PRODUCT_LABELS,
+} from '@/lib/movements/movement-config'
+
+/** @deprecated Usar `OPERATION_KIND_PRODUCT_LABELS` desde `movement-config`. */
+export const OPERATION_KIND_LABELS = OPERATION_KIND_PRODUCT_LABELS
+
+export function getOperationKindLabel(kind: string | null | undefined): string | null {
+  return getOperationKindProductLabel(kind)
+}
+
+export function getMovementTypeLabel(
+  type: string,
+  operationKind?: string | null
+): string {
+  const kindLabel = getOperationKindLabel(operationKind)
+  if (kindLabel) return kindLabel
   return MOVEMENT_TYPE_LABELS[type] ?? type
 }
 

@@ -40,6 +40,8 @@ export interface MovementFormFullFieldsProps {
   type: MovementType
   date: string
   onDateChange: (value: string) => void
+  dateMin?: string
+  dateMax?: string
   method: MovementMethod
   onMethodChange: (value: MovementMethod) => void
   movementScope: 'general' | 'project'
@@ -89,6 +91,8 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
     type,
     date,
     onDateChange,
+    dateMin,
+    dateMax,
     method,
     onMethodChange,
     movementScope,
@@ -151,6 +155,8 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                     id="date"
                     type="date"
                     value={date}
+                    min={dateMin}
+                    max={dateMax}
                     onChange={(e) => onDateChange(e.target.value)}
                     disabled={isLoading}
                   />

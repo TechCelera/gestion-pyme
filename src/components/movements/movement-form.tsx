@@ -28,7 +28,18 @@ import type {
   MovementMethod,
   MovementComponentRow,
   AdjustmentReason,
+  OperationKind,
 } from '@/lib/validations/movement'
+import {
+  operationKindToMovementType,
+  isCollectionOrPaymentKind,
+  isSaleOrPurchaseKind,
+} from '@/lib/movements/operation-kind'
+import { CASH_DATE_GENERAL_ERROR_MESSAGE } from '@/lib/movements/cash-date-policy'
+import {
+  buildCashDateContext,
+  clampDateToBounds,
+} from '@/lib/movements/cash-date-context'
 import { toast } from 'sonner'
 import {
   movementHasCustomComponentBreakdown,
@@ -37,6 +48,7 @@ import {
 import {
   MOVEMENT_FORM_COPY,
   MOVEMENT_TYPE_OPTIONS,
+  OPERATION_KIND_FORM_COPY,
 } from '@/components/movements/movement-form.constants'
 import {
   type ComponentLineDraft,
@@ -58,6 +70,8 @@ interface MovementFormProps {
   isLoading?: boolean
   /** Al crear: fija el tipo y oculta el selector (ingreso/egreso/transferencia/ajuste). */
   fixedType?: MovementType | null
+  /** Al crear operación guiada: venta, compra, cobro o pago. */
+  fixedOperationKind?: OperationKind | null
 }
 
 export function MovementForm({
@@ -67,10 +81,17 @@ export function MovementForm({
   movement,
   isLoading,
   fixedType = null,
+  fixedOperationKind = null,
 }: MovementFormProps) {
   const [showScopeOptions, setShowScopeOptions] = useState(false)
   const [showPaymentSplit, setShowPaymentSplit] = useState(false)
-  const [type, setType] = useState<MovementType>('income')
+  const [type, setType] = useState<MovementType>(
+    fixedOperationKind ? operationKindToMovementType(fixedOperationKind) : fixedType ?? 'income'
+  )
+  const [operationKind, setOperationKind] = useState<OperationKind>(
+    fixedOperationKind ?? 'sale'
+  )
+  const [contactId, setContactId] = useState('')
   const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
   const [accountId, setAccountId] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -104,12 +125,22 @@ export function MovementForm({
   const selectedType = MOVEMENT_TYPE_OPTIONS.find((t) => t.value === type)
   const isGuidedCreate =
     !isEditing &&
-    !!fixedType &&
-    (fixedType === 'income' || fixedType === 'expense')
-  const formCopy = fixedType ? MOVEMENT_FORM_COPY[fixedType] : null
+    (!!fixedOperationKind ||
+      (!!fixedType && (fixedType === 'income' || fixedType === 'expense')))
+  const formCopy = fixedOperationKind
+    ? OPERATION_KIND_FORM_COPY[fixedOperationKind]
+    : fixedType
+      ? MOVEMENT_FORM_COPY[fixedType]
+      : null
 
-  const resetForm = useCallback((nextType: MovementType = 'income') => {
+  const resetForm = useCallback(
+    (nextType: MovementType = 'income', nextKind?: OperationKind) => {
+    const kind =
+      nextKind ??
+      (nextType === 'income' ? 'sale' : nextType === 'expense' ? 'purchase' : 'sale')
     setType(nextType)
+    setOperationKind(kind)
+    setContactId('')
     setDate(format(new Date(), 'yyyy-MM-dd'))
     setAccountId('')
     setCategoryId('')
@@ -126,7 +157,9 @@ export function MovementForm({
     setComponentLines([newComponentLine()])
     setShowScopeOptions(false)
     setShowPaymentSplit(false)
-  }, [])
+  },
+  []
+  )
 
   // Fetch accounts and categories on open
   const loadFormData = useCallback(async () => {
@@ -166,15 +199,20 @@ export function MovementForm({
   }, [isOpen, loadFormData])
 
   useEffect(() => {
-    if (!isOpen || !fixedType || movement) return
+    if (!isOpen || movement) return
+    if (!fixedOperationKind && !fixedType) return
     queueMicrotask(() => {
-      setType(fixedType)
-      if (fixedType === 'income' || fixedType === 'expense') {
-        setShowScopeOptions(false)
-        setShowPaymentSplit(false)
+      if (fixedOperationKind) {
+        setOperationKind(fixedOperationKind)
+        setType(operationKindToMovementType(fixedOperationKind))
+      } else if (fixedType) {
+        setType(fixedType)
+        setOperationKind(fixedType === 'income' ? 'sale' : 'purchase')
       }
+      setShowScopeOptions(false)
+      setShowPaymentSplit(false)
     })
-  }, [isOpen, fixedType, movement])
+  }, [isOpen, fixedType, fixedOperationKind, movement])
 
   // Sync form when the movement being edited changes
   useEffect(() => {
@@ -182,6 +220,11 @@ export function MovementForm({
     queueMicrotask(() => {
       if (movement) {
         setType(movement.type)
+        setOperationKind(
+          movement.operationKind ??
+            (movement.type === 'income' ? 'sale' : movement.type === 'expense' ? 'purchase' : 'sale')
+        )
+        setContactId(movement.contactId ?? '')
         setDate(format(new Date(movement.date), 'yyyy-MM-dd'))
         setAccountId(movement.accountId)
         setCategoryId(movement.categoryId || '')
@@ -193,10 +236,15 @@ export function MovementForm({
         setProjectId(movement.projectId ?? '')
         setMovementScope(movement.projectId ? 'project' : 'general')
       } else {
-        resetForm(fixedType ?? 'income')
+        resetForm(
+          fixedOperationKind
+            ? operationKindToMovementType(fixedOperationKind)
+            : fixedType ?? 'income',
+          fixedOperationKind ?? undefined
+        )
       }
     })
-  }, [movement, isOpen, resetForm, fixedType])
+  }, [movement, isOpen, resetForm, fixedType, fixedOperationKind])
 
   useEffect(() => {
     if (!isOpen || !movement) return
@@ -244,6 +292,26 @@ export function MovementForm({
     return [buildMainComponentLine(accountId, amount, accounts)]
   }, [showPaymentSplit, usesOptionalComponentBreakdown, accountId, amount, accounts, componentLines])
 
+  const cashDateContext = useMemo(() => {
+    if (type !== 'income' && type !== 'expense') return null
+    return buildCashDateContext({
+      movementScope,
+      showPaymentSplit,
+      componentLines: effectiveComponentLines,
+      accountId,
+      accounts,
+      date,
+    })
+  }, [type, movementScope, showPaymentSplit, effectiveComponentLines, accountId, accounts, date])
+
+  const cashDateBounds = cashDateContext?.bounds ?? null
+
+  function clampDateIfNeeded(nextBounds: { min: string; max: string } | null) {
+    if (!nextBounds) return
+    const next = clampDateToBounds(date, nextBounds)
+    if (next !== date) setDate(next)
+  }
+
   function togglePaymentSplit() {
     setPaymentMode(!showPaymentSplit)
   }
@@ -254,10 +322,42 @@ export function MovementForm({
       setAccountId('')
       setComponentLines([newComponentLine({ amount })])
       setShowPaymentSplit(true)
+      queueMicrotask(() => clampDateIfNeeded(cashDateBounds))
       return
     }
     setShowPaymentSplit(false)
     setComponentLines([newComponentLine()])
+    queueMicrotask(() => clampDateIfNeeded(cashDateBounds))
+  }
+
+  function handleMovementScopeChange(scope: 'general' | 'project') {
+    setMovementScope(scope)
+    if (scope === 'general') {
+      const ctx = buildCashDateContext({
+        movementScope: 'general',
+        showPaymentSplit,
+        componentLines: effectiveComponentLines,
+        accountId,
+        accounts,
+        date,
+      })
+      clampDateIfNeeded(ctx.bounds)
+    }
+  }
+
+  function handleAccountIdChange(value: string) {
+    setAccountId(value)
+    if (movementScope === 'general' && !showPaymentSplit) {
+      const ctx = buildCashDateContext({
+        movementScope: 'general',
+        showPaymentSplit: false,
+        componentLines: effectiveComponentLines,
+        accountId: value,
+        accounts,
+        date,
+      })
+      clampDateIfNeeded(ctx.bounds)
+    }
   }
 
   function resolvePrimaryAccountId(
@@ -312,17 +412,29 @@ export function MovementForm({
         toast.error('Elige la cuenta')
         return
       }
-      if (!categoryId) {
+      if (isSaleOrPurchaseKind(operationKind) && !categoryId) {
         toast.error('Elige una categoría')
+        return
+      }
+      if (isCollectionOrPaymentKind(operationKind) && !contactId) {
+        toast.error('Elige el contacto para cobros y pagos')
+        return
+      }
+
+      if (cashDateContext && !cashDateContext.isAllowed) {
+        toast.error(CASH_DATE_GENERAL_ERROR_MESSAGE)
         return
       }
     }
 
     const categoryName = categories.find((c) => c.id === categoryId)?.name
+    const contactName = contacts.find((c) => c.id === contactId)?.name
     const finalDescription = resolveMovementDescription({
       type,
+      operationKind,
       description,
       categoryName,
+      contactName,
     })
 
     if (type !== 'transfer' && finalDescription.trim().length < 3) {
@@ -371,6 +483,8 @@ export function MovementForm({
 
     const data: CreateMovementInput = {
       type,
+      operationKind,
+      movementScope,
       date: new Date(date),
       amount: parsedAmount,
       currency,
@@ -379,7 +493,13 @@ export function MovementForm({
       ...(type === 'income' || type === 'expense'
         ? {
             accountId: resolvedAccountId,
-            categoryId: categoryId || undefined,
+            categoryId: isSaleOrPurchaseKind(operationKind) ? categoryId || undefined : undefined,
+            contactId: isCollectionOrPaymentKind(operationKind) ? contactId : undefined,
+            contactType: isCollectionOrPaymentKind(operationKind)
+              ? operationKind === 'collection'
+                ? 'cliente'
+                : 'proveedor'
+              : undefined,
             movementComponents,
           }
         : {}),
@@ -395,12 +515,22 @@ export function MovementForm({
 
     onSubmit(data, asDraft)
     if (!isEditing) {
-      resetForm(fixedType ?? 'income')
+      resetForm(
+        fixedOperationKind
+          ? operationKindToMovementType(fixedOperationKind)
+          : fixedType ?? 'income',
+        fixedOperationKind ?? undefined
+      )
     }
   }
 
   const handleClose = () => {
-    resetForm(fixedType ?? 'income')
+    resetForm(
+      fixedOperationKind
+        ? operationKindToMovementType(fixedOperationKind)
+        : fixedType ?? 'income',
+      fixedOperationKind ?? undefined
+    )
     setShowScopeOptions(false)
     setShowPaymentSplit(false)
     onClose()
@@ -430,6 +560,9 @@ export function MovementForm({
     const c = categories.find(cat => cat.id === categoryId)
     return c?.name ?? ''
   })() : ''
+  const contactLabel = contactId
+    ? (contacts.find((c) => c.id === contactId)?.name ?? '')
+    : ''
   const adjustmentReasonLabels: Record<string, string> = {
     reconciliation: 'Conciliación',
     correction: 'Corrección',
@@ -585,6 +718,7 @@ export function MovementForm({
             {isGuidedCreate ? (
               <MovementGuidedFields
                 type={type as 'income' | 'expense'}
+                operationKind={operationKind}
                 amount={amount}
                 onAmountChange={setAmount}
                 currency={currency}
@@ -592,13 +726,15 @@ export function MovementForm({
                 date={date}
                 onDateChange={setDate}
                 accountId={accountId}
-                onAccountIdChange={setAccountId}
+                onAccountIdChange={handleAccountIdChange}
                 categoryId={categoryId}
                 onCategoryIdChange={setCategoryId}
+                contactId={contactId}
+                onContactIdChange={setContactId}
                 description={description}
                 onDescriptionChange={setDescription}
                 movementScope={movementScope}
-                onMovementScopeChange={setMovementScope}
+                onMovementScopeChange={handleMovementScopeChange}
                 fundOwner={fundOwner}
                 onFundOwnerChange={setFundOwner}
                 projectId={projectId}
@@ -611,6 +747,7 @@ export function MovementForm({
                 flatProjects={flatProjects}
                 accountLabel={accountLabel}
                 categoryLabel={categoryLabel}
+                contactLabel={contactLabel}
                 projectLabel={projectLabel}
                 showScopeOptions={showScopeOptions}
                 onToggleScopeOptions={() => setShowScopeOptions((v) => !v)}
@@ -632,10 +769,12 @@ export function MovementForm({
                 type={type}
                 date={date}
                 onDateChange={setDate}
+                dateMin={cashDateBounds?.min}
+                dateMax={cashDateBounds?.max}
                 method={method}
                 onMethodChange={setMethod}
                 movementScope={movementScope}
-                onMovementScopeChange={setMovementScope}
+                onMovementScopeChange={handleMovementScopeChange}
                 fundOwner={fundOwner}
                 onFundOwnerChange={setFundOwner}
                 projectId={projectId}
@@ -650,7 +789,7 @@ export function MovementForm({
                 destinationAccountId={destinationAccountId}
                 onDestinationAccountIdChange={setDestinationAccountId}
                 accountId={accountId}
-                onAccountIdChange={setAccountId}
+                onAccountIdChange={handleAccountIdChange}
                 sourceAccountLabel={sourceAccountLabel}
                 destAccountLabel={destAccountLabel}
                 accountLabel={accountLabel}
@@ -685,8 +824,10 @@ export function MovementForm({
           isRejectedCorrection={isRejectedCorrection}
           accountsEmpty={accounts.length === 0}
           type={type}
+          operationKind={operationKind}
           accountId={accountId}
           categoryId={categoryId}
+          contactId={contactId}
           sumMatchesComponents={sumMatchesComponents}
           onClose={handleClose}
           onSubmit={handleSubmit}

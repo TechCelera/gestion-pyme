@@ -1,4 +1,9 @@
-import type { MovementComponentRow, MovementStatus, FundOwner } from '@/lib/validations/movement'
+import type {
+  MovementComponentRow,
+  MovementStatus,
+  FundOwner,
+  OperationKind,
+} from '@/lib/validations/movement'
 
 // Types
 export interface Movement {
@@ -8,6 +13,8 @@ export interface Movement {
   categoryId: string | null
   categoryName: string | null
   type: 'income' | 'expense' | 'transfer' | 'adjustment'
+  operationKind: OperationKind | null
+  contactId?: string | null
   status: MovementStatus
   method: string
   amount: number

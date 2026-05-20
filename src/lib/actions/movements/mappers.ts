@@ -53,6 +53,14 @@ export function mapMovement(raw: unknown): Movement {
     categoryId: t.category_id as string | null,
     categoryName: (t.categories as Record<string, string>)?.name ?? (t.category_name as string) ?? null,
     type: t.type as 'income' | 'expense' | 'transfer' | 'adjustment',
+    operationKind:
+      (t.operation_kind as 'sale' | 'purchase' | 'collection' | 'payment' | null) ??
+      (t.type === 'income'
+        ? 'sale'
+        : t.type === 'expense'
+          ? 'purchase'
+          : null),
+    contactId: (t.contact_id as string | null) ?? undefined,
     status: t.status as MovementStatus,
     method: (t.method as string) || 'cash',
     amount: Number(t.amount),

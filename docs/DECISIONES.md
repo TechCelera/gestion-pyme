@@ -307,13 +307,18 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 **Terminologia de producto (pantalla)**
 - Estado `cancelled` en codigo/BD se muestra como **Anulado** (accion: anular movimiento aprobado; motivo en detalle). No usar "Cancelado" en badges para evitar confusion con cancelar un dialogo o un cobro del mundo real.
 - Agrupacion o panel izquierdo: **Ventas y cobros** y **Compras y pagos** (sustituye la percepcion de "Ingreso / Egreso" como bloques de navegacion).
-- Selector al crear movimiento: **Venta/Cobro**, **Compra/Pago**, y **Pasaje entre cuentas** cuando aplique (movimiento entre cuentas propias; nombre de producto ya acordado como "Pasaje entre cuentas" en propuesta).
+- Selector al crear movimiento: **Venta**, **Cobro**, **Compra**, **Pago**, y **Pasaje entre cuentas** cuando aplique.
+- **Venta/Compra**: reconocen resultado (categoría P&L); el cobro/pago en caja puede ser total, parcial o solo cuenta corriente (componentes).
+- **Cobro/Pago**: solo flujo de caja y balance; contacto obligatorio; sin categoría P&L (`operation_kind` = `collection` / `payment`).
+- Con **efectivo** en ámbito **General empresa**: fecha del movimiento solo **hoy o ayer** (validación UI + Zod + servidor).
 
 ### Implementacion (parcial — 2026-05)
 - Navegacion: sidebar con bloque **Flujo de caja** (Ventas y cobros, Compras y pagos, Todos los movimientos con filtro `?flujo=`); contador de pendientes en sidebar y badge en bottom nav.
 - Reglas de rol: `finalizeMovementSubmission` y `updateMovementStatus` en `src/lib/actions/movements.ts` (aprobar/rechazar/anular solo `admin`; RLS vía `auth_user_is_admin()`).
 - Contactos: alta rapida inline en `operation-form` + `createContact` en `src/lib/actions/contacts.ts` con `client_segment` y `associated_services`; falta ficha/listado dedicado y PDF en Storage.
-- Pendiente: adjunto PDF factura, refinamiento de copy en UI (español neutro, equilibrio técnico/claro), RPC adicional si se centraliza todo en base.
+- Subtipo `operation_kind` en `transactions` + asiento diferenciado en `fn_post_journal_for_transaction` (migración `20260523120000`).
+- Botones Venta/Cobro/Compra/Pago en `/operaciones`; regla de fecha efectivo en `src/lib/movements/cash-date-policy.ts`.
+- Pendiente: adjunto PDF factura, vínculo cobro ↔ venta abierta.
 
 ### Razon
 - Alinear UX con lenguaje natural del negocio (ventas/compras vs jerga contable).

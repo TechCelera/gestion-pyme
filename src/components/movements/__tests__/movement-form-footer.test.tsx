@@ -10,8 +10,10 @@ const baseProps = {
   isRejectedCorrection: false,
   accountsEmpty: false,
   type: 'income' as const,
+  operationKind: 'sale' as const,
   accountId: 'acc-1',
   categoryId: 'cat-1',
+  contactId: '',
   sumMatchesComponents: true,
   onClose: vi.fn(),
   onSubmit: vi.fn(),
@@ -51,10 +53,34 @@ describe('MovementFormFooter', () => {
     expect(onSubmit).toHaveBeenCalledWith(true)
   })
 
-  it('disables primary when account or category missing', () => {
+  it('disables primary when account or category missing on sale', () => {
     render(
       <MovementFormFooter {...baseProps} accountId="" categoryId="cat-1" />
     )
     expect(screen.getByRole('button', { name: 'Enviar a aprobación' })).toBeDisabled()
+  })
+
+  it('disables primary when contact missing on collection', () => {
+    render(
+      <MovementFormFooter
+        {...baseProps}
+        operationKind="collection"
+        categoryId=""
+        contactId=""
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Enviar a aprobación' })).toBeDisabled()
+  })
+
+  it('enables primary on collection with contact and without category', () => {
+    render(
+      <MovementFormFooter
+        {...baseProps}
+        operationKind="collection"
+        categoryId=""
+        contactId="contact-1"
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Enviar a aprobación' })).not.toBeDisabled()
   })
 })

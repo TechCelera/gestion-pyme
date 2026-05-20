@@ -3,6 +3,11 @@
 import { Button } from '@/components/ui/button'
 import { SheetFooter } from '@/components/ui/sheet'
 import { formButtonClass } from '@/components/ui/form-controls'
+import {
+  isCollectionOrPaymentKind,
+  isSaleOrPurchaseKind,
+} from '@/lib/movements/operation-kind'
+import type { OperationKind } from '@/lib/validations/movement'
 import { cn } from '@/lib/utils'
 
 const footerBtn = cn(
@@ -17,8 +22,10 @@ export interface MovementFormFooterProps {
   isRejectedCorrection: boolean
   accountsEmpty: boolean
   type: string
+  operationKind: OperationKind
   accountId: string
   categoryId: string
+  contactId: string
   sumMatchesComponents: boolean
   onClose: () => void
   onSubmit: (asDraft: boolean) => void
@@ -31,17 +38,27 @@ export function MovementFormFooter({
   isRejectedCorrection,
   accountsEmpty,
   type,
+  operationKind,
   accountId,
   categoryId,
+  contactId,
   sumMatchesComponents,
   onClose,
   onSubmit,
 }: MovementFormFooterProps) {
   const needsIncomeExpenseFields = type === 'income' || type === 'expense'
+  const needsCategory =
+    needsIncomeExpenseFields && isSaleOrPurchaseKind(operationKind)
+  const needsContact =
+    needsIncomeExpenseFields && isCollectionOrPaymentKind(operationKind)
   const submitDisabled =
     isLoading ||
     accountsEmpty ||
-    (needsIncomeExpenseFields && (!accountId || !categoryId || !sumMatchesComponents))
+    (needsIncomeExpenseFields &&
+      (!accountId ||
+        !sumMatchesComponents ||
+        (needsCategory && !categoryId) ||
+        (needsContact && !contactId)))
 
   const primaryText = isLoading
     ? 'Guardando...'

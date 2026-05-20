@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import type { Account } from '@/lib/actions/accounts'
 import type { ContactRow } from '@/lib/actions/contacts'
-import type { MovementComponentType } from '@/lib/validations/movement'
+import type { MovementComponentType, OperationKind } from '@/lib/validations/movement'
 import {
   formatMoneyInputFromCanonical,
   getMoneyFractionDigits,
@@ -32,6 +32,7 @@ import {
 
 export type MovementComponentBreakdownProps = {
   movementType: 'income' | 'expense'
+  operationKind?: OperationKind | null
   componentLines: ComponentLineDraft[]
   onComponentLinesChange: (
     updater: (prev: ComponentLineDraft[]) => ComponentLineDraft[]
@@ -63,6 +64,7 @@ function isOperativeComponent(type: MovementComponentType): boolean {
 
 export function MovementComponentBreakdown({
   movementType,
+  operationKind,
   componentLines,
   onComponentLinesChange,
   accounts,
@@ -75,7 +77,7 @@ export function MovementComponentBreakdown({
   compact,
   splitEntry = false,
 }: MovementComponentBreakdownProps) {
-  const activeCompTypes = componentTypesForMovement(movementType)
+  const activeCompTypes = componentTypesForMovement(movementType, operationKind)
   const sumMatches = componentsSumMatchesTotal(componentLines, totalAmount)
   const componentsSum = componentLines.reduce((acc, line) => {
     const v = lineAmountToNumber(line.amount)
