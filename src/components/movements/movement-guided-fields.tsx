@@ -17,7 +17,9 @@ import {
   guidedAccountLabel,
   guidedDescriptionPlaceholder,
   guidedPaymentModeQuestion,
+  guidedSingleAccountBackLabel,
   guidedSingleAccountLabel,
+  guidedSplitLinkLabel,
 } from '@/components/movements/movement-form-guided-copy'
 import {
   GUIDED_MAIN_CONTACT_LINE_ID,
@@ -184,46 +186,102 @@ export function MovementGuidedFields(props: MovementGuidedFieldsProps) {
           />
         ) : null}
 
-        <MovementPaymentModeField
-          question={guidedPaymentModeQuestion(operationKind, type)}
-          singleLabel={guidedSingleAccountLabel(operationKind, type)}
-          showPaymentSplit={showPaymentSplit}
-          onPaymentModeChange={onPaymentModeChange}
-          disabled={isLoading}
-        />
-
-        {!showPaymentSplit ? (
-          <MovementAccountField
-            label={guidedAccountLabel(operationKind, type)}
-            accountId={accountId}
-            onAccountIdChange={onAccountIdChange}
-            accounts={accounts}
-            accountLabel={accountLabel}
-            disabled={isLoading}
-            isLoadingData={isLoadingData}
-            onNavigateToSetup={onNavigateToConfig}
-          />
-        ) : null}
-
-        {showPaymentSplit ? (
-          <section className="space-y-3 rounded-lg border bg-muted/30 p-3">
-            <MovementComponentBreakdown
-              movementType={type}
-              operationKind={operationKind}
-              componentLines={componentLines}
-              onComponentLinesChange={onComponentLinesChange}
-              accounts={accounts}
-              filteredContacts={filteredContacts}
-              currency={currency}
-              totalAmount={amount}
-              isLoading={isLoading}
-              isLoadingData={isLoadingData}
-              onQuickContact={onQuickContact}
-              compact
-              splitEntry
+        {isCollectionPayment ? (
+          <>
+            {!showPaymentSplit ? (
+              <>
+                <MovementAccountField
+                  label={guidedAccountLabel(operationKind, type)}
+                  accountId={accountId}
+                  onAccountIdChange={onAccountIdChange}
+                  accounts={accounts}
+                  accountLabel={accountLabel}
+                  disabled={isLoading}
+                  isLoadingData={isLoadingData}
+                  onNavigateToSetup={onNavigateToConfig}
+                />
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto px-0 text-sm text-muted-foreground"
+                  onClick={() => onPaymentModeChange(true)}
+                  disabled={isLoading}
+                >
+                  {guidedSplitLinkLabel(operationKind)}
+                </Button>
+              </>
+            ) : (
+              <section className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                <MovementComponentBreakdown
+                  movementType={type}
+                  operationKind={operationKind}
+                  componentLines={componentLines}
+                  onComponentLinesChange={onComponentLinesChange}
+                  accounts={accounts}
+                  filteredContacts={filteredContacts}
+                  currency={currency}
+                  totalAmount={amount}
+                  isLoading={isLoading}
+                  isLoadingData={isLoadingData}
+                  onQuickContact={onQuickContact}
+                  compact
+                  splitEntry
+                  simpleAccountSplit
+                />
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto px-0 text-sm"
+                  onClick={() => onPaymentModeChange(false)}
+                  disabled={isLoading}
+                >
+                  {guidedSingleAccountBackLabel(operationKind)}
+                </Button>
+              </section>
+            )}
+          </>
+        ) : (
+          <>
+            <MovementPaymentModeField
+              question={guidedPaymentModeQuestion(operationKind, type)}
+              singleLabel={guidedSingleAccountLabel(operationKind, type)}
+              showPaymentSplit={showPaymentSplit}
+              onPaymentModeChange={onPaymentModeChange}
+              disabled={isLoading}
             />
-          </section>
-        ) : null}
+            {!showPaymentSplit ? (
+              <MovementAccountField
+                label={guidedAccountLabel(operationKind, type)}
+                accountId={accountId}
+                onAccountIdChange={onAccountIdChange}
+                accounts={accounts}
+                accountLabel={accountLabel}
+                disabled={isLoading}
+                isLoadingData={isLoadingData}
+                onNavigateToSetup={onNavigateToConfig}
+              />
+            ) : null}
+            {showPaymentSplit ? (
+              <section className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                <MovementComponentBreakdown
+                  movementType={type}
+                  operationKind={operationKind}
+                  componentLines={componentLines}
+                  onComponentLinesChange={onComponentLinesChange}
+                  accounts={accounts}
+                  filteredContacts={filteredContacts}
+                  currency={currency}
+                  totalAmount={amount}
+                  isLoading={isLoading}
+                  isLoadingData={isLoadingData}
+                  onQuickContact={onQuickContact}
+                  compact
+                  splitEntry
+                />
+              </section>
+            ) : null}
+          </>
+        )}
 
         {isSalePurchase ? (
           <MovementCategoryField

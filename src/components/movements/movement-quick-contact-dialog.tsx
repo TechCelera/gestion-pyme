@@ -1,8 +1,11 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import {
+  FormField,
+  FormInput,
+  formButtonClass,
+} from '@/components/ui/form-controls'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +20,10 @@ export interface MovementQuickContactDialogProps {
   onOpenChange: (open: boolean) => void
   name: string
   onNameChange: (value: string) => void
+  phone: string
+  onPhoneChange: (value: string) => void
+  email: string
+  onEmailChange: (value: string) => void
   contactKindLabel: 'cliente' | 'proveedor' | 'contacto'
   saving: boolean
   onSave: () => void
@@ -27,30 +34,63 @@ export function MovementQuickContactDialog({
   onOpenChange,
   name,
   onNameChange,
+  phone,
+  onPhoneChange,
+  email,
+  onEmailChange,
   contactKindLabel,
   saving,
   onSave,
 }: MovementQuickContactDialogProps) {
+  const canSave = Boolean(name.trim() && phone.trim())
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Nuevo {contactKindLabel}</DialogTitle>
           <DialogDescription>
-            Solo necesitamos el nombre. Queda guardado en tu empresa y seleccionado en este movimiento.
+            Nombre y teléfono para identificarlo en este movimiento. Podés completar más datos
+            después en la ficha de {contactKindLabel}.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-2">
-          <div className="space-y-1">
-            <Label htmlFor="quick-contact-name">Nombre</Label>
-            <Input
+        <div className="py-2 space-y-4">
+          <FormField label="Nombre" htmlFor="quick-contact-name" alignControl>
+            <FormInput
               id="quick-contact-name"
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
               placeholder="Nombre o razón social"
               autoFocus
             />
-          </div>
+          </FormField>
+          <FormField label="Teléfono" htmlFor="quick-contact-phone" alignControl>
+            <FormInput
+              id="quick-contact-phone"
+              value={phone}
+              onChange={(e) => onPhoneChange(e.target.value)}
+              placeholder="Ej: 11 5555-1234"
+              inputMode="tel"
+            />
+          </FormField>
+          <FormField
+            label={
+              <>
+                Correo{' '}
+                <span className="font-normal text-muted-foreground">(opcional)</span>
+              </>
+            }
+            htmlFor="quick-contact-email"
+            alignControl
+          >
+            <FormInput
+              id="quick-contact-email"
+              type="email"
+              value={email}
+              onChange={(e) => onEmailChange(e.target.value)}
+              placeholder="correo@ejemplo.com"
+            />
+          </FormField>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
@@ -59,8 +99,8 @@ export function MovementQuickContactDialog({
           <Button
             type="button"
             onClick={onSave}
-            disabled={saving || !name.trim()}
-            className="bg-[#7B68EE] hover:bg-[#7B68EE]/90"
+            disabled={saving || !canSave}
+            className={formButtonClass}
           >
             {saving ? 'Guardando...' : `Crear ${contactKindLabel}`}
           </Button>

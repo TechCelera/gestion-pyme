@@ -46,7 +46,7 @@ export function TableRowActions({ actions, className }: TableRowActionsProps) {
             />
           }
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal className="h-5 w-5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {visible.map((action) => (
@@ -55,7 +55,7 @@ export function TableRowActions({ actions, className }: TableRowActionsProps) {
               variant={action.destructive ? 'destructive' : 'default'}
               onClick={action.onClick}
             >
-              <action.icon className="mr-2 h-4 w-4" />
+              <action.icon className="mr-2 h-5 w-5" />
               {action.label}
             </DropdownMenuItem>
           ))}
@@ -74,7 +74,7 @@ export function TableRowActions({ actions, className }: TableRowActionsProps) {
           className={action.destructive ? 'text-destructive hover:text-destructive' : undefined}
           onClick={action.onClick}
         >
-          <action.icon className="mr-1 h-4 w-4" />
+          <action.icon className="mr-1.5 h-5 w-5" />
           {action.label}
         </Button>
       ))}

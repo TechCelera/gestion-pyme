@@ -14,6 +14,8 @@ import {
   LogOut,
   Tag,
   Users,
+  UserCircle,
+  Truck,
 } from 'lucide-react'
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
@@ -99,6 +101,18 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
       label: 'Categorías',
       icon: Tag,
       match: (p) => p === ROUTES.CATEGORIES || p.startsWith(`${ROUTES.CATEGORIES}/`),
+    },
+    {
+      href: ROUTES.CLIENTS,
+      label: 'Clientes',
+      icon: UserCircle,
+      match: (p) => p === ROUTES.CLIENTS,
+    },
+    {
+      href: ROUTES.PROVIDERS,
+      label: 'Proveedores',
+      icon: Truck,
+      match: (p) => p === ROUTES.PROVIDERS,
     },
     {
       href: ROUTES.REPORTS,

@@ -13,7 +13,8 @@ import {
   openQuickContactFromGuided,
   pickComboboxFirstOption,
   pickGuidedBankAccount,
-  requireOperationalAccounts,
+  pickGuidedCashAccountIfAny,
+  ensureE2eOperacionesFixtures,
   saveQuickContactDialog,
   submitMovementDraft,
   submitMovementToApproval,
@@ -22,17 +23,15 @@ import {
 } from '../helpers/operaciones'
 
 test.describe('operaciones — flujos guiados (mutan datos)', () => {
+  test.describe.configure({ mode: 'serial', timeout: 120_000 })
+
   test.beforeEach(async ({ page }) => {
     test.skip(
       !hasSupabasePublicEnv() || !hasE2eCredentials(),
       'Requiere NEXT_PUBLIC_SUPABASE_* y E2E_TEST_EMAIL / E2E_TEST_PASSWORD'
     )
-    // Repone cuentas/categorías mínimas si la BD de prueba está vacía.
-    await page.goto('/dashboard')
-    await page.waitForLoadState('networkidle', { timeout: 60_000 }).catch(() => {})
+    await ensureE2eOperacionesFixtures(page)
   })
-
-  test.describe.configure({ mode: 'serial' })
 
   test('abre formularios de venta, cobro, compra y pago', async ({ page }) => {
     await openGuidedOperation(page, 'Venta')
@@ -64,7 +63,6 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
   })
 
   test('cobro: guarda borrador con cliente y cuenta', async ({ page }) => {
-    await requireOperationalAccounts(page)
     const contactName = uniqueE2eLabel('E2E Cliente')
 
     await openGuidedOperation(page, 'Cobro')
@@ -84,7 +82,6 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
   })
 
   test('cobro: envía a aprobación (pendiente) con cliente y cuenta', async ({ page }) => {
-    await requireOperationalAccounts(page)
     const contactName = uniqueE2eLabel('E2E Cliente Pending')
 
     await openGuidedOperation(page, 'Cobro')
@@ -102,7 +99,6 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
   })
 
   test('pago: crea proveedor inline y guarda borrador', async ({ page }) => {
-    await requireOperationalAccounts(page)
     const contactName = uniqueE2eLabel('E2E Proveedor')
 
     await openGuidedOperation(page, 'Pago')
@@ -122,7 +118,6 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
   })
 
   test('venta: categoría, cuenta y borrador', async ({ page }) => {
-    await requireOperationalAccounts(page)
     await openGuidedOperation(page, 'Venta')
     await expectGuidedTitle(page, /registrar venta/i)
 
@@ -136,7 +131,6 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
   })
 
   test('compra: categoría, cuenta y borrador', async ({ page }) => {
-    await requireOperationalAccounts(page)
     await openGuidedOperation(page, 'Compra')
     await expectGuidedTitle(page, /registrar compra/i)
 
@@ -150,16 +144,19 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
   })
 
   test('cobro en general con caja limita fecha a hoy o ayer', async ({ page }) => {
-    await requireOperationalAccounts(page)
     await openGuidedOperation(page, 'Cobro')
+    await waitGuidedFormReady(page)
     await expandGuidedScopeOptions(page)
 
     const sheet = movementSheet(page)
     await sheet.locator('#guided-scope').click()
-    await page.getByRole('option', { name: /general empresa/i }).click()
+    const scopeListbox = page.getByRole('listbox').filter({
+      has: page.getByRole('option', { name: /general empresa/i }),
+    })
+    await scopeListbox.getByRole('option', { name: /general empresa/i }).click()
 
-    const hasCash = await pickCashAccountIfAny(page)
-    test.skip(!hasCash, 'La empresa E2E no tiene cuenta tipo caja')
+    const hasCash = await pickGuidedCashAccountIfAny(page)
+    expect(hasCash, 'Tras seed E2E debe existir cuenta Caja').toBe(true)
 
     const dateInput = sheet.locator('#date-guided')
     const min = await dateInput.getAttribute('min')
@@ -171,19 +168,3 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
     await expect(sheet.getByText(/solo podés elegir hoy o ayer/i)).toBeVisible()
   })
 })
-
-async function pickCashAccountIfAny(page: import('@playwright/test').Page): Promise<boolean> {
-  const sheet = movementSheet(page)
-  await sheet.locator('#account-guided').click()
-  const cashOption = page
-    .getByRole('option')
-    .filter({ hasText: /caja/i })
-    .first()
-  const visible = await cashOption.isVisible().catch(() => false)
-  if (!visible) {
-    await page.keyboard.press('Escape')
-    return false
-  }
-  await cashOption.click()
-  return true
-}

@@ -190,3 +190,12 @@ export function categorizeError(error: unknown): CategorizedError {
     action: 'Intenta de nuevo más tarde',
   }
 }
+
+/** Supabase/Postgres unique constraint (23505). */
+export function isPostgresUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const code = (error as { code?: string }).code
+  if (code === '23505') return true
+  const message = String((error as { message?: string }).message ?? '').toLowerCase()
+  return message.includes('duplicate') || message.includes('unique')
+}

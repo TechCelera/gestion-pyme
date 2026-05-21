@@ -21,6 +21,47 @@ import { mapMovement } from './mappers'
 import { getProjectBudgetContext } from './budget'
 import { resolveIncomeExpensePersistenceFields } from '@/lib/movements/movement-persistence'
 
+async function loadMovementRowAfterCreate(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  transactionId: string,
+  companyId: string
+): Promise<{ row: Record<string, unknown> | null; error: { message: string } | null }> {
+  const { data: rows, error: rpcError } = await supabase.rpc('get_transaction_by_id', {
+    p_transaction_id: transactionId,
+  })
+
+  if (rpcError) {
+    return { row: null, error: { message: rpcError.message } }
+  }
+
+  const rpcRow = (Array.isArray(rows) ? rows[0] : rows) as Record<string, unknown> | null
+  if (!rpcRow?.id) {
+    return { row: null, error: { message: 'Movimiento no encontrado' } }
+  }
+
+  const { data: extra, error: extraError } = await supabase
+    .from('transactions')
+    .select('project_id, projects(name), fund_owner, requires_budget_approval')
+    .eq('id', transactionId)
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  if (extraError) {
+    return { row: null, error: { message: extraError.message } }
+  }
+
+  return {
+    row: {
+      ...rpcRow,
+      project_id: extra?.project_id ?? null,
+      projects: extra?.projects ?? null,
+      fund_owner: extra?.fund_owner ?? 'company',
+      requires_budget_approval: extra?.requires_budget_approval ?? false,
+    },
+    error: null,
+  }
+}
+
 // CREATE
 export async function createMovement(
   input: CreateMovementInput
@@ -126,36 +167,13 @@ export async function createMovement(
       }
     }
 
-    const { data: createdRow, error: fetchError } = await supabase
-      .from('transactions')
-      .select(`
-        id,
-        account_id,
-        accounts(name),
-        category_id,
-        categories(name),
-        type,
-        operation_kind,
-        status,
-        method,
-        contact_id,
-        amount,
-        currency,
-        date,
-        description,
-        created_at,
-        created_by,
-        users(full_name),
-        project_id,
-        projects(name),
-        fund_owner,
-        requires_budget_approval
-      `)
-      .eq('id', transactionId)
-      .single()
+    const { row: createdRow, error: fetchError } = await loadMovementRowAfterCreate(
+      supabase,
+      transactionId,
+      companyId
+    )
 
     if (fetchError || !createdRow) {
-      console.error('Error fetching created movimiento:', fetchError)
       return {
         success: true,
         data: mapMovement({

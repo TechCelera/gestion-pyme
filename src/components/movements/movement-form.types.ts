@@ -82,6 +82,36 @@ export function buildMainComponentLine(
   })
 }
 
+/** Al elegir cuenta en split simple, infiere tipo operativo (caja vs banco). */
+export function withAccountComponentType(
+  line: ComponentLineDraft,
+  accountId: string,
+  accounts: Pick<Account, 'id' | 'type'>[]
+): ComponentLineDraft {
+  const account = accounts.find((a) => a.id === accountId)
+  return {
+    ...line,
+    accountId,
+    componentType: defaultComponentTypeForAccount(account?.type),
+  }
+}
+
+export function splitRemainderAmount(
+  componentLines: ComponentLineDraft[],
+  totalAmount: string,
+  excludeLocalId?: string
+): number | null {
+  const parsedTotal = lineAmountToNumber(totalAmount)
+  if (Number.isNaN(parsedTotal)) return null
+  const sum = componentLines.reduce((acc, line) => {
+    if (excludeLocalId && line.localId === excludeLocalId) return acc
+    const v = lineAmountToNumber(line.amount)
+    return acc + (Number.isNaN(v) ? 0 : v)
+  }, 0)
+  const remainder = parsedTotal - sum
+  return Math.round(remainder * 100) / 100
+}
+
 export function componentsSumMatchesTotal(
   componentLines: ComponentLineDraft[],
   totalAmount: string

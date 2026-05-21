@@ -5,7 +5,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## Estado
 
 - Activo
-- Ultima actualizacion: 2026-05-20 (detalle movimientos, RPC contact_name, tests formulario)
+- Ultima actualizacion: 2026-05-20 (clientes/proveedores, teléfono, cobro simple + split opcional)
 
 ## 1) Caja unica por empresa
 
@@ -303,12 +303,12 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 
 | Momento | Obligatorio | Opcional (no pedir en alta rápida) |
 |---------|-------------|-------------------------------------|
-| **Alta rápida** desde cobro/pago (diálogo inline) | Solo **nombre**; `kind` se infiere del movimiento (cliente / proveedor). | Segmento, servicios, CUIT, notas, email, teléfono. |
+| **Alta rápida** desde cobro/pago (diálogo inline) | **Nombre** + **teléfono**; `kind` = cliente o proveedor según movimiento. | Correo, segmento, servicios, CUIT, notas (ficha en `/clientes` o `/proveedores`). |
 | **Registrar cobro/pago** | **Quién** (contacto elegido o recién creado), **monto**, **fecha**, **cuenta** (caja/banco), desglose que cuadre con el monto. | Nota del movimiento (si falta, la app arma `Cobro: {nombre}` / `Pago: {nombre}`); categoría P&L; proyecto/anticipo; factura PDF. |
-| **Ficha de contacto** (pantalla dedicada — pendiente) | Nombre. | Segmento (`client_segment`), servicios asociados, CUIT (`tax_id`), notas; útiles para reportes y CRM, no para cerrar un cobro. |
+| **Ficha** `/clientes` y `/proveedores` | Nombre + teléfono. | Correo, CUIT, notas; en clientes también segmento y servicios. Unicidad por nombre+tipo por empresa. |
 
 - Permitir **crear cliente/proveedor inline** desde el formulario de movimiento sin abandonar el flujo (**solo nombre**).
-- Segmento y servicios asociados viven en la **ficha** del contacto cuando exista listado/edición; no en el diálogo de alta rápida.
+- Segmento y servicios asociados viven en la **ficha** (`/clientes`, `/proveedores`: alta, **edición** y baja); no en el diálogo de alta rápida.
 - En BD los campos `client_segment` y `associated_services` siguen disponibles; el servidor los acepta como `null` si no se envían.
 
 **Terminologia de producto (pantalla)**
@@ -322,7 +322,8 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ### Implementacion (parcial — 2026-05)
 - Navegacion: sidebar con bloque **Flujo de caja** (Ventas y cobros, Compras y pagos, Todos los movimientos con filtro `?flujo=`); contador de pendientes en sidebar y badge en bottom nav.
 - Reglas de rol: `finalizeMovementSubmission` y `updateMovementStatus` en `src/lib/actions/movements.ts` (aprobar/rechazar/anular solo `admin`; RLS vía `auth_user_is_admin()`).
-- Contactos: alta rápida inline (`movement-quick-contact-dialog.tsx`, solo nombre) + `createContact` en `src/lib/actions/contacts.ts`; columnas `client_segment` / `associated_services` para ficha futura; falta listado/edición dedicado y PDF en Storage.
+- Contactos: pantallas `/clientes` y `/proveedores`; `phone` / `email` en BD; alta rápida con nombre+teléfono; anti-duplicado por nombre+`kind`; cobro/pago con **una cuenta por defecto** y enlace «Partí entre varias cuentas» (filas cuenta+monto, sin selector «tipo» contable). Alta nueva solo `client` o `provider` (no `both`).
+- Pendiente: PDF factura en Storage.
 - Detalle de movimiento: `movement-detail-sheet.tsx` + reglas en `movement-detail-display.ts` (cliente en cobro/pago, categoría solo venta/compra, desglose o fallback de cuenta única, aviso si falla RPC de detalle). RPC `get_transactions` / `get_transaction_by_id` con join a `contacts` → `contact_name` (migración `20260523140000_rpc_contact_name_join.sql`; aplicar con `pnpm sb:push` tras `sb:push:dry`).
 - Envío a aprobación al crear: `addMovement(..., asDraft: false)` llama `finalizeMovementSubmission`; `createMovement` devuelve `id` aunque falle el SELECT posterior.
 - Subtipo `operation_kind` en `transactions` + asiento diferenciado en `fn_post_journal_for_transaction` (migración `20260523120000`).

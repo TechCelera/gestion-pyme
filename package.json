@@ -31,6 +31,7 @@
     "verify:all:local": "pnpm run verify && pnpm run test:e2e",
     "verify:trial": "bash scripts/trial-verify.sh",
     "check:readiness": "node scripts/check-company-readiness.mjs",
+    "wipe:contacts": "node scripts/wipe-contacts.mjs",
     "admin:set-password": "node scripts/admin-set-password.mjs",
     "sb": "node scripts/supabase-cli.mjs",
     "sb:version": "node scripts/supabase-cli.mjs --version",

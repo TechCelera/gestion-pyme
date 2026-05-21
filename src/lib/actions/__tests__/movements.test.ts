@@ -466,6 +466,57 @@ describe('getReportsData server action', () => {
   })
 })
 
+function mockTransactionsTable(opts: {
+  extra?: Record<string, unknown> | null
+  patchUpdate?: boolean
+}) {
+  const maybeSingle = vi.fn().mockResolvedValue({
+    data: opts.extra ?? {
+      project_id: null,
+      projects: null,
+      fund_owner: 'company',
+      requires_budget_approval: false,
+    },
+    error: null,
+  })
+
+  return {
+    update: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    }),
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({ maybeSingle }),
+      }),
+    }),
+  }
+}
+
+function rpcRowAfterCreate(overrides: Record<string, unknown>) {
+  return {
+    id: overrides.id,
+    company_id: TEST_AUTH.companyId,
+    account_id: overrides.account_id,
+    account_name: overrides.account_name ?? 'Caja',
+    category_id: overrides.category_id ?? null,
+    category_name: overrides.category_name ?? null,
+    type: overrides.type,
+    operation_kind: overrides.operation_kind ?? null,
+    status: overrides.status ?? 'draft',
+    method: overrides.method ?? 'cash',
+    amount: overrides.amount,
+    currency: overrides.currency ?? 'ARS',
+    date: overrides.date ?? '2026-05-01',
+    description: overrides.description,
+    contact_id: overrides.contact_id ?? null,
+    created_at: overrides.created_at ?? '2026-05-01T00:00:00Z',
+    created_by: TEST_AUTH.userId,
+    creator_name: 'Tester',
+  }
+}
+
 describe('createMovement con movementComponents', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -491,43 +542,29 @@ describe('createMovement con movementComponents', () => {
       if (name === 'set_operation_components') {
         return Promise.resolve({ data: null, error: null })
       }
+      if (name === 'get_transaction_by_id') {
+        return Promise.resolve({
+          data: [
+            rpcRowAfterCreate({
+              id: txId,
+              account_id: accountId,
+              category_id: categoryId,
+              category_name: 'Ventas',
+              type: 'income',
+              operation_kind: 'sale',
+              amount: 150,
+              description: 'Mix de medios',
+            }),
+          ],
+          error: null,
+        })
+      }
       return Promise.resolve({ data: null, error: null })
-    })
-
-    const mockSingle = vi.fn().mockResolvedValue({
-      data: {
-        id: txId,
-        account_id: accountId,
-        accounts: { name: 'Caja' },
-        category_id: categoryId,
-        categories: { name: 'Ventas' },
-        type: 'income',
-        status: 'draft',
-        method: 'cash',
-        amount: 150,
-        currency: 'ARS',
-        date: '2026-05-01',
-        description: 'Mix',
-        created_at: '2026-05-01T00:00:00Z',
-        created_by: 'user-123',
-        users: { full_name: 'Tester' },
-        project_id: null,
-        projects: null,
-        fund_owner: 'company',
-        requires_budget_approval: false,
-      },
-      error: null,
     })
 
     const mockFrom = vi.fn((table: string) => {
       if (table === 'transactions') {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: mockSingle,
-            }),
-          }),
-        }
+        return mockTransactionsTable({})
       }
       return { select: vi.fn() }
     })
@@ -576,6 +613,7 @@ describe('createMovement con movementComponents', () => {
   })
 
   it('devuelve id aunque falle el fetch posterior (para enviar a aprobación)', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const txId = '44444444-4444-4444-8444-444444444444'
     const accountId = '550e8400-e29b-41d4-a716-446655440001'
     const contactId = '550e8400-e29b-41d4-a716-446655440003'
@@ -587,18 +625,15 @@ describe('createMovement con movementComponents', () => {
       if (name === 'set_operation_components') {
         return Promise.resolve({ data: null, error: null })
       }
+      if (name === 'get_transaction_by_id') {
+        return Promise.resolve({ data: null, error: { message: 'fetch failed' } })
+      }
       return Promise.resolve({ data: null, error: null })
     })
 
     const mockFrom = vi.fn((table: string) => {
       if (table === 'transactions') {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: null, error: { message: 'fetch failed' } }),
-            }),
-          }),
-        }
+        return mockTransactionsTable({})
       }
       return { select: vi.fn() }
     })
@@ -635,6 +670,7 @@ describe('createMovement con movementComponents', () => {
       expect(result.data?.id).toBe(txId)
       expect(result.data?.status).toBe('draft')
     }
+    consoleError.mockRestore()
   })
 
   it('transferencia: descripción vacía llega al RPC como texto por defecto', async () => {
@@ -652,43 +688,28 @@ describe('createMovement con movementComponents', () => {
       if (name === 'create_transaction') {
         return Promise.resolve({ data: txId, error: null })
       }
+      if (name === 'get_transaction_by_id') {
+        return Promise.resolve({
+          data: [
+            rpcRowAfterCreate({
+              id: txId,
+              account_id: sourceId,
+              account_name: 'Banco A',
+              type: 'transfer',
+              method: 'transfer',
+              amount: 200,
+              description: DEFAULT_TRANSFER_DESCRIPTION,
+            }),
+          ],
+          error: null,
+        })
+      }
       return Promise.resolve({ data: null, error: null })
-    })
-
-    const mockSingle = vi.fn().mockResolvedValue({
-      data: {
-        id: txId,
-        account_id: sourceId,
-        accounts: { name: 'Banco A' },
-        category_id: null,
-        categories: null,
-        type: 'transfer',
-        status: 'draft',
-        method: 'transfer',
-        amount: 200,
-        currency: 'ARS',
-        date: '2026-05-03',
-        description: DEFAULT_TRANSFER_DESCRIPTION,
-        created_at: '2026-05-03T00:00:00Z',
-        created_by: 'user-123',
-        users: { full_name: 'Tester' },
-        project_id: null,
-        projects: null,
-        fund_owner: 'company',
-        requires_budget_approval: false,
-      },
-      error: null,
     })
 
     const mockFrom = vi.fn((table: string) => {
       if (table === 'transactions') {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: mockSingle,
-            }),
-          }),
-        }
+        return mockTransactionsTable({})
       }
       return { select: vi.fn() }
     })

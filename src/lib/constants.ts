@@ -9,6 +9,8 @@ export const ROUTES = {
   MOVEMENTS: '/operaciones',
   REPORTS: '/reportes',
   CATEGORIES: '/categorias',
+  CLIENTS: '/clientes',
+  PROVIDERS: '/proveedores',
   TEAM: '/equipo',
   SETTINGS: '/configuracion',
   FORGOT_PASSWORD: '/recuperar-contrasena',

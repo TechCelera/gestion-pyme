@@ -22,13 +22,20 @@ import type { Project } from '@/lib/actions/projects'
 import type { Movement } from '@/lib/actions/movements'
 import { getMovementComponents } from '@/lib/actions/movements'
 import { getContacts, createContact, type ContactRow } from '@/lib/actions/contacts'
+import {
+  filterContactsForExpenseOperations,
+  filterContactsForIncomeOperations,
+} from '@/lib/contacts/contact-filters'
 import type {
   CreateMovementInput,
   MovementType,
   MovementMethod,
   OperationKind,
 } from '@/lib/validations/movement'
-import { operationKindToMovementType } from '@/lib/movements/operation-kind'
+import {
+  isCollectionOrPaymentKind,
+  operationKindToMovementType,
+} from '@/lib/movements/operation-kind'
 import { todayCalendarDate } from '@/lib/movements/cash-date-policy'
 import {
   buildCashDateContext,
@@ -110,6 +117,8 @@ export function MovementForm({
   const [quickContactOpen, setQuickContactOpen] = useState(false)
   const [quickContactLineId, setQuickContactLineId] = useState<string | null>(null)
   const [quickContactName, setQuickContactName] = useState('')
+  const [quickContactPhone, setQuickContactPhone] = useState('')
+  const [quickContactEmail, setQuickContactEmail] = useState('')
   const [quickSaving, setQuickSaving] = useState(false)
 
   const isEditing = !!movement
@@ -454,36 +463,44 @@ export function MovementForm({
 
   const filteredContacts =
     type === 'income'
-      ? contacts.filter((c) => c.kind === 'client' || c.kind === 'both')
-      : contacts.filter((c) => c.kind === 'provider' || c.kind === 'both')
+      ? filterContactsForIncomeOperations(contacts)
+      : filterContactsForExpenseOperations(contacts)
 
   const sumMatchesComponents =
     type !== 'income' && type !== 'expense'
       ? true
       : !showPaymentSplit || componentsSumMatchesTotal(componentLines, amount)
 
-  function defaultQuickContactKind(): ContactRow['kind'] {
-    if (type === 'income') return 'client'
-    if (type === 'expense') return 'provider'
-    return 'both'
+  function defaultQuickContactKind(): 'client' | 'provider' {
+    if (operationKind === 'payment' || type === 'expense') return 'provider'
+    return 'client'
   }
 
   function openQuickContact(lineLocalId: string) {
     setQuickContactLineId(lineLocalId)
     setQuickContactName('')
+    setQuickContactPhone('')
+    setQuickContactEmail('')
     setQuickContactOpen(true)
   }
 
   async function saveQuickContact() {
     const trimmed = quickContactName.trim()
+    const trimmedPhone = quickContactPhone.trim()
     if (!trimmed) {
       toast.error('Escribe el nombre del contacto')
+      return
+    }
+    if (!trimmedPhone) {
+      toast.error('Escribe el teléfono')
       return
     }
     setQuickSaving(true)
     try {
       const res = await createContact({
         name: trimmed,
+        phone: trimmedPhone,
+        email: quickContactEmail.trim(),
         kind: defaultQuickContactKind(),
       })
       if (!res.success || !res.data) {
@@ -717,8 +734,20 @@ export function MovementForm({
       onOpenChange={setQuickContactOpen}
       name={quickContactName}
       onNameChange={setQuickContactName}
+      phone={quickContactPhone}
+      onPhoneChange={setQuickContactPhone}
+      email={quickContactEmail}
+      onEmailChange={setQuickContactEmail}
       contactKindLabel={
-        type === 'income' ? 'cliente' : type === 'expense' ? 'proveedor' : 'contacto'
+        isCollectionOrPaymentKind(operationKind)
+          ? operationKind === 'collection'
+            ? 'cliente'
+            : 'proveedor'
+          : type === 'income'
+            ? 'cliente'
+            : type === 'expense'
+              ? 'proveedor'
+              : 'contacto'
       }
       saving={quickSaving}
       onSave={() => void saveQuickContact()}

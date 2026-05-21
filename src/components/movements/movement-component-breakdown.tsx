@@ -28,6 +28,8 @@ import {
   componentsSumMatchesTotal,
   lineAmountToNumber,
   newComponentLine,
+  splitRemainderAmount,
+  withAccountComponentType,
 } from '@/components/movements/movement-form.types'
 
 export type MovementComponentBreakdownProps = {
@@ -46,6 +48,8 @@ export type MovementComponentBreakdownProps = {
   onQuickContact: (lineLocalId: string) => void
   compact?: boolean
   splitEntry?: boolean
+  /** Cobro/pago: solo cuenta + monto (sin selector de tipo contable). */
+  simpleAccountSplit?: boolean
 }
 
 function formatAmountDisplay(value: string | number, currency: string): string {
@@ -76,6 +80,7 @@ export function MovementComponentBreakdown({
   onQuickContact,
   compact,
   splitEntry = false,
+  simpleAccountSplit = false,
 }: MovementComponentBreakdownProps) {
   const activeCompTypes = componentTypesForMovement(movementType, operationKind)
   const sumMatches = componentsSumMatchesTotal(componentLines, totalAmount)
@@ -90,7 +95,7 @@ export function MovementComponentBreakdown({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <Wallet className="h-4 w-4 shrink-0" />
-          <span>Desglose de cobro/pago</span>
+          <span>{simpleAccountSplit ? 'Reparto entre cuentas' : 'Desglose de cobro/pago'}</span>
         </div>
         <Button
           type="button"
@@ -100,27 +105,33 @@ export function MovementComponentBreakdown({
           disabled={isLoading}
         >
           <Plus className="h-4 w-4 mr-1.5" />
-          Agregar línea
+          Agregar cuenta
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {splitEntry
-          ? `Indicá en qué cuentas o medios se repartió el total (${currency}). La suma de las líneas debe coincidir.`
-          : `Opcional: si no usas líneas, al guardar se toma la cuenta principal del movimiento.`}
+        {simpleAccountSplit
+          ? `Indicá cuánto entró o salió por cada cuenta (${currency}).`
+          : splitEntry
+            ? `Indicá en qué cuentas o medios se repartió el total (${currency}). La suma de las líneas debe coincidir.`
+            : `Opcional: si no usas líneas, al guardar se toma la cuenta principal del movimiento.`}
       </p>
-      <div
+      <p
         className={cn(
-          'rounded-md border px-3 py-2 text-xs font-medium tabular-nums',
-          sumMatches
-            ? 'border-green-200 bg-green-50 text-green-800'
-            : 'border-amber-200 bg-amber-50 text-amber-900'
+          'text-xs tabular-nums',
+          sumMatches ? 'text-green-800' : 'text-amber-900'
         )}
       >
-        Suma medios: {formatAmountDisplay(componentsSum, currency)} {currency} · Total:{' '}
-        {Number.isNaN(parsedTotal)
-          ? '—'
-          : `${formatAmountDisplay(totalAmount, currency)} ${currency}`}
-      </div>
+        {sumMatches ? (
+          <>Suma correcta ({formatAmountDisplay(componentsSum, currency)} {currency})</>
+        ) : (
+          <>
+            Suma {formatAmountDisplay(componentsSum, currency)} {currency} · Total{' '}
+            {Number.isNaN(parsedTotal)
+              ? '—'
+              : `${formatAmountDisplay(totalAmount, currency)} ${currency}`}
+          </>
+        )}
+      </p>
 
       <div className="space-y-4">
         {componentLines.map((line, idx) => {
@@ -129,7 +140,13 @@ export function MovementComponentBreakdown({
             line.componentType
           const selectedAccount = accounts.find((account) => account.id === line.accountId)
           const selectedContact = filteredContacts.find((c) => c.id === line.contactId)
-          const needsAccount = isOperativeComponent(line.componentType)
+          const needsAccount =
+            simpleAccountSplit || isOperativeComponent(line.componentType)
+          const remainder = simpleAccountSplit
+            ? splitRemainderAmount(componentLines, totalAmount, line.localId)
+            : null
+          const canFillRemainder =
+            remainder !== null && remainder > 0 && !Number.isNaN(remainder)
 
           return (
             <div
@@ -156,44 +173,46 @@ export function MovementComponentBreakdown({
                   </Button>
                 ) : null}
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Tipo</Label>
-                <Select
-                  value={line.componentType}
-                  onValueChange={(v) => {
-                    const nextType = v as MovementComponentType
-                    const operative = isOperativeComponent(nextType)
-                    onComponentLinesChange((prev) =>
-                      prev.map((l) =>
-                        l.localId === line.localId
-                          ? {
-                              ...l,
-                              componentType: nextType,
-                              accountId: operative ? l.accountId : '',
-                              contactId: operative ? '' : l.contactId,
-                            }
-                          : l
+              {!simpleAccountSplit ? (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Tipo</Label>
+                  <Select
+                    value={line.componentType}
+                    onValueChange={(v) => {
+                      const nextType = v as MovementComponentType
+                      const operative = isOperativeComponent(nextType)
+                      onComponentLinesChange((prev) =>
+                        prev.map((l) =>
+                          l.localId === line.localId
+                            ? {
+                                ...l,
+                                componentType: nextType,
+                                accountId: operative ? l.accountId : '',
+                                contactId: operative ? '' : l.contactId,
+                              }
+                            : l
+                        )
                       )
-                    )
-                  }}
-                  disabled={isLoading}
-                >
-                  <FormSelectTrigger>
-                    <SelectValue>
-                      <span className="block truncate" title={selectedTypeLabel}>
-                        {selectedTypeLabel}
-                      </span>
-                    </SelectValue>
-                  </FormSelectTrigger>
-                  <SelectContent>
-                    {activeCompTypes.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    }}
+                    disabled={isLoading}
+                  >
+                    <FormSelectTrigger>
+                      <SelectValue>
+                        <span className="block truncate" title={selectedTypeLabel}>
+                          {selectedTypeLabel}
+                        </span>
+                      </SelectValue>
+                    </FormSelectTrigger>
+                    <SelectContent>
+                      {activeCompTypes.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
               {needsAccount ? (
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">Cuenta</Label>
@@ -202,7 +221,11 @@ export function MovementComponentBreakdown({
                     onValueChange={(v) =>
                       onComponentLinesChange((prev) =>
                         prev.map((l) =>
-                          l.localId === line.localId ? { ...l, accountId: v ?? '' } : l
+                          l.localId === line.localId
+                            ? simpleAccountSplit
+                              ? withAccountComponentType(l, v ?? '', accounts)
+                              : { ...l, accountId: v ?? '' }
+                            : l
                         )
                       )
                     }
@@ -286,7 +309,7 @@ export function MovementComponentBreakdown({
                 </div>
               )}
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Monto línea</Label>
+                <Label className="text-sm font-medium">Monto</Label>
                 <FormMoneyInput
                   value={line.amount}
                   onValueChange={(canonical) =>
@@ -299,6 +322,25 @@ export function MovementComponentBreakdown({
                   currency={currency}
                   disabled={isLoading}
                 />
+                {canFillRemainder ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => {
+                      const digits = getMoneyFractionDigits(currency)
+                      const canonical = formatMoneyInputFromCanonical(String(remainder), digits)
+                      onComponentLinesChange((prev) =>
+                        prev.map((l) =>
+                          l.localId === line.localId ? { ...l, amount: canonical } : l
+                        )
+                      )
+                    }}
+                    disabled={isLoading}
+                  >
+                    Completar resto ({formatAmountDisplay(remainder!, currency)})
+                  </Button>
+                ) : null}
               </div>
             </div>
           )
