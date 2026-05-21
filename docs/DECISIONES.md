@@ -335,6 +335,17 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 - Control sin rigidez excesiva: factura opcional pero trazable cuando existe.
 - Separar **identificar** al cliente en un cobro (mínimo: nombre) de **enriquecer** la ficha (segmento, servicios) para no bloquear la operación diaria.
 
+### Semilla al arrancar (cuentas y categorías; sin contactos)
+
+| Qué | ¿Por defecto? | Cómo |
+|-----|----------------|------|
+| **Cuentas** (Caja, Cuenta Corriente, Cuenta de Ahorros) | Sí, si faltan por nombre | `seedCompanyDefaults` al entrar al dashboard (`SeedOnFirstAccess`) o `pnpm run seed:defaults` |
+| **Categorías** típicas ingreso/gasto | Sí, si faltan por nombre | Misma semilla, por país (`COUNTRY_CONFIGS`) |
+| **Clientes y proveedores** | **No** | El usuario los crea en `/clientes`, `/proveedores` o alta rápida en cobro/pago |
+
+- Tras `pnpm run wipe:dev` (desarrollo): ejecutar `pnpm run seed:defaults` o abrir el dashboard una vez.
+- La semilla es **idempotente** (no duplica por nombre). Los E2E pueden crear `E2E Caja` / `E2E Banco`; el wipe borra todo lo operativo, no sustituye la semilla canónica hasta correr `seed:defaults`.
+
 ## 15) Analisis por proyecto: presupuestado vs real
 
 ### Contexto

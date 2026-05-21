@@ -32,6 +32,8 @@
     "verify:trial": "bash scripts/trial-verify.sh",
     "check:readiness": "node scripts/check-company-readiness.mjs",
     "wipe:contacts": "node scripts/wipe-contacts.mjs",
+    "wipe:dev": "node scripts/wipe-dev-data.mjs",
+    "seed:defaults": "node scripts/seed-company-defaults.mjs",
     "admin:set-password": "node scripts/admin-set-password.mjs",
     "sb": "node scripts/supabase-cli.mjs",
     "sb:version": "node scripts/supabase-cli.mjs --version",
