@@ -5,6 +5,7 @@ import { CASH_DATE_GENERAL_ERROR_MESSAGE } from '@/lib/movements/cash-date-polic
 import {
   buildEffectiveComponentLines,
   buildMovementComponentsFromDrafts,
+  resolveComponentBuildTotal,
   hasOperativeAccountForSubmit,
   incomeExpenseSumMatchesForFooter,
   resolvePrimaryAccountId,
@@ -60,14 +61,41 @@ describe('movement-form-submit', () => {
     })
   })
 
+  describe('resolveComponentBuildTotal', () => {
+    it('prioriza suma de filas cuando amount va desfasado (70 vs 70.000)', () => {
+      expect(resolveComponentBuildTotal(70000, 70)).toBe(70000)
+    })
+
+    it('mantiene total del formulario si el desglose está incompleto', () => {
+      expect(resolveComponentBuildTotal(500, 1000)).toBe(1000)
+    })
+  })
+
   describe('buildMovementComponentsFromDrafts', () => {
-    it('rechaza suma distinta al monto total', () => {
+    it('usa la suma de filas aunque amount del formulario vaya desfasado', () => {
       const lines = buildMovementComponentsFromDrafts({
         effectiveComponentLines: [
           {
             ...newComponentLine(),
             accountId: 'acc-bank',
-            amount: '500',
+            amount: '70000',
+            componentType: 'operative_bank',
+          },
+        ],
+        amount: '70.00',
+        currency: 'ARS',
+      })
+      expect(lines).toHaveLength(1)
+      expect(lines[0]?.amount).toBe(70000)
+    })
+
+    it('rechaza filas sin monto válido', () => {
+      const lines = buildMovementComponentsFromDrafts({
+        effectiveComponentLines: [
+          {
+            ...newComponentLine(),
+            accountId: 'acc-bank',
+            amount: '',
             componentType: 'operative_bank',
           },
         ],
@@ -154,6 +182,20 @@ describe('movement-form-submit', () => {
             { ...newComponentLine(), accountId: 'acc-bank', amount: '2500' },
           ],
           amount: '',
+        })
+      ).toBe(true)
+    })
+
+    it('habilita pie aunque amount del form vaya desfasado de las filas', () => {
+      expect(
+        incomeExpenseSumMatchesForFooter({
+          type: 'income',
+          operationKind: 'sale',
+          showPaymentSplit: false,
+          componentLines: [
+            { ...newComponentLine(), accountId: 'acc-cash', amount: '70000' },
+          ],
+          amount: '70.00',
         })
       ).toBe(true)
     })
@@ -305,7 +347,7 @@ describe('movement-form-submit', () => {
       )
       expect(result.ok).toBe(false)
       if (!result.ok) {
-        expect(result.message).toMatch(/suma|coincidir/i)
+        expect(result.message).toMatch(/monto|cuenta|fila/i)
       }
     })
   })

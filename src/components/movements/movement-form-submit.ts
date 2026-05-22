@@ -16,10 +16,10 @@ import type {
   MovementType,
   OperationKind,
 } from '@/lib/validations/movement'
-import { moneyInputToNumber } from '@/lib/utils/money-input'
 import {
   buildMainComponentLine,
   type ComponentLineDraft,
+  lineAmountToNumber,
 } from '@/components/movements/movement-form.types'
 import {
   friendlyLinesSumMatchesTotal,
@@ -59,6 +59,26 @@ export type MovementFormSubmitResult =
   | { ok: true; data: CreateMovementInput }
   | { ok: false; message: string }
 
+/** Total para armar componentes: prioriza filas si `amount` va desfasado (p. ej. 70 vs 70.000). */
+export function resolveComponentBuildTotal(
+  lineSum: number,
+  totalFromAmount: number
+): number {
+  const hasLines = lineSum > 0 && !Number.isNaN(lineSum)
+  const hasAmount = totalFromAmount > 0 && !Number.isNaN(totalFromAmount)
+  if (hasLines && hasAmount) {
+    if (Math.round(lineSum * 100) === Math.round(totalFromAmount * 100)) {
+      return totalFromAmount
+    }
+    if (lineSum > totalFromAmount) {
+      return lineSum
+    }
+    return totalFromAmount
+  }
+  if (hasLines) return lineSum
+  return totalFromAmount
+}
+
 export function resolvePrimaryAccountId(
   rows: MovementComponentRow[],
   fallbackAccountId: string
@@ -77,11 +97,13 @@ export function buildMovementComponentsFromDrafts(input: {
   currency: string
   mainContactId?: string
 }): MovementComponentRow[] {
-  const total = moneyInputToNumber(input.amount)
+  const lineSum = sumComponentLineAmounts(input.effectiveComponentLines)
+  const totalFromAmount = lineAmountToNumber(input.amount, input.currency)
+  const total = resolveComponentBuildTotal(lineSum, totalFromAmount)
   const rows: MovementComponentRow[] = []
 
   for (const line of input.effectiveComponentLines) {
-    const amt = moneyInputToNumber(line.amount)
+    const amt = lineAmountToNumber(line.amount, input.currency)
     if (!line.amount.trim() || Number.isNaN(amt) || amt <= 0) continue
 
     const isOperative =
@@ -186,14 +208,22 @@ export function incomeExpenseSumMatchesForFooter(input: {
     operationKind: input.operationKind,
     showPaymentSplit: input.showPaymentSplit,
   })
-  if (lineBased && !input.amount.trim()) return true
+  if (lineBased) return true
   return friendlyLinesSumMatchesTotal(input.componentLines, input.amount)
 }
 
 export function validateAndBuildMovementPayload(
   input: MovementFormSubmitInput
 ): MovementFormSubmitResult {
-  const parsedAmount = moneyInputToNumber(input.amount)
+  const lineSum =
+    input.type === 'income' || input.type === 'expense'
+      ? sumComponentLineAmounts(input.effectiveComponentLines)
+      : 0
+  const totalFromAmount = lineAmountToNumber(input.amount, input.currency)
+  const parsedAmount =
+    input.type === 'income' || input.type === 'expense'
+      ? resolveComponentBuildTotal(lineSum, totalFromAmount)
+      : totalFromAmount
   if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
     return { ok: false, message: 'Indica un monto mayor a cero' }
   }
@@ -258,13 +288,13 @@ export function validateAndBuildMovementPayload(
       if (lineBased) {
         const movementKind = input.type === 'income' ? 'income' : 'expense'
         const missingAccount = input.effectiveComponentLines.some((line) => {
-          const amt = moneyInputToNumber(line.amount)
+          const amt = lineAmountToNumber(line.amount, input.currency)
           if (!line.amount.trim() || Number.isNaN(amt) || amt <= 0) return false
           if (!isOperativeMedium(line.componentType)) return false
           return !line.accountId
         })
         const missingContact = input.effectiveComponentLines.some((line) => {
-          const amt = moneyInputToNumber(line.amount)
+          const amt = lineAmountToNumber(line.amount, input.currency)
           if (!line.amount.trim() || Number.isNaN(amt) || amt <= 0) return false
           if (!isCreditMedium(line.componentType, movementKind)) return false
           const contactId =
@@ -288,7 +318,7 @@ export function validateAndBuildMovementPayload(
         }
         return {
           ok: false,
-          message: 'La suma de las líneas debe coincidir con el monto total',
+          message: 'Revisá el monto y la cuenta en cada fila de pago',
         }
       }
       return { ok: false, message: 'Indica un monto y una cuenta válidos' }
