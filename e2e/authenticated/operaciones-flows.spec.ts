@@ -5,7 +5,6 @@ import {
   expandGuidedScopeOptions,
   assertGuidedIncomeExpenseReady,
   ensureGuidedContactSelected,
-  ensureSingleAccountMode,
   expectGuidedTitle,
   fillGuidedAmount,
   movementSheet,
@@ -72,10 +71,9 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
     await openQuickContactFromGuided(page)
     await saveQuickContactDialog(page, contactName)
     await ensureGuidedContactSelected(page, contactName)
-    await ensureSingleAccountMode(page)
 
-    await fillGuidedAmount(page, '2500')
     await pickGuidedBankAccount(page)
+    await fillGuidedAmount(page, '2500')
     await assertGuidedIncomeExpenseReady(page, { contactName })
 
     await submitMovementDraft(page)
@@ -89,10 +87,9 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
     await openQuickContactFromGuided(page)
     await saveQuickContactDialog(page, contactName)
     await ensureGuidedContactSelected(page, contactName)
-    await ensureSingleAccountMode(page)
 
-    await fillGuidedAmount(page, '3300')
     await pickGuidedBankAccount(page)
+    await fillGuidedAmount(page, '3300')
     await assertGuidedIncomeExpenseReady(page, { contactName })
 
     await submitMovementToApproval(page)
@@ -108,10 +105,9 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
     await openQuickContactFromGuided(page)
     await saveQuickContactDialog(page, contactName)
     await ensureGuidedContactSelected(page, contactName)
-    await ensureSingleAccountMode(page)
 
-    await fillGuidedAmount(page, '1800')
     await pickGuidedBankAccount(page)
+    await fillGuidedAmount(page, '1800')
     await assertGuidedIncomeExpenseReady(page, { contactName })
 
     await submitMovementDraft(page)
@@ -122,8 +118,8 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
     await expectGuidedTitle(page, /registrar venta/i)
 
     await waitGuidedFormReady(page)
-    await fillGuidedAmount(page, '3200')
     await pickGuidedBankAccount(page)
+    await fillGuidedAmount(page, '3200')
     await pickComboboxFirstOption(page, 'category-guided')
     await assertGuidedIncomeExpenseReady(page, { requireCategory: true })
 
@@ -135,8 +131,8 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
     await expectGuidedTitle(page, /registrar compra/i)
 
     await waitGuidedFormReady(page)
-    await fillGuidedAmount(page, '900')
     await pickGuidedBankAccount(page)
+    await fillGuidedAmount(page, '900')
     await pickComboboxFirstOption(page, 'category-guided')
     await assertGuidedIncomeExpenseReady(page, { requireCategory: true })
 
@@ -154,9 +150,12 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
       has: page.getByRole('option', { name: /general empresa/i }),
     })
     await scopeListbox.getByRole('option', { name: /general empresa/i }).click()
+    await page.keyboard.press('Escape')
 
     const hasCash = await pickGuidedCashAccountIfAny(page)
     expect(hasCash, 'Tras seed E2E debe existir cuenta Caja').toBe(true)
+
+    await fillGuidedAmount(page, '5000')
 
     const dateInput = sheet.locator('#date-guided')
     const min = await dateInput.getAttribute('min')

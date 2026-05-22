@@ -13,6 +13,7 @@ export const MOVEMENT_GUIDED_FIELD_IDS = {
   date: 'date-guided',
   contact: 'contact-guided',
   account: 'account-guided',
+  cashAccount: 'cash-account-guided',
   category: 'category-guided',
   description: 'description-guided',
   paymentModeSingle: 'payment-mode-single',
@@ -92,6 +93,7 @@ export function withAccountComponentType(
   return {
     ...line,
     accountId,
+    contactId: '',
     componentType: defaultComponentTypeForAccount(account?.type),
   }
 }

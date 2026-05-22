@@ -1,18 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
+  FormSheet,
+  FormSheetHeader,
+  FormSheetBody,
+  FormSheetActions,
+} from '@/components/ui/form-sheet'
 import {
   FormField,
   FormInput,
@@ -125,21 +121,17 @@ export function ProjectForm({ isOpen, onClose, onSaved, project, projects }: Pro
   const parentLabel = availableParents.find((item) => item.id === parentProjectId)?.label
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col">
-        <SheetHeader className="px-6 py-4 border-b space-y-1">
-          <SheetTitle className="text-lg">
-            {isEditing ? 'Editar Proyecto' : 'Nuevo Proyecto'}
-          </SheetTitle>
-          <SheetDescription>
-            {isEditing
-              ? 'Modifica los datos del proyecto'
-              : 'Completa los datos para crear un nuevo proyecto o subproyecto'}
-          </SheetDescription>
-        </SheetHeader>
+    <FormSheet open={isOpen} onClose={handleClose}>
+      <FormSheetHeader
+        title={isEditing ? 'Editar Proyecto' : 'Nuevo Proyecto'}
+        description={
+          isEditing
+            ? 'Modifica los datos del proyecto'
+            : 'Completa los datos para crear un nuevo proyecto o subproyecto'
+        }
+      />
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="space-y-6">
+      <FormSheetBody>
             <FormField label="Nombre" htmlFor="projectName" alignControl>
               <FormInput
                 id="projectName"
@@ -203,32 +195,14 @@ export function ProjectForm({ isOpen, onClose, onSaved, project, projects }: Pro
                 disabled={isSaving}
               />
             </FormField>
-          </div>
-        </div>
+      </FormSheetBody>
 
-        <SheetFooter className="border-t bg-muted/50 px-6 py-4 flex-col-reverse sm:flex-row gap-2">
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            disabled={isSaving}
-            className="w-full sm:w-auto"
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSaving}
-            className="bg-[#7B68EE] hover:bg-[#7B68EE]/90 w-full sm:w-auto"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Guardando...
-              </>
-            ) : isEditing ? 'Guardar Cambios' : 'Crear Proyecto'}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+      <FormSheetActions
+        onCancel={handleClose}
+        onSubmit={handleSubmit}
+        isSaving={isSaving}
+        submitLabel={isEditing ? 'Guardar Cambios' : 'Crear Proyecto'}
+      />
+    </FormSheet>
   )
 }

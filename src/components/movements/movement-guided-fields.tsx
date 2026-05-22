@@ -3,39 +3,27 @@
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FormCreatableSelect, FormField, FormInput } from '@/components/ui/form-controls'
-import { MovementComponentBreakdown } from '@/components/movements/movement-component-breakdown'
+import { MovementFriendlyPaymentBreakdown } from '@/components/movements/movement-friendly-payment-breakdown'
 import { MovementScopeFields } from '@/components/movements/movement-scope-fields'
 import {
-  MovementAccountField,
-  MovementAmountCurrencyFields,
   MovementCategoryField,
   MovementDateField,
   MovementFormSection,
-  MovementPaymentModeField,
 } from '@/components/movements/form-fields'
-import {
-  guidedAccountLabel,
-  guidedDescriptionPlaceholder,
-  guidedPaymentModeQuestion,
-  guidedSingleAccountBackLabel,
-  guidedSingleAccountLabel,
-  guidedSplitLinkLabel,
-} from '@/components/movements/movement-form-guided-copy'
+import { guidedDescriptionPlaceholder } from '@/components/movements/movement-form-guided-copy'
 import {
   GUIDED_MAIN_CONTACT_LINE_ID,
   MOVEMENT_GUIDED_FIELD_IDS,
-  type ComponentLineDraft,
 } from '@/components/movements/movement-form.types'
 import { buildCashDateContext } from '@/lib/movements/cash-date-context'
-import {
-  OPERATION_CONTACT_HELP_COPY,
-} from '@/lib/movements/movement-config'
+import { OPERATION_CONTACT_HELP_COPY } from '@/lib/movements/movement-config'
 import { isCollectionOrPaymentKind, isSaleOrPurchaseKind } from '@/lib/movements/operation-kind'
 import type { Account } from '@/lib/actions/accounts'
 import type { Category } from '@/lib/actions/categories'
 import type { ContactRow } from '@/lib/actions/contacts'
 import type { FlatProjectOption } from '@/lib/movements/flatten-projects'
 import type { OperationKind } from '@/lib/validations/movement'
+import type { ComponentLineDraft } from '@/components/movements/movement-form.types'
 import { cn } from '@/lib/utils'
 import { formSegmentButtonClass } from '@/components/ui/form-controls'
 
@@ -47,7 +35,6 @@ export type MovementGuidedFieldsProps = {
   amount: string
   onAmountChange: (value: string) => void
   currency: string
-  onCurrencyChange: (value: string) => void
   date: string
   onDateChange: (value: string) => void
   accountId: string
@@ -90,14 +77,9 @@ export function MovementGuidedFields(props: MovementGuidedFieldsProps) {
   const {
     type,
     operationKind,
-    amount,
-    onAmountChange,
     currency,
-    onCurrencyChange,
     date,
     onDateChange,
-    accountId,
-    onAccountIdChange,
     categoryId,
     onCategoryIdChange,
     contactId,
@@ -116,53 +98,51 @@ export function MovementGuidedFields(props: MovementGuidedFieldsProps) {
     categories,
     filteredContacts,
     flatProjects,
-    accountLabel,
     categoryLabel,
     contactLabel,
     projectLabel,
     showScopeOptions,
     onToggleScopeOptions,
-    showPaymentSplit,
-    onPaymentModeChange,
     isLoading,
     isLoadingData,
-    onNavigateToConfig,
     onQuickContact,
   } = props
+
+  void props.amount
+  void props.onAmountChange
+  void props.accountId
+  void props.onAccountIdChange
+  void props.accountLabel
+  void props.showPaymentSplit
+  void props.onPaymentModeChange
 
   const isCollectionPayment = isCollectionOrPaymentKind(operationKind)
   const isSalePurchase = isSaleOrPurchaseKind(operationKind)
 
   const { bounds: dateBounds } = buildCashDateContext({
     movementScope,
-    showPaymentSplit,
+    showPaymentSplit: true,
     componentLines,
-    accountId,
+    accountId: '',
     accounts,
     date,
   })
 
   return (
     <div className="space-y-3">
-      <MovementFormSection>
-        <MovementAmountCurrencyFields
-          amount={amount}
-          onAmountChange={onAmountChange}
-          currency={currency}
-          onCurrencyChange={onCurrencyChange}
-          disabled={isLoading}
-        />
+      <MovementDateField
+        date={date}
+        onDateChange={onDateChange}
+        min={dateBounds?.min}
+        max={dateBounds?.max}
+        showCashHint={Boolean(dateBounds)}
+        disabled={isLoading}
+      />
 
-        <MovementDateField
-          date={date}
-          onDateChange={onDateChange}
-          min={dateBounds?.min}
-          max={dateBounds?.max}
-          showCashHint={Boolean(dateBounds)}
-          disabled={isLoading}
-        />
-
-        {isCollectionPayment ? (
+      {isCollectionPayment ? (
+        <MovementFormSection
+          heading={operationKind === 'collection' ? '¿De quién es el cobro?' : '¿A quién le pagaste?'}
+        >
           <FormCreatableSelect
             label={operationKind === 'collection' ? 'Cliente' : 'Proveedor'}
             htmlFor={MOVEMENT_GUIDED_FIELD_IDS.contact}
@@ -184,117 +164,39 @@ export function MovementGuidedFields(props: MovementGuidedFieldsProps) {
               operationKind === 'collection' ? 'Crear cliente' : 'Crear proveedor'
             }
           />
-        ) : null}
+        </MovementFormSection>
+      ) : null}
 
-        {isCollectionPayment ? (
-          <>
-            {!showPaymentSplit ? (
-              <>
-                <MovementAccountField
-                  label={guidedAccountLabel(operationKind, type)}
-                  accountId={accountId}
-                  onAccountIdChange={onAccountIdChange}
-                  accounts={accounts}
-                  accountLabel={accountLabel}
-                  disabled={isLoading}
-                  isLoadingData={isLoadingData}
-                  onNavigateToSetup={onNavigateToConfig}
-                />
-                <Button
-                  type="button"
-                  variant="link"
-                  className="h-auto px-0 text-sm text-muted-foreground"
-                  onClick={() => onPaymentModeChange(true)}
-                  disabled={isLoading}
-                >
-                  {guidedSplitLinkLabel(operationKind)}
-                </Button>
-              </>
-            ) : (
-              <section className="space-y-3 rounded-lg border bg-muted/30 p-3">
-                <MovementComponentBreakdown
-                  movementType={type}
-                  operationKind={operationKind}
-                  componentLines={componentLines}
-                  onComponentLinesChange={onComponentLinesChange}
-                  accounts={accounts}
-                  filteredContacts={filteredContacts}
-                  currency={currency}
-                  totalAmount={amount}
-                  isLoading={isLoading}
-                  isLoadingData={isLoadingData}
-                  onQuickContact={onQuickContact}
-                  compact
-                  splitEntry
-                  simpleAccountSplit
-                />
-                <Button
-                  type="button"
-                  variant="link"
-                  className="h-auto px-0 text-sm"
-                  onClick={() => onPaymentModeChange(false)}
-                  disabled={isLoading}
-                >
-                  {guidedSingleAccountBackLabel(operationKind)}
-                </Button>
-              </section>
-            )}
-          </>
-        ) : (
-          <>
-            <MovementPaymentModeField
-              question={guidedPaymentModeQuestion(operationKind, type)}
-              singleLabel={guidedSingleAccountLabel(operationKind, type)}
-              showPaymentSplit={showPaymentSplit}
-              onPaymentModeChange={onPaymentModeChange}
-              disabled={isLoading}
-            />
-            {!showPaymentSplit ? (
-              <MovementAccountField
-                label={guidedAccountLabel(operationKind, type)}
-                accountId={accountId}
-                onAccountIdChange={onAccountIdChange}
-                accounts={accounts}
-                accountLabel={accountLabel}
-                disabled={isLoading}
-                isLoadingData={isLoadingData}
-                onNavigateToSetup={onNavigateToConfig}
-              />
-            ) : null}
-            {showPaymentSplit ? (
-              <section className="space-y-3 rounded-lg border bg-muted/30 p-3">
-                <MovementComponentBreakdown
-                  movementType={type}
-                  operationKind={operationKind}
-                  componentLines={componentLines}
-                  onComponentLinesChange={onComponentLinesChange}
-                  accounts={accounts}
-                  filteredContacts={filteredContacts}
-                  currency={currency}
-                  totalAmount={amount}
-                  isLoading={isLoading}
-                  isLoadingData={isLoadingData}
-                  onQuickContact={onQuickContact}
-                  compact
-                  splitEntry
-                />
-              </section>
-            ) : null}
-          </>
-        )}
+      {isSalePurchase ? (
+        <MovementCategoryField
+          categoryId={categoryId}
+          onCategoryIdChange={onCategoryIdChange}
+          categories={categories}
+          categoryLabel={categoryLabel}
+          disabled={isLoading}
+          isLoadingData={isLoadingData}
+          onNavigateToSetup={props.onNavigateToConfig}
+        />
+      ) : null}
 
-        {isSalePurchase ? (
-          <MovementCategoryField
-            categoryId={categoryId}
-            onCategoryIdChange={onCategoryIdChange}
-            categories={categories}
-            categoryLabel={categoryLabel}
-            disabled={isLoading}
-            isLoadingData={isLoadingData}
-            onNavigateToSetup={onNavigateToConfig}
-          />
-        ) : null}
+      <MovementFormSection>
+        <MovementFriendlyPaymentBreakdown
+          movementType={type}
+          operationKind={operationKind}
+          componentLines={componentLines}
+          onComponentLinesChange={onComponentLinesChange}
+          accounts={accounts}
+          filteredContacts={filteredContacts}
+          currency={currency}
+          mainContactId={contactId}
+          mainContactLabel={contactLabel}
+          isLoading={isLoading}
+          isLoadingData={isLoadingData}
+          onQuickContact={onQuickContact}
+        />
+      </MovementFormSection>
 
+      <MovementFormSection>
         <FormField
           label={
             <>

@@ -4,6 +4,7 @@ import type { ActionResult } from '@/lib/actions/types'
 import { requireAuthenticatedContext } from '@/lib/auth/server-context'
 import { createClient } from '@/lib/supabase/server'
 import type { ChartAccountWithBalance } from '@/lib/chart-of-accounts-balances'
+import { currencyForCountry } from '@/lib/company-operating-currency'
 
 export interface ChartAccountRow {
   id: string
@@ -63,7 +64,7 @@ export async function listChartOfAccountsWithBalances(
           .eq('company_id', companyId)
           .order('sort_order', { ascending: true })
           .order('code', { ascending: true }),
-        supabase.from('companies').select('currency').eq('id', companyId).single(),
+        supabase.from('companies').select('country').eq('id', companyId).single(),
         supabase.rpc('rpc_chart_of_accounts_balances', {
           p_company_id: companyId,
           p_as_of: asOfDate,
@@ -100,7 +101,7 @@ export async function listChartOfAccountsWithBalances(
       success: true,
       data: {
         asOf: asOfDate,
-        currency: (company?.currency as string) ?? 'ARS',
+        currency: currencyForCountry((company?.country as string) ?? 'AR'),
         rows,
       },
     }

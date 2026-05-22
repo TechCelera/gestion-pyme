@@ -1,7 +1,6 @@
 import type { MovementFormSubmitInput } from '../movement-form-submit'
 import { buildEffectiveComponentLines } from '../movement-form-submit'
 import { newComponentLine } from '../movement-form.types'
-
 export const submitFixtureAccounts = [
   { id: 'acc-bank', type: 'bank' as const },
   { id: 'acc-cash', type: 'cash' as const },
@@ -14,14 +13,28 @@ export function buildSubmitInput(
   const operationKind = overrides.operationKind ?? 'collection'
   const amount = overrides.amount ?? '1000'
   const accountId = overrides.accountId ?? 'acc-bank'
-  const showPaymentSplit = overrides.showPaymentSplit ?? false
-  const componentLines = overrides.componentLines ?? [newComponentLine()]
+  const showPaymentSplit =
+    overrides.showPaymentSplit ??
+    (type === 'income' || type === 'expense')
+  const componentLines =
+    overrides.componentLines ??
+    (type === 'income' || type === 'expense'
+      ? [
+          {
+            ...newComponentLine(),
+            accountId,
+            amount,
+            componentType: 'operative_bank' as const,
+          },
+        ]
+      : [newComponentLine()])
   const accounts = overrides.accounts ?? submitFixtureAccounts
 
   const effectiveComponentLines =
     overrides.effectiveComponentLines ??
     buildEffectiveComponentLines({
       type: type === 'transfer' || type === 'adjustment' ? 'income' : type,
+      operationKind,
       showPaymentSplit,
       componentLines,
       accountId,

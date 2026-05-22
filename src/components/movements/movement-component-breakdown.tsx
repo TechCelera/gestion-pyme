@@ -23,6 +23,7 @@ import {
 } from '@/lib/utils/money-input'
 import { cn } from '@/lib/utils'
 import {
+  MOVEMENT_GUIDED_FIELD_IDS,
   type ComponentLineDraft,
   componentTypesForMovement,
   componentsSumMatchesTotal,
@@ -50,6 +51,8 @@ export type MovementComponentBreakdownProps = {
   splitEntry?: boolean
   /** Cobro/pago: solo cuenta + monto (sin selector de tipo contable). */
   simpleAccountSplit?: boolean
+  sectionTitle?: string
+  sectionHint?: string
 }
 
 function formatAmountDisplay(value: string | number, currency: string): string {
@@ -81,6 +84,8 @@ export function MovementComponentBreakdown({
   compact,
   splitEntry = false,
   simpleAccountSplit = false,
+  sectionTitle,
+  sectionHint,
 }: MovementComponentBreakdownProps) {
   const activeCompTypes = componentTypesForMovement(movementType, operationKind)
   const sumMatches = componentsSumMatchesTotal(componentLines, totalAmount)
@@ -93,9 +98,12 @@ export function MovementComponentBreakdown({
   return (
     <div className={cn('space-y-4', compact && 'pt-2')}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <Wallet className="h-4 w-4 shrink-0" />
-          <span>{simpleAccountSplit ? 'Reparto entre cuentas' : 'Desglose de cobro/pago'}</span>
+          <span>
+            {sectionTitle ??
+              (simpleAccountSplit ? '¿De dónde salió / entró el dinero?' : 'Desglose de cobro/pago')}
+          </span>
         </div>
         <Button
           type="button"
@@ -105,15 +113,16 @@ export function MovementComponentBreakdown({
           disabled={isLoading}
         >
           <Plus className="h-4 w-4 mr-1.5" />
-          Agregar cuenta
+          {simpleAccountSplit ? 'Otra cuenta' : 'Agregar cuenta'}
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {simpleAccountSplit
-          ? `Indicá cuánto entró o salió por cada cuenta (${currency}).`
-          : splitEntry
-            ? `Indicá en qué cuentas o medios se repartió el total (${currency}). La suma de las líneas debe coincidir.`
-            : `Opcional: si no usas líneas, al guardar se toma la cuenta principal del movimiento.`}
+        {sectionHint ??
+          (simpleAccountSplit
+            ? `Indicá cuánto por cada cuenta (${currency}). La suma debe coincidir con el total.`
+            : splitEntry
+              ? `Indicá en qué cuentas o medios se repartió el total (${currency}). La suma de las líneas debe coincidir.`
+              : `Opcional: si no usas líneas, al guardar se toma la cuenta principal del movimiento.`)}
       </p>
       <p
         className={cn(
@@ -154,7 +163,9 @@ export function MovementComponentBreakdown({
               className="rounded-lg border border-muted p-3 space-y-3 bg-muted/20"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground">Línea {idx + 1}</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {simpleAccountSplit ? `Medio ${idx + 1}` : `Línea ${idx + 1}`}
+                </span>
                 {componentLines.length > 1 ? (
                   <Button
                     type="button"
@@ -231,19 +242,25 @@ export function MovementComponentBreakdown({
                     }
                     disabled={isLoading || isLoadingData}
                   >
-                    <FormSelectTrigger>
+                    <FormSelectTrigger
+                      id={
+                        simpleAccountSplit && idx === 0
+                          ? MOVEMENT_GUIDED_FIELD_IDS.account
+                          : undefined
+                      }
+                    >
                       <SelectValue>
                         <span
                           className="block truncate"
                           title={
                             selectedAccount
                               ? `${selectedAccount.name} (${selectedAccount.currency})`
-                              : 'Seleccione cuenta'
+                              : 'Elige cuenta'
                           }
                         >
                           {selectedAccount
                             ? `${selectedAccount.name} (${selectedAccount.currency})`
-                            : 'Seleccione cuenta'}
+                            : 'Elige cuenta'}
                         </span>
                       </SelectValue>
                     </FormSelectTrigger>
@@ -311,6 +328,9 @@ export function MovementComponentBreakdown({
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Monto</Label>
                 <FormMoneyInput
+                  id={
+                    simpleAccountSplit && idx === 0 ? MOVEMENT_GUIDED_FIELD_IDS.amount : undefined
+                  }
                   value={line.amount}
                   onValueChange={(canonical) =>
                     onComponentLinesChange((prev) =>

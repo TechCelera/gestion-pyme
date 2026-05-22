@@ -21,6 +21,11 @@ import {
   buildMainComponentLine,
   type ComponentLineDraft,
 } from '@/components/movements/movement-form.types'
+import {
+  isCreditMedium,
+  isOperativeMedium,
+  normalizeFriendlyPaymentLines,
+} from '@/lib/movements/payment-medium'
 
 export type MovementFormSubmitInput = {
   type: MovementType
@@ -68,6 +73,7 @@ export function buildMovementComponentsFromDrafts(input: {
   effectiveComponentLines: ComponentLineDraft[]
   amount: string
   currency: string
+  mainContactId?: string
 }): MovementComponentRow[] {
   const total = moneyInputToNumber(input.amount)
   const rows: MovementComponentRow[] = []
@@ -80,12 +86,13 @@ export function buildMovementComponentsFromDrafts(input: {
       line.componentType === 'operative_cash' || line.componentType === 'operative_bank'
 
     if (isOperative && !line.accountId) continue
-    if (!isOperative && !line.contactId) continue
+    const contactId = isOperative ? '' : line.contactId || input.mainContactId || ''
+    if (!isOperative && !contactId) continue
 
     rows.push({
       componentType: line.componentType,
       accountId: isOperative ? line.accountId : undefined,
-      contactId: !isOperative ? line.contactId : undefined,
+      contactId: isOperative ? undefined : contactId,
       amount: amt,
       currency: input.currency,
     })
@@ -101,6 +108,7 @@ export function buildMovementComponentsFromDrafts(input: {
 
 export function buildEffectiveComponentLines(input: {
   type: MovementType
+  operationKind?: OperationKind | null
   showPaymentSplit: boolean
   componentLines: ComponentLineDraft[]
   accountId: string
@@ -110,8 +118,19 @@ export function buildEffectiveComponentLines(input: {
   if (input.type !== 'income' && input.type !== 'expense') {
     return input.componentLines
   }
-  if (input.showPaymentSplit) return input.componentLines
+  if (input.showPaymentSplit || isCollectionOrPaymentKind(input.operationKind)) {
+    return normalizeFriendlyPaymentLines(input.componentLines, input.accounts)
+  }
   return [buildMainComponentLine(input.accountId, input.amount, input.accounts)]
+}
+
+export function usesLineBasedAccounts(input: {
+  type: MovementType
+  operationKind?: OperationKind | null
+  showPaymentSplit: boolean
+}): boolean {
+  if (input.type === 'income' || input.type === 'expense') return true
+  return isCollectionOrPaymentKind(input.operationKind) || input.showPaymentSplit
 }
 
 export function validateAndBuildMovementPayload(
@@ -122,8 +141,16 @@ export function validateAndBuildMovementPayload(
     return { ok: false, message: 'Indica un monto mayor a cero' }
   }
 
+  const lineBased =
+    (input.type === 'income' || input.type === 'expense') &&
+    usesLineBasedAccounts({
+      type: input.type,
+      operationKind: input.operationKind,
+      showPaymentSplit: input.showPaymentSplit,
+    })
+
   if (input.type === 'income' || input.type === 'expense') {
-    if (!input.showPaymentSplit && !input.accountId) {
+    if (!lineBased && !input.accountId) {
       return { ok: false, message: 'Elige la cuenta' }
     }
     if (isSaleOrPurchaseKind(input.operationKind) && !input.categoryId) {
@@ -167,32 +194,39 @@ export function validateAndBuildMovementPayload(
       effectiveComponentLines: input.effectiveComponentLines,
       amount: input.amount,
       currency: input.currency,
+      mainContactId: input.contactId,
     })
 
     if (!built.length) {
-      if (input.showPaymentSplit) {
-        const missingAccount = input.componentLines.some(
-          (line) =>
-            (line.componentType === 'operative_cash' ||
-              line.componentType === 'operative_bank') &&
-            !line.accountId
-        )
-        const missingContact = input.componentLines.some(
-          (line) =>
-            (line.componentType === 'client_receivable' ||
-              line.componentType === 'supplier_payable') &&
-            !line.contactId
-        )
+      if (lineBased) {
+        const movementKind = input.type === 'income' ? 'income' : 'expense'
+        const missingAccount = input.effectiveComponentLines.some((line) => {
+          const amt = moneyInputToNumber(line.amount)
+          if (!line.amount.trim() || Number.isNaN(amt) || amt <= 0) return false
+          if (!isOperativeMedium(line.componentType)) return false
+          return !line.accountId
+        })
+        const missingContact = input.effectiveComponentLines.some((line) => {
+          const amt = moneyInputToNumber(line.amount)
+          if (!line.amount.trim() || Number.isNaN(amt) || amt <= 0) return false
+          if (!isCreditMedium(line.componentType, movementKind)) return false
+          const contactId =
+            line.contactId ||
+            (isCollectionOrPaymentKind(input.operationKind) ? input.contactId : '')
+          return !contactId
+        })
         if (missingAccount) {
           return {
             ok: false,
-            message: 'En cada línea de efectivo o banco, elige la cuenta',
+            message: 'En cada fila de efectivo o transferencia, elegí la cuenta',
           }
         }
         if (missingContact) {
           return {
             ok: false,
-            message: 'En cada línea de cuenta corriente, elige el contacto',
+            message: isCollectionOrPaymentKind(input.operationKind)
+              ? 'En cuenta corriente, usá el contacto del formulario o elegí quién'
+              : 'En cada fila de cuenta corriente, elegí quién debe o debe',
           }
         }
         return {

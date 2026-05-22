@@ -1,6 +1,7 @@
 'use server'
 
 import type { ActionResult } from '@/lib/actions/types'
+import { fetchOperatingCurrencyForCompany } from '@/lib/company-operating-currency-server'
 import { requireAuthenticatedContext } from '@/lib/auth/server-context'
 import { createClient } from '@/lib/supabase/server'
 
@@ -92,13 +93,15 @@ export async function createAccount(input: {
       }
     }
 
+    const operatingCurrency = await fetchOperatingCurrencyForCompany(supabase, companyId)
+
     const { data, error } = await supabase
       .from('accounts')
       .insert({
         company_id: companyId,
         name: input.name,
         type: input.type,
-        currency: input.currency,
+        currency: operatingCurrency,
         balance: input.balance ?? 0,
       })
       .select('id, name, type, currency, balance')
@@ -158,7 +161,7 @@ export async function updateAccount(
     }
     if (input.name !== undefined) updateData.name = input.name
     if (input.type !== undefined) updateData.type = input.type
-    if (input.currency !== undefined) updateData.currency = input.currency
+    updateData.currency = await fetchOperatingCurrencyForCompany(supabase, companyId)
 
     const { data, error } = await supabase
       .from('accounts')

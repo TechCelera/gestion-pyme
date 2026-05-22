@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 export type GuidedOperationButton = 'Venta' | 'Cobro' | 'Compra' | 'Pago'
 
@@ -39,14 +39,6 @@ async function visitCuentasAndResolve(page: Page): Promise<number | undefined> {
     timeout: 15_000,
   })
   return resolveCuentasRowCount(page)
-}
-
-async function visitCategoriasAndResolve(page: Page): Promise<number | undefined> {
-  await page.goto('/categorias')
-  await expect(page.getByRole('heading', { name: /categorías/i })).toBeVisible({
-    timeout: 15_000,
-  })
-  return resolveCategoryRowCount(page)
 }
 
 async function pollOperationalAccountRows(page: Page): Promise<number> {
@@ -113,9 +105,32 @@ async function createAccountViaUi(
 
 let e2eFixturesReady = false
 
+async function cuentasTableHasCashRow(page: Page): Promise<boolean> {
+  return (await page.locator('table tbody tr').filter({ hasText: /\bcaja\b/i }).count()) > 0
+}
+
+/** Caja hace falta para cobro/pago en general (límite de fecha). */
+async function ensureCashAccountViaUi(page: Page): Promise<void> {
+  await page.goto('/cuentas')
+  await expect(page.getByRole('heading', { name: /mis cuentas/i })).toBeVisible({
+    timeout: 20_000,
+  })
+  if (await cuentasTableHasCashRow(page)) return
+
+  await createAccountViaUi(page, {
+    name: uniqueE2eLabel('E2E Caja'),
+    typeLabel: /^efectivo$/i,
+  })
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: /mis cuentas/i })).toBeVisible({
+    timeout: 15_000,
+  })
+}
+
 /** Espera seed del dashboard o crea Caja + banco mínimos; nunca hace skip. */
 export async function ensureE2eOperacionesFixtures(page: Page): Promise<void> {
   if (e2eFixturesReady) {
+    await ensureCashAccountViaUi(page)
     if ((await pollOperationalAccountRows(page)) > 0) return
     e2eFixturesReady = false
   }
@@ -145,19 +160,16 @@ export async function ensureE2eOperacionesFixtures(page: Page): Promise<void> {
     await waitForAtLeastOneOperationalAccount(page, 20_000).catch(() => {})
   }
 
+  await ensureCashAccountViaUi(page)
   let accountRows = await resolveCuentasRowCount(page)
   if ((accountRows ?? 0) < 1) {
-    const hasCashRow =
-      (await page.locator('table tbody tr').filter({ hasText: /\bcaja\b/i }).count()) > 0
-    if (!hasCashRow) {
-      await createAccountViaUi(page, {
-        name: uniqueE2eLabel('E2E Caja'),
-        typeLabel: /^efectivo$/i,
-      })
-      createdAccountViaUi = true
-      await page.reload({ waitUntil: 'domcontentloaded' })
-      await waitForAtLeastOneOperationalAccount(page, 20_000).catch(() => {})
-    }
+    await createAccountViaUi(page, {
+      name: uniqueE2eLabel('E2E Banco'),
+      typeLabel: /^bancaria$/i,
+    })
+    createdAccountViaUi = true
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await waitForAtLeastOneOperationalAccount(page, 20_000).catch(() => {})
     accountRows = await resolveCuentasRowCount(page)
   }
 
@@ -293,25 +305,24 @@ export async function ensureSingleAccountMode(page: Page): Promise<void> {
   }
 }
 
-function guidedAccountTrigger(page: Page): Locator {
-  return movementSheet(page).locator('#account-guided')
-}
-
-/** Prefiere cuenta banco para evitar reglas de fecha en efectivo (general). */
+/** Elige una cuenta banco (no Caja ni cuenta corriente) en la primera fila. */
 export async function pickGuidedBankAccount(page: Page): Promise<string> {
   await dismissOpenListbox(page)
-  await ensureSingleAccountMode(page)
   await collapseGuidedScopePanel(page)
   const sheet = movementSheet(page)
   await expect(sheet).toBeVisible({ timeout: 10_000 })
-  const trigger = guidedAccountTrigger(page)
+  const trigger = sheet.locator('#account-guided')
   await expect(trigger).toBeVisible({ timeout: 20_000 })
   await expect(trigger).toBeEnabled({ timeout: 20_000 })
   await trigger.scrollIntoViewIfNeeded()
   await trigger.click()
   const listbox = accountOptionsListbox(page)
   await expect(listbox).toBeVisible({ timeout: 10_000 })
-  const bankOption = listbox.getByRole('option').filter({ hasNotText: /caja/i }).first()
+  const bankOption = listbox
+    .getByRole('option')
+    .filter({ hasNotText: /caja/i })
+    .filter({ hasNotText: /cuenta corriente/i })
+    .first()
   const option = (await bankOption.count()) > 0 ? bankOption : listbox.getByRole('option').first()
   await expect(option).toBeVisible({ timeout: 10_000 })
   const label = (await option.textContent())?.trim() ?? ''
@@ -320,25 +331,37 @@ export async function pickGuidedBankAccount(page: Page): Promise<string> {
   return label
 }
 
-/** Elige cuenta Caja en cobro/pago si existe en el listado. */
+/** Elige Caja en el select unificado de cuenta (primera fila). */
 export async function pickGuidedCashAccountIfAny(page: Page): Promise<boolean> {
   await dismissOpenListbox(page)
-  await ensureSingleAccountMode(page)
-  const trigger = guidedAccountTrigger(page)
-  if (!(await trigger.isVisible().catch(() => false))) return false
+  await collapseGuidedScopePanel(page)
+  const sheet = movementSheet(page)
+  await expect(sheet).toBeVisible({ timeout: 10_000 })
+  const trigger = sheet.locator('#account-guided')
+  try {
+    await expect(trigger).toBeVisible({ timeout: 20_000 })
+    await expect(trigger).toBeEnabled({ timeout: 20_000 })
+    await expect(trigger).not.toContainText(/creá cuentas en configuración/i, {
+      timeout: 15_000,
+    })
+  } catch {
+    return false
+  }
+
   await trigger.scrollIntoViewIfNeeded()
   await trigger.click()
-  const listbox = accountOptionsListbox(page)
-  if (!(await listbox.isVisible().catch(() => false))) {
+
+  const listbox = page.getByRole('listbox').and(page.locator(':visible')).last()
+  try {
+    await expect(listbox).toBeVisible({ timeout: 10_000 })
+    const cashOption = listbox.getByRole('option', { name: /caja/i }).first()
+    await expect(cashOption).toBeVisible({ timeout: 10_000 })
+    await cashOption.click({ force: true })
+  } catch {
     await dismissOpenListbox(page)
     return false
   }
-  const cashOption = listbox.getByRole('option').filter({ hasText: /caja/i }).first()
-  if (!(await cashOption.isVisible().catch(() => false))) {
-    await dismissOpenListbox(page)
-    return false
-  }
-  await cashOption.click({ force: true })
+
   await dismissOpenListbox(page)
   return true
 }
@@ -424,7 +447,7 @@ export async function assertGuidedIncomeExpenseReady(
   if (opts.requireCategory) {
     await expect(sheet.locator('#category-guided')).not.toContainText(/elige categoría/i)
   }
-  await expect(guidedAccountTrigger(page)).not.toContainText(/elige cuenta/i)
+  await expect(sheet.locator('#account-guided')).not.toContainText(/elige cuenta/i)
   const digits = (await sheet.locator('#amount-guided').inputValue()).replace(/\D/g, '')
   expect(digits.length).toBeGreaterThan(0)
 

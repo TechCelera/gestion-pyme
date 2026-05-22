@@ -100,6 +100,46 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/** Sheet lateral de formulario: sin padding en popup; header/body/footer llevan el ritmo. */
+const sheetFormContentClass =
+  "flex w-full flex-col gap-0 p-0 data-[side=right]:sm:max-w-lg"
+
+function SheetFormHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <SheetHeader
+      data-slot="sheet-form-header"
+      className={cn("shrink-0 space-y-1 border-b px-6 py-4", className)}
+      {...props}
+    />
+  )
+}
+
+function SheetFormBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="sheet-form-body"
+      className={cn("min-h-0 flex-1 overflow-y-auto px-6 py-4", className)}
+      {...props}
+    />
+  )
+}
+
+function SheetFormFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <SheetFooter
+      data-slot="sheet-form-footer"
+      className={cn(
+        "mt-auto w-full shrink-0 !flex-none gap-2 border-t bg-muted/50 p-0 px-6 py-4",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+/** Espaciado vertical estándar entre campos dentro de `SheetFormBody`. */
+const sheetFormFieldsClass = "space-y-6"
+
 function SheetTitle({ className, ...props }: SheetPrimitive.Title.Props) {
   return (
     <SheetPrimitive.Title
@@ -135,4 +175,9 @@ export {
   SheetFooter,
   SheetTitle,
   SheetDescription,
+  SheetFormHeader,
+  SheetFormBody,
+  SheetFormFooter,
+  sheetFormContentClass,
+  sheetFormFieldsClass,
 }

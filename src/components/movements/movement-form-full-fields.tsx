@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { MOVEMENT_CURRENCIES, MOVEMENT_METHODS } from '@/components/movements/movement-form.constants'
+import { MOVEMENT_METHODS } from '@/components/movements/movement-form.constants'
 import { MovementComponentBreakdown } from '@/components/movements/movement-component-breakdown'
 import type { Account } from '@/lib/actions/accounts'
 import type { Category } from '@/lib/actions/categories'
@@ -74,7 +74,6 @@ export interface MovementFormFullFieldsProps {
   amount: string
   onAmountChange: (value: string) => void
   currency: string
-  onCurrencyChange: (value: string) => void
   componentLines: ComponentLineDraft[]
   onComponentLinesChange: Dispatch<SetStateAction<ComponentLineDraft[]>>
   filteredContacts: ContactRow[]
@@ -125,7 +124,6 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
     amount,
     onAmountChange,
     currency,
-    onCurrencyChange,
     componentLines,
     onComponentLinesChange,
     filteredContacts,
@@ -465,47 +463,16 @@ export function MovementFormFullFields(props: MovementFormFullFieldsProps) {
                 <span>Monto</span>
               </div>
               
-              <div className="grid grid-cols-[1fr,auto] gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Valor</Label>
-                  <FormMoneyInput
-                    id="amount"
-                    value={amount}
-                    onValueChange={onAmountChange}
-                    currency={currency}
-                    disabled={isLoading}
-                    className="text-lg"
-                  />
-                </div>
-                <div className="space-y-2 w-28">
-                  <Label htmlFor="currency">Moneda</Label>
-                  <Select 
-                    value={currency} 
-                    onValueChange={(value) => onCurrencyChange(value ?? 'ARS')}
-                    disabled={isLoading}
-                  >
-                    <FormSelectTrigger id="currency">
-                      <SelectValue>
-                        {(() => {
-                          const c = MOVEMENT_CURRENCIES.find(cur => cur.value === currency)
-                          return c ? (
-                            <span className="block truncate">{c.flag} {c.value}</span>
-                          ) : (
-                            <span className="block truncate">{currency}</span>
-                          )
-                        })()}
-                      </SelectValue>
-                    </FormSelectTrigger>
-                    <SelectContent>
-                      {MOVEMENT_CURRENCIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>
-                          <span className="mr-2">{c.flag}</span>
-                          {c.value}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Valor ({currency})</Label>
+                <FormMoneyInput
+                  id="amount"
+                  value={amount}
+                  onValueChange={onAmountChange}
+                  currency={currency}
+                  disabled={isLoading}
+                  className="text-lg"
+                />
               </div>
             </div>
 

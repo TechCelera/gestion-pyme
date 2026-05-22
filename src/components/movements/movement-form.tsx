@@ -14,6 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_TYPES } from '@/lib/constants'
 import { getAccounts } from '@/lib/actions/accounts'
+import { useCompanyOperatingCurrency } from '@/hooks/use-company-operating-currency'
 import { getCategories } from '@/lib/actions/categories'
 import { getProjects } from '@/lib/actions/projects'
 import type { Account } from '@/lib/actions/accounts'
@@ -54,10 +55,12 @@ import {
 } from '@/components/movements/movement-form-submit'
 import {
   GUIDED_MAIN_CONTACT_LINE_ID,
+  buildMainComponentLine,
   type ComponentLineDraft,
   componentsSumMatchesTotal,
   newComponentLine,
 } from '@/components/movements/movement-form.types'
+import { defaultPaymentLine, linesToTotalAmount } from '@/lib/movements/payment-medium'
 import { MovementGuidedFields } from '@/components/movements/movement-guided-fields'
 import { MovementFormFooter } from '@/components/movements/movement-form-footer'
 import { MovementFormFullFields } from '@/components/movements/movement-form-full-fields'
@@ -97,7 +100,7 @@ export function MovementForm({
   const [accountId, setAccountId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState('ARS')
+  const { currency } = useCompanyOperatingCurrency(isOpen)
   const [description, setDescription] = useState('')
   const [method, setMethod] = useState<MovementMethod>('cash')
   const [sourceAccountId, setSourceAccountId] = useState('')
@@ -146,7 +149,6 @@ export function MovementForm({
     setAccountId('')
     setCategoryId('')
     setAmount('')
-    setCurrency('ARS')
     setDescription('')
     setMethod('cash')
     setSourceAccountId('')
@@ -155,11 +157,16 @@ export function MovementForm({
     setFundOwner('company')
     setProjectId('')
     setMovementScope('general')
-    setComponentLines([newComponentLine()])
+    const movementType = nextType === 'income' ? 'income' : 'expense'
+    setComponentLines(
+      nextType === 'income' || nextType === 'expense'
+        ? [defaultPaymentLine(movementType, accounts)]
+        : [newComponentLine()]
+    )
     setShowScopeOptions(false)
-    setShowPaymentSplit(false)
+    setShowPaymentSplit(nextType === 'income' || nextType === 'expense')
   },
-  []
+  [accounts]
   )
 
   // Fetch accounts and categories on open
@@ -211,7 +218,12 @@ export function MovementForm({
         setOperationKind(fixedType === 'income' ? 'sale' : 'purchase')
       }
       setShowScopeOptions(false)
-      setShowPaymentSplit(false)
+      setShowPaymentSplit(
+        fixedOperationKind
+          ? operationKindToMovementType(fixedOperationKind) === 'income' ||
+            operationKindToMovementType(fixedOperationKind) === 'expense'
+          : fixedType === 'income' || fixedType === 'expense'
+      )
     })
   }, [isOpen, fixedType, fixedOperationKind, movement])
 
@@ -230,7 +242,6 @@ export function MovementForm({
         setAccountId(movement.accountId)
         setCategoryId(movement.categoryId || '')
         setAmount(movement.amount.toString())
-        setCurrency(movement.currency)
         setDescription(movement.description)
         setMethod((movement.method as MovementMethod) || 'cash')
         setFundOwner((movement.fundOwner ?? 'company') as 'company' | 'client_advance')
@@ -262,8 +273,10 @@ export function MovementForm({
       setShowScopeOptions(
         Boolean(movement.projectId) || movement.fundOwner === 'client_advance'
       )
-      setShowPaymentSplit(custom)
-      if (custom && rows.length > 0) {
+      const kind = movement.operationKind ?? 'sale'
+      const lineBasedEdit = isCollectionOrPaymentKind(kind) || custom
+      setShowPaymentSplit(lineBasedEdit)
+      if (rows.length > 0 && lineBasedEdit) {
         setComponentLines(
           rows.map((c) =>
             newComponentLine({
@@ -275,6 +288,10 @@ export function MovementForm({
             })
           )
         )
+      } else if (isCollectionOrPaymentKind(kind)) {
+        setComponentLines([
+          buildMainComponentLine(movement.accountId, String(movement.amount), accounts),
+        ])
       } else {
         setComponentLines([newComponentLine()])
       }
@@ -282,7 +299,15 @@ export function MovementForm({
     return () => {
       cancelled = true
     }
-  }, [isOpen, movement])
+  }, [isOpen, movement, accounts])
+
+  useEffect(() => {
+    if (!isOpen || (type !== 'income' && type !== 'expense')) return
+    const nextAmount = linesToTotalAmount(componentLines, currency)
+    if (nextAmount !== amount) {
+      queueMicrotask(() => setAmount(nextAmount))
+    }
+  }, [componentLines, currency, isOpen, type, amount])
 
   const usesOptionalComponentBreakdown =
     type === 'income' || type === 'expense'
@@ -291,13 +316,14 @@ export function MovementForm({
     (): ComponentLineDraft[] =>
       buildEffectiveComponentLines({
         type,
+        operationKind,
         showPaymentSplit,
         componentLines,
         accountId,
         amount,
         accounts,
       }),
-    [type, showPaymentSplit, componentLines, accountId, amount, accounts]
+    [type, operationKind, showPaymentSplit, componentLines, accountId, amount, accounts]
   )
 
   const cashDateContext = useMemo(() => {
@@ -469,7 +495,7 @@ export function MovementForm({
   const sumMatchesComponents =
     type !== 'income' && type !== 'expense'
       ? true
-      : !showPaymentSplit || componentsSumMatchesTotal(componentLines, amount)
+      : componentsSumMatchesTotal(componentLines, amount)
 
   function defaultQuickContactKind(): 'client' | 'provider' {
     if (operationKind === 'payment' || type === 'expense') return 'provider'
@@ -615,7 +641,6 @@ export function MovementForm({
                 amount={amount}
                 onAmountChange={setAmount}
                 currency={currency}
-                onCurrencyChange={setCurrency}
                 date={date}
                 onDateChange={setDate}
                 accountId={accountId}
@@ -696,7 +721,6 @@ export function MovementForm({
                 amount={amount}
                 onAmountChange={setAmount}
                 currency={currency}
-                onCurrencyChange={setCurrency}
                 componentLines={componentLines}
                 onComponentLinesChange={setComponentLines}
                 filteredContacts={filteredContacts}

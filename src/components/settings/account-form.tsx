@@ -23,7 +23,10 @@ import {
 } from '@/components/ui/select'
 import { createAccount, updateAccount } from '@/lib/actions/accounts'
 import type { Account } from '@/lib/actions/accounts'
+import { OperatingCurrencyHint } from '@/components/ui/operating-currency-hint'
+import { useCompanyOperatingCurrency } from '@/hooks/use-company-operating-currency'
 import { ACCOUNT_TYPE_LABELS } from '@/lib/constants'
+
 interface AccountFormProps {
   isOpen: boolean
   onClose: () => void
@@ -36,17 +39,10 @@ const accountTypes = Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) =>
   label,
 }))
 
-const currencies = [
-  { value: 'ARS', label: 'ARS ($)' },
-  { value: 'USD', label: 'USD ($)' },
-  { value: 'COP', label: 'COP ($)' },
-  { value: 'EUR', label: 'EUR (\u20ac)' },
-]
-
 export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormProps) {
   const [name, setName] = useState('')
   const [type, setType] = useState('bank')
-  const [currency, setCurrency] = useState('ARS')
+  const { currency: operatingCurrency } = useCompanyOperatingCurrency(isOpen)
   const [isSaving, setIsSaving] = useState(false)
 
   const isEditing = !!account
@@ -54,16 +50,13 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
   const resetForm = useCallback(() => {
     setName('')
     setType('bank')
-    setCurrency('ARS')
   }, [])
 
-  // Pre-fill form when editing
   useEffect(() => {
     queueMicrotask(() => {
       if (account) {
         setName(account.name)
         setType(account.type)
-        setCurrency(account.currency)
       } else if (isOpen) {
         resetForm()
       }
@@ -87,7 +80,6 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
         const result = await updateAccount(account.id, {
           name: name.trim(),
           type,
-          currency,
         })
         if (result.success) {
           toast.success('Cuenta actualizada exitosamente')
@@ -100,7 +92,7 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
         const result = await createAccount({
           name: name.trim(),
           type,
-          currency,
+          currency: operatingCurrency,
           balance: 0,
         })
         if (result.success) {
@@ -118,8 +110,7 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
     }
   }
 
-  const typeLabel = accountTypes.find(t => t.value === type)?.label ?? ''
-  const currencyLabel = currencies.find(c => c.value === currency)?.label ?? currency
+  const typeLabel = accountTypes.find((t) => t.value === type)?.label ?? ''
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -129,7 +120,9 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
             {isEditing ? 'Editar Cuenta' : 'Nueva Cuenta'}
           </SheetTitle>
           <SheetDescription>
-            {isEditing ? 'Modifica los datos de la cuenta' : 'Completa los datos para crear una nueva cuenta'}
+            {isEditing
+              ? 'Modifica los datos de la cuenta'
+              : 'Completa los datos para crear una nueva cuenta'}
           </SheetDescription>
         </SheetHeader>
 
@@ -166,25 +159,10 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="accountCurrency">Moneda</Label>
-              <Select
-                value={currency}
-                onValueChange={(v) => setCurrency(v ?? 'ARS')}
-                disabled={isSaving}
-              >
-                <SelectTrigger id="accountCurrency" className="w-full">
-                  {currencyLabel || <span className="text-muted-foreground">Seleccione moneda</span>}
-                </SelectTrigger>
-                <SelectContent>
-                  {currencies.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <OperatingCurrencyHint
+              currency={operatingCurrency}
+              legacyCurrency={isEditing && account ? account.currency : undefined}
+            />
           </div>
         </div>
 
@@ -198,7 +176,7 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
             Cancelar
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
             disabled={isSaving}
             className="bg-[#7B68EE] hover:bg-[#7B68EE]/90 w-full sm:w-auto"
           >
@@ -207,7 +185,11 @@ export function AccountForm({ isOpen, onClose, onSaved, account }: AccountFormPr
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Guardando...
               </>
-            ) : isEditing ? 'Guardar Cambios' : 'Crear Cuenta'}
+            ) : isEditing ? (
+              'Guardar Cambios'
+            ) : (
+              'Crear Cuenta'
+            )}
           </Button>
         </SheetFooter>
       </SheetContent>

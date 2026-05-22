@@ -57,9 +57,3 @@ export const MOVEMENT_METHODS: { value: MovementMethod; label: string }[] = [
   { value: 'other', label: 'Otro' },
 ]
 
-export const MOVEMENT_CURRENCIES = [
-  { value: 'ARS', label: 'ARS ($)', flag: '🇦🇷' },
-  { value: 'USD', label: 'USD ($)', flag: '🇺🇸' },
-  { value: 'COP', label: 'COP ($)', flag: '🇨🇴' },
-  { value: 'EUR', label: 'EUR (€)', flag: '🇪🇺' },
-] as const

@@ -1,42 +1,31 @@
 import type { OperationKind } from '@/lib/validations/movement'
 
-export function guidedAccountLabel(
+/** Pregunta principal al final del formulario guiado. */
+export function guidedPaymentQuestion(
   operationKind: OperationKind,
-  type: 'income' | 'expense'
+  movementType: 'income' | 'expense'
 ): string {
-  if (operationKind === 'collection') return '¿En qué cuenta entró?'
-  if (operationKind === 'payment') return '¿De qué cuenta salió?'
-  return type === 'income' ? '¿Dónde entró?' : '¿De dónde salió?'
+  if (operationKind === 'collection') return '¿Cómo te pagaron el cobro?'
+  if (operationKind === 'payment') return '¿Cómo pagaste?'
+  if (operationKind === 'sale') return '¿Cómo te pagaron?'
+  if (operationKind === 'purchase') return '¿Cómo pagaste?'
+  return movementType === 'income' ? '¿Cómo te pagaron?' : '¿Cómo pagaste?'
 }
 
-export function guidedPaymentModeQuestion(
-  operationKind: OperationKind,
-  type: 'income' | 'expense'
-): string {
-  if (operationKind === 'collection' || operationKind === 'payment') {
-    return ''
-  }
-  return type === 'income' ? '¿Entró todo de una vez?' : '¿Salió todo de una vez?'
+export function guidedPaymentRowAccountLabel(): string {
+  return 'Cuenta'
 }
 
-export function guidedSplitLinkLabel(operationKind: OperationKind): string {
-  if (operationKind === 'collection') return 'Partí el cobro entre varias cuentas'
-  if (operationKind === 'payment') return 'Partí el pago entre varias cuentas'
-  return 'Repartido en varias cuentas'
+export function guidedPaymentRowAmountLabel(): string {
+  return 'Cantidad'
 }
 
-export function guidedSingleAccountBackLabel(operationKind: OperationKind): string {
-  if (operationKind === 'collection') return 'Usar una sola cuenta'
-  if (operationKind === 'payment') return 'Usar una sola cuenta'
-  return 'En una sola cuenta'
+export function guidedAddPaymentRowLabel(): string {
+  return 'Añadir otra cuenta y cantidad'
 }
 
-export function guidedSingleAccountLabel(
-  operationKind: OperationKind,
-  type: 'income' | 'expense'
-): string {
-  if (operationKind === 'collection' || type === 'income') return 'En una cuenta'
-  return 'De una cuenta'
+export function guidedPaymentTotalLabel(): string {
+  return 'Total del movimiento'
 }
 
 export function guidedDescriptionPlaceholder(operationKind: OperationKind): string {

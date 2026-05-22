@@ -30,13 +30,31 @@ describe('movement-form-submit', () => {
       const draft = [newComponentLine(), newComponentLine()]
       const lines = buildEffectiveComponentLines({
         type: 'income',
+        operationKind: 'sale',
         showPaymentSplit: true,
         componentLines: draft,
         accountId: 'acc-bank',
         amount: '1000',
         accounts: submitFixtureAccounts,
       })
-      expect(lines).toBe(draft)
+      expect(lines).toStrictEqual(draft)
+    })
+
+    it('cobro/pago infiere tipo operativo desde la cuenta (sin elegir tipo en UI)', () => {
+      const lines = buildEffectiveComponentLines({
+        type: 'expense',
+        operationKind: 'payment',
+        showPaymentSplit: true,
+        componentLines: [
+          { ...newComponentLine(), accountId: 'acc-cash', amount: '15' },
+          { ...newComponentLine(), accountId: 'acc-bank', amount: '20' },
+        ],
+        accountId: '',
+        amount: '35',
+        accounts: submitFixtureAccounts,
+      })
+      expect(lines[0]?.componentType).toBe('operative_cash')
+      expect(lines[1]?.componentType).toBe('operative_bank')
     })
   })
 
@@ -72,6 +90,24 @@ describe('movement-form-submit', () => {
       })
       expect(lines).toHaveLength(1)
       expect(lines[0]?.amount).toBe(1000)
+    })
+
+    it('usa el contacto principal en cuenta corriente sin contacto en la fila', () => {
+      const lines = buildMovementComponentsFromDrafts({
+        effectiveComponentLines: [
+          {
+            ...newComponentLine(),
+            componentType: 'client_receivable',
+            amount: '1000',
+            contactId: '',
+          },
+        ],
+        amount: '1000',
+        currency: 'ARS',
+        mainContactId: 'contact-1',
+      })
+      expect(lines).toHaveLength(1)
+      expect(lines[0]?.contactId).toBe('contact-1')
     })
   })
 
@@ -174,11 +210,10 @@ describe('movement-form-submit', () => {
       }
     })
 
-    it('rechaza cobro sin cuenta en modo único', () => {
+    it('rechaza cobro sin cuenta en alguna fila con monto', () => {
       const input = buildSubmitInput({
         operationKind: 'collection',
-        accountId: '',
-        effectiveComponentLines: [],
+        componentLines: [{ ...newComponentLine(), amount: '1000' }],
       })
       const result = validateAndBuildMovementPayload(input)
       expect(result.ok).toBe(false)

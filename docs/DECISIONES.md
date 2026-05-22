@@ -5,7 +5,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## Estado
 
 - Activo
-- Ultima actualizacion: 2026-05-20 (clientes/proveedores, teléfono, cobro simple + split opcional)
+- Ultima actualizacion: 2026-05-22 (moneda operativa única por país)
 
 ## 1) Caja unica por empresa
 
@@ -304,7 +304,7 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 | Momento | Obligatorio | Opcional (no pedir en alta rápida) |
 |---------|-------------|-------------------------------------|
 | **Alta rápida** desde cobro/pago (diálogo inline) | **Nombre** + **teléfono**; `kind` = cliente o proveedor según movimiento. | Correo, segmento, servicios, CUIT, notas (ficha en `/clientes` o `/proveedores`). |
-| **Registrar cobro/pago** | **Quién** (contacto elegido o recién creado), **monto**, **fecha**, **cuenta** (caja/banco), desglose que cuadre con el monto. | Nota del movimiento (si falta, la app arma `Cobro: {nombre}` / `Pago: {nombre}`); categoría P&L; proyecto/anticipo; factura PDF. |
+| **Registrar cobro/pago** | **Quién** (contacto elegido o recién creado), **monto**, **fecha**, **desglose de medios** (efectivo / transferencia / cuenta corriente; filas dinámicas con «Agregar medio»; suma = total). | Nota del movimiento (si falta, la app arma `Cobro: {nombre}` / `Pago: {nombre}`); categoría P&L; proyecto/anticipo; factura PDF. |
 | **Ficha** `/clientes` y `/proveedores` | Nombre + teléfono. | Correo, CUIT, notas; en clientes también segmento y servicios. Unicidad por nombre+tipo por empresa. |
 
 - Permitir **crear cliente/proveedor inline** desde el formulario de movimiento sin abandonar el flujo (**solo nombre**).
@@ -322,7 +322,7 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ### Implementacion (parcial — 2026-05)
 - Navegacion: sidebar con bloque **Flujo de caja** (Ventas y cobros, Compras y pagos, Todos los movimientos con filtro `?flujo=`); contador de pendientes en sidebar y badge en bottom nav.
 - Reglas de rol: `finalizeMovementSubmission` y `updateMovementStatus` en `src/lib/actions/movements.ts` (aprobar/rechazar/anular solo `admin`; RLS vía `auth_user_is_admin()`).
-- Contactos: pantallas `/clientes` y `/proveedores`; `phone` / `email` en BD; alta rápida con nombre+teléfono; anti-duplicado por nombre+`kind`; cobro/pago con **una cuenta por defecto** y enlace «Partí entre varias cuentas» (filas cuenta+monto, sin selector «tipo» contable). Alta nueva solo `client` o `provider` (no `both`).
+- Contactos: pantallas `/clientes` y `/proveedores`; `phone` / `email` en BD; alta rápida con nombre+teléfono; anti-duplicado por nombre+`kind`. Formulario guiado (venta/cobro/compra/pago): flujo **cuánto → reparto por cuenta** (`movement-guided-fields.tsx` + `MovementFriendlyPaymentBreakdown`): primero monto total; después filas narrativas «En Caja $X / Desde Banco $Y» que deben sumar el total; un select **Cuenta** (caja, banco o cuenta corriente); tipos contables inferidos al guardar (`payment-medium.ts`). Alta nueva solo `client` o `provider` (no `both`).
 - Pendiente: PDF factura en Storage.
 - Detalle de movimiento: `movement-detail-sheet.tsx` + reglas en `movement-detail-display.ts` (cliente en cobro/pago, categoría solo venta/compra, desglose o fallback de cuenta única, aviso si falla RPC de detalle). RPC `get_transactions` / `get_transaction_by_id` con join a `contacts` → `contact_name` (migración `20260523140000_rpc_contact_name_join.sql`; aplicar con `pnpm sb:push` tras `sb:push:dry`).
 - Envío a aprobación al crear: `addMovement(..., asDraft: false)` llama `finalizeMovementSubmission`; `createMovement` devuelve `id` aunque falle el SELECT posterior.
@@ -496,4 +496,20 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 
 ### Razon
 - CI verde sin secrets de staging; equipos con proyecto E2E dedicado obtienen cobertura de flujos reales sin reintroducir demo.
+
+## 23) Moneda operativa única (país → moneda, Mayo 2026)
+
+### Decision
+- Una sola **moneda operativa** por empresa, derivada del **país** (`COUNTRY_CONFIGS`: AR → ARS, CO → COP).
+- **No** selector de moneda por movimiento ni por cuenta (evita mezclar montos sin tipo de cambio real; `exchange_rate` sigue en 1).
+- **Configuración → Empresa:** cambiar país solo si **no hay movimientos** (`transactions`); patrón alineado a Xero/QuickBooks (moneda base bloqueada con historial).
+- Alta de empresa y semilla: país del registro fija `companies.currency` y cuentas por defecto.
+
+### Implementacion
+- `src/lib/company-operating-currency.ts`, `src/lib/actions/company-settings.ts`.
+- Validación servidor en `createMovement` / `updateMovement` y cuentas (`accounts.ts`).
+- UI: `CompanySettingsSection`, formularios de movimiento y cuenta sin dropdown de moneda.
+
+### Razon
+- PYME opera en una divisa; multimoneda real (FX, revaluación) queda fuera del piloto.
 

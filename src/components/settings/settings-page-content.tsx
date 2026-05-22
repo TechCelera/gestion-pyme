@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, Shield, User } from 'lucide-react'
+import { Building2, Loader2, Shield, User } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/ui/page-header'
@@ -10,11 +10,14 @@ import { ProfileSection } from '@/components/settings/profile-section'
 import { PasswordSection } from '@/components/settings/password-section'
 import { SessionSection } from '@/components/settings/session-section'
 import { DangerZoneSection } from '@/components/settings/danger-zone-section'
+import { CompanySettingsSection } from '@/components/settings/company-settings-section'
 import { getProfile, type UserProfile } from '@/lib/actions/profile'
+import { isAdminRole } from '@/lib/auth/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
 const BASE_TABS = [
   { value: 'perfil', label: 'Perfil', icon: User },
+  { value: 'empresa', label: 'Empresa', icon: Building2 },
   { value: 'seguridad', label: 'Seguridad', icon: Shield },
 ] as const
 
@@ -76,12 +79,16 @@ export function SettingsPageContent() {
     <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-8">
       <PageHeader
         title="Configuración"
-        description="Perfil y seguridad de tu cuenta"
+        description="Perfil, empresa y seguridad de tu cuenta"
       />
 
       <PageTabs value={tab} onValueChange={setTab} tabs={[...BASE_TABS]}>
         <PageTabsContent value="perfil">
           <ProfileSection profile={profile} onUpdated={handleProfileUpdated} />
+        </PageTabsContent>
+
+        <PageTabsContent value="empresa">
+          <CompanySettingsSection isAdmin={isAdminRole(profile.role)} />
         </PageTabsContent>
 
         <PageTabsContent value="seguridad">

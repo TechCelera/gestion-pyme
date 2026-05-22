@@ -41,6 +41,8 @@ Lógica de miles/decimales: solo `lib/utils/money-input.ts` (parse/format). Al g
 
 Filtros y tablas compactas: `Input` / `SelectTrigger` sin prefijo `Form` (tamaño `default`).
 
+**Drawers de formulario** (`src/components/ui/form-sheet.tsx`): `FormSheet` + `FormSheetHeader` + `FormSheetBody` + `FormSheetActions` (atajo) o `FormSheetFooter` con `FormSheetCancelButton` / `FormSheetSubmitButton` (misma altura/grid que movimientos). `submitTone`: `accent` (morado, default) o `primary`. No usar `Button` suelto con clases en el pie del drawer. Tests: `src/components/ui/__tests__/form-sheet.test.tsx`, `src/components/contacts/__tests__/contact-form.test.tsx`, E2E `e2e/authenticated/contactos.spec.ts`.
+
 No duplicar constantes tipo `MOVEMENT_FORM_*_CLASS` por feature; extender `form-control-styles.ts` o los primitivos.
 
 ## Formulario de movimientos (`src/components/movements/`)

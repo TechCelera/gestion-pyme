@@ -1,23 +1,15 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
-import {
-  FormField,
-  FormInput,
-  formButtonClass,
-} from '@/components/ui/form-controls'
+  FormSheet,
+  FormSheetHeader,
+  FormSheetBody,
+  FormSheetActions,
+} from '@/components/ui/form-sheet'
+import { FormField, FormInput } from '@/components/ui/form-controls'
 import { createContact, updateContact, type ContactRow } from '@/lib/actions/contacts'
 import type { ContactKind } from '@/lib/validations/contact'
 
@@ -110,16 +102,13 @@ export function ContactForm({ isOpen, onClose, onSaved, kind, contact }: Contact
   }
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <SheetContent side="right" className="sm:max-w-md flex flex-col">
-        <SheetHeader>
-          <SheetTitle>{isEditing ? `Editar ${entityLabel}` : `Nuevo ${entityLabel}`}</SheetTitle>
-          <SheetDescription>
-            Nombre y teléfono son obligatorios. El resto ayuda para facturación y seguimiento.
-          </SheetDescription>
-        </SheetHeader>
+    <FormSheet open={isOpen} onClose={handleClose} maxWidth="md">
+      <FormSheetHeader
+        title={isEditing ? `Editar ${entityLabel}` : `Nuevo ${entityLabel}`}
+        description="Nombre y teléfono son obligatorios. El resto ayuda para facturación y seguimiento."
+      />
 
-        <div className="flex-1 overflow-y-auto space-y-4 py-4">
+      <FormSheetBody>
           <FormField label="Nombre" htmlFor="contact-name" alignControl>
             <FormInput
               id="contact-name"
@@ -236,31 +225,15 @@ export function ContactForm({ isOpen, onClose, onSaved, kind, contact }: Contact
               disabled={isSaving}
             />
           </FormField>
-        </div>
+      </FormSheetBody>
 
-        <SheetFooter className="border-t pt-4 gap-2 sm:gap-0">
-          <Button type="button" variant="outline" onClick={handleClose} disabled={isSaving}>
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={isSaving || !name.trim() || !phone.trim()}
-            className={formButtonClass}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Guardando...
-              </>
-            ) : isEditing ? (
-              'Guardar'
-            ) : (
-              `Crear ${entityLabel}`
-            )}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+      <FormSheetActions
+        onCancel={handleClose}
+        onSubmit={() => void handleSubmit()}
+        isSaving={isSaving}
+        submitDisabled={!name.trim() || !phone.trim()}
+        submitLabel={isEditing ? 'Guardar' : `Crear ${entityLabel}`}
+      />
+    </FormSheet>
   )
 }

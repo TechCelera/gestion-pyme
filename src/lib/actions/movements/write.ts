@@ -20,6 +20,26 @@ import type { Movement } from './types'
 import { mapMovement } from './mappers'
 import { getProjectBudgetContext } from './budget'
 import { resolveIncomeExpensePersistenceFields } from '@/lib/movements/movement-persistence'
+import {
+  fetchOperatingCurrencyForCompany,
+  isOperatingCurrency,
+  operatingCurrencyMismatchMessage,
+} from '@/lib/company-operating-currency-server'
+
+async function assertOperatingCurrency(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  companyId: string,
+  currency: string
+): Promise<ActionResult<null>> {
+  const operating = await fetchOperatingCurrencyForCompany(supabase, companyId)
+  if (!isOperatingCurrency(operating, currency)) {
+    return {
+      success: false,
+      error: operatingCurrencyMismatchMessage(operating),
+    }
+  }
+  return { success: true, data: null }
+}
 
 async function loadMovementRowAfterCreate(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -75,7 +95,12 @@ export async function createMovement(
     const { companyId, userId } = auth
 
     const supabase = await createClient()
-    
+
+    const currencyCheck = await assertOperatingCurrency(supabase, companyId, validated.currency)
+    if (!currencyCheck.success) {
+      return { success: false, error: currencyCheck.error }
+    }
+
     // Determinar account_id según el tipo
     let accountId = validated.accountId
     if (validated.type === 'transfer') {
@@ -228,6 +253,12 @@ export async function updateMovement(
     const { companyId, userId, role } = auth
 
     const supabase = await createClient()
+
+    const currencyCheck = await assertOperatingCurrency(supabase, companyId, validated.currency)
+    if (!currencyCheck.success) {
+      return { success: false, error: currencyCheck.error }
+    }
+
     const { data: existing, error: fetchErr } = await supabase
       .from('transactions')
       .select('id, status, created_by')

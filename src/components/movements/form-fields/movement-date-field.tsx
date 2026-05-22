@@ -11,6 +11,8 @@ type MovementDateFieldProps = {
   max?: string
   showCashHint?: boolean
   disabled?: boolean
+  /** Si el título va en la sección padre, pasar `false`. */
+  showLabel?: boolean
 }
 
 export function MovementDateField({
@@ -20,20 +22,29 @@ export function MovementDateField({
   max,
   showCashHint,
   disabled,
+  showLabel = true,
 }: MovementDateFieldProps) {
+  const input = (
+    <FormInput
+      id={MOVEMENT_GUIDED_FIELD_IDS.date}
+      type="date"
+      value={date}
+      min={min}
+      max={max}
+      onChange={(e) => onDateChange(e.target.value)}
+      disabled={disabled}
+    />
+  )
+
   return (
     <>
-      <FormField label="¿Cuándo?" htmlFor={MOVEMENT_GUIDED_FIELD_IDS.date} alignControl>
-        <FormInput
-          id={MOVEMENT_GUIDED_FIELD_IDS.date}
-          type="date"
-          value={date}
-          min={min}
-          max={max}
-          onChange={(e) => onDateChange(e.target.value)}
-          disabled={disabled}
-        />
-      </FormField>
+      {showLabel ? (
+        <FormField label="¿Cuándo?" htmlFor={MOVEMENT_GUIDED_FIELD_IDS.date} alignControl>
+          {input}
+        </FormField>
+      ) : (
+        input
+      )}
       {showCashHint ? (
         <p className="text-xs text-muted-foreground">{OPERATION_CASH_DATE_HINT_COPY}</p>
       ) : null}

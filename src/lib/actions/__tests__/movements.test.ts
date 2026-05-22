@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mockCompaniesTable } from '@/test-utils/supabase-company-mocks'
 import { stubAuthError, stubAuthenticatedContext } from '@/test-utils/mock-server-context'
 import { USER_ROLES } from '@/lib/auth/roles'
 import { DEFAULT_TRANSFER_DESCRIPTION } from '@/lib/validations/movement'
@@ -563,6 +564,7 @@ describe('createMovement con movementComponents', () => {
     })
 
     const mockFrom = vi.fn((table: string) => {
+      if (table === 'companies') return mockCompaniesTable('AR')
       if (table === 'transactions') {
         return mockTransactionsTable({})
       }
@@ -632,6 +634,7 @@ describe('createMovement con movementComponents', () => {
     })
 
     const mockFrom = vi.fn((table: string) => {
+      if (table === 'companies') return mockCompaniesTable('AR')
       if (table === 'transactions') {
         return mockTransactionsTable({})
       }
@@ -708,6 +711,7 @@ describe('createMovement con movementComponents', () => {
     })
 
     const mockFrom = vi.fn((table: string) => {
+      if (table === 'companies') return mockCompaniesTable('AR')
       if (table === 'transactions') {
         return mockTransactionsTable({})
       }
@@ -774,6 +778,7 @@ describe('updateMovement', () => {
     })
 
     const mockFrom = vi.fn((table: string) => {
+      if (table === 'companies') return mockCompaniesTable('AR')
       if (table === 'users') {
         return {
           select: vi.fn().mockReturnValue({
@@ -832,6 +837,7 @@ describe('updateMovement', () => {
     })
 
     const mockFrom = vi.fn((table: string) => {
+      if (table === 'companies') return mockCompaniesTable('AR')
       if (table === 'users') {
         return {
           select: vi.fn().mockReturnValue({
