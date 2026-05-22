@@ -40,6 +40,11 @@ export function MoneyInput({
       placeholder={placeholder ?? defaultPlaceholder}
       value={display}
       onChange={(e) => onValueChange(parseMoneyInputToCanonical(e.target.value, fractionDigits))}
+      onPaste={(e) => {
+        e.preventDefault()
+        const pasted = e.clipboardData.getData('text/plain')
+        onValueChange(parseMoneyInputToCanonical(pasted, fractionDigits))
+      }}
       className={cn('tabular-nums', className)}
       {...props}
     />

@@ -22,9 +22,11 @@ import {
   type ComponentLineDraft,
 } from '@/components/movements/movement-form.types'
 import {
+  friendlyLinesSumMatchesTotal,
   isCreditMedium,
   isOperativeMedium,
   normalizeFriendlyPaymentLines,
+  sumComponentLineAmounts,
 } from '@/lib/movements/payment-medium'
 
 export type MovementFormSubmitInput = {
@@ -131,6 +133,61 @@ export function usesLineBasedAccounts(input: {
 }): boolean {
   if (input.type === 'income' || input.type === 'expense') return true
   return isCollectionOrPaymentKind(input.operationKind) || input.showPaymentSplit
+}
+
+export function hasOperativeAccountForSubmit(input: {
+  type: MovementType
+  operationKind?: OperationKind | null
+  showPaymentSplit: boolean
+  accountId: string
+  componentLines: ComponentLineDraft[]
+  accounts: Pick<Account, 'id' | 'type'>[]
+}): boolean {
+  if (input.type !== 'income' && input.type !== 'expense') return true
+  if (
+    usesLineBasedAccounts({
+      type: input.type,
+      operationKind: input.operationKind,
+      showPaymentSplit: input.showPaymentSplit,
+    })
+  ) {
+    const lines = buildEffectiveComponentLines({
+      type: input.type,
+      operationKind: input.operationKind,
+      showPaymentSplit: input.showPaymentSplit,
+      componentLines: input.componentLines,
+      accountId: input.accountId,
+      amount: '',
+      accounts: input.accounts,
+    })
+    return lines.some(
+      (line) =>
+        (line.componentType === 'operative_cash' ||
+          line.componentType === 'operative_bank') &&
+        Boolean(line.accountId)
+    )
+  }
+  return Boolean(input.accountId)
+}
+
+/** Footer: en desglose por filas el total React puede ir un tick detrás de las líneas. */
+export function incomeExpenseSumMatchesForFooter(input: {
+  type: MovementType
+  operationKind?: OperationKind | null
+  showPaymentSplit: boolean
+  componentLines: ComponentLineDraft[]
+  amount: string
+}): boolean {
+  if (input.type !== 'income' && input.type !== 'expense') return true
+  const sum = sumComponentLineAmounts(input.componentLines)
+  if (sum <= 0) return false
+  const lineBased = usesLineBasedAccounts({
+    type: input.type,
+    operationKind: input.operationKind,
+    showPaymentSplit: input.showPaymentSplit,
+  })
+  if (lineBased && !input.amount.trim()) return true
+  return friendlyLinesSumMatchesTotal(input.componentLines, input.amount)
 }
 
 export function validateAndBuildMovementPayload(

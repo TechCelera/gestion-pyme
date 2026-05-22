@@ -1,5 +1,11 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
+import {
+  getMoneyFractionDigits,
+  moneyInputToNumber,
+  parseMoneyInputToCanonical,
+} from '@/lib/utils/money-input'
+
 export type GuidedOperationButton = 'Venta' | 'Cobro' | 'Compra' | 'Pago'
 
 export function uniqueE2eLabel(prefix: string): string {
@@ -275,15 +281,78 @@ export async function expectGuidedTitle(page: Page, title: RegExp): Promise<void
   })
 }
 
+function amountDigitsToCanonical(digits: string, fractionDigits: number): string {
+  const intPart = digits.replace(/\D/g, '')
+  if (!intPart) return ''
+  if (fractionDigits === 0) return intPart
+  return `${intPart}.${'0'.repeat(fractionDigits)}`
+}
+
+async function readGuidedSheetCurrency(page: Page): Promise<string> {
+  const sheet = movementSheet(page)
+  const fromAttr = await sheet.getAttribute('data-e2e-operating-currency')
+  if (fromAttr?.trim()) return fromAttr.trim()
+
+  const accountText = (await sheet.locator('#account-guided').textContent().catch(() => '')) ?? ''
+  const fromAccount = accountText.match(/\(([A-Z]{3})\)\s*$/)
+  if (fromAccount?.[1]) return fromAccount[1]
+
+  const totalBlock = sheet
+    .locator('p')
+    .filter({ hasText: /^total del movimiento$/i })
+    .locator('..')
+  const text = (await totalBlock.textContent().catch(() => '')) ?? ''
+  const fromTotal = text.match(/\b(ARS|COP|USD|EUR)\b/)
+  return fromTotal?.[1] ?? 'ARS'
+}
+
+function guidedTotalAmountLine(page: Page) {
+  return movementSheet(page)
+    .locator('p')
+    .filter({ hasText: /^total del movimiento$/i })
+    .locator('..')
+    .locator('p.tabular-nums.font-semibold')
+}
+
+function parseGuidedTotalAmount(totalText: string, fractionDigits: number): number {
+  const withoutCurrency = totalText.replace(/\s*(ARS|COP|USD|EUR)\s*$/i, '').trim()
+  const canonical = parseMoneyInputToCanonical(withoutCurrency, fractionDigits)
+  return moneyInputToNumber(canonical)
+}
+
+/** Setea monto de la primera fila vía evento (ver movement-friendly-payment-breakdown). */
+async function setGuidedPaymentAmountCanonical(page: Page, canonical: string): Promise<void> {
+  await movementSheet(page).locator('#amount-guided').waitFor({ state: 'visible', timeout: 15_000 })
+  await page.evaluate((value) => {
+    window.dispatchEvent(
+      new CustomEvent('gestion-pyme:e2e-set-guided-payment-amount', {
+        detail: { rowIndex: 0, canonical: value },
+      })
+    )
+  }, canonical)
+}
+
 export async function fillGuidedAmount(page: Page, amount: string): Promise<void> {
-  const input = movementSheet(page).locator('#amount-guided')
-  await input.click()
-  await input.fill('')
-  await input.pressSequentially(amount, { delay: 40 })
-  await input.press('Tab')
+  const currency = await readGuidedSheetCurrency(page)
+  const fractionDigits = getMoneyFractionDigits(currency)
+  const expected = Number(amount.replace(/\D/g, ''))
+  const canonical = amountDigitsToCanonical(amount, fractionDigits)
+
+  await setGuidedPaymentAmountCanonical(page, canonical)
+
   await expect
-    .poll(async () => (await input.inputValue()).replace(/\D/g, ''))
-    .toContain(amount.replace(/\D/g, ''))
+    .poll(async () => {
+      const text = (await guidedTotalAmountLine(page).textContent()) ?? ''
+      return parseGuidedTotalAmount(text, fractionDigits)
+    }, { timeout: 15_000 })
+    .toBe(expected)
+
+  const input = movementSheet(page).locator('#amount-guided')
+  const inputCanonical = parseMoneyInputToCanonical(
+    (await input.inputValue()) ?? '',
+    fractionDigits
+  )
+  expect(moneyInputToNumber(inputCanonical)).toBe(expected)
 }
 
 export async function waitGuidedFormReady(page: Page): Promise<void> {
@@ -323,10 +392,14 @@ export async function pickGuidedBankAccount(page: Page): Promise<string> {
     .filter({ hasNotText: /caja/i })
     .filter({ hasNotText: /cuenta corriente/i })
     .first()
-  const option = (await bankOption.count()) > 0 ? bankOption : listbox.getByRole('option').first()
-  await expect(option).toBeVisible({ timeout: 10_000 })
-  const label = (await option.textContent())?.trim() ?? ''
-  await option.click({ force: true })
+  if ((await bankOption.count()) < 1) {
+    throw new Error(
+      'E2E: no hay cuenta bancaria operativa en el desglose (creá una cuenta tipo bancaria)'
+    )
+  }
+  await expect(bankOption).toBeVisible({ timeout: 10_000 })
+  const label = (await bankOption.textContent())?.trim() ?? ''
+  await bankOption.click({ force: true })
   await dismissOpenListbox(page)
   return label
 }
@@ -400,6 +473,7 @@ export async function openQuickContactFromGuided(page: Page): Promise<void> {
     .or(sheet.getByRole('button', { name: /crear cliente/i }))
     .or(sheet.getByRole('button', { name: /crear proveedor/i }))
   await expect(createBtn.first()).toBeVisible({ timeout: 10_000 })
+  await expect(createBtn.first()).toBeEnabled({ timeout: 30_000 })
   await createBtn.first().click()
   await expect(page.getByRole('dialog', { name: /nuevo (cliente|proveedor|contacto)/i })).toBeVisible()
 }
@@ -437,7 +511,12 @@ export async function expectToast(page: Page, text: RegExp): Promise<void> {
 
 export async function assertGuidedIncomeExpenseReady(
   page: Page,
-  opts: { contactName?: string; requireCategory?: boolean }
+  opts: {
+    contactName?: string
+    requireCategory?: boolean
+    /** Borrador no exige el botón principal habilitado. */
+    submit?: 'draft' | 'primary'
+  }
 ): Promise<void> {
   const sheet = movementSheet(page)
   if (opts.contactName) {
@@ -448,10 +527,20 @@ export async function assertGuidedIncomeExpenseReady(
     await expect(sheet.locator('#category-guided')).not.toContainText(/elige categoría/i)
   }
   await expect(sheet.locator('#account-guided')).not.toContainText(/elige cuenta/i)
-  const digits = (await sheet.locator('#amount-guided').inputValue()).replace(/\D/g, '')
-  expect(digits.length).toBeGreaterThan(0)
+  const currency = await readGuidedSheetCurrency(page)
+  const fractionDigits = getMoneyFractionDigits(currency)
+  const totalAmount = parseGuidedTotalAmount(
+    (await guidedTotalAmountLine(page).textContent()) ?? '',
+    fractionDigits
+  )
+  expect(totalAmount).toBeGreaterThan(0)
 
-  await expect(guidedPrimarySubmitButton(sheet)).toBeEnabled({ timeout: 10_000 })
+  const submitTarget = opts.submit ?? 'primary'
+  const submitBtn =
+    submitTarget === 'draft'
+      ? sheet.getByRole('button', { name: /^borrador$/i })
+      : guidedPrimarySubmitButton(sheet)
+  await expect(submitBtn).toBeEnabled({ timeout: 15_000 })
 }
 
 /** Botón principal del formulario guiado (enviar o registrar cobro/pago/venta/compra). */
@@ -461,62 +550,44 @@ export function guidedPrimarySubmitButton(sheet: ReturnType<typeof movementSheet
   })
 }
 
-const MOVEMENT_SUCCESS_TOAST =
-  /guardado como borrador|borrador actualizado|enviado a aprobación|movimiento actualizado|corregido y enviado|aprobado y registrado|movimiento eliminado/i
-
 const MOVEMENT_ERROR_TOAST =
   /error|no se pudo|inválid|obligatorio|elegí|escribe el|revisa el desglose|validación/i
 
-function classifyMovementToast(text: string): 'success' | 'error' | 'unknown' {
-  const t = text.trim()
-  if (!t) return 'unknown'
-  if (MOVEMENT_SUCCESS_TOAST.test(t)) return 'success'
-  if (MOVEMENT_ERROR_TOAST.test(t)) return 'error'
-  return 'unknown'
+async function waitForMovementSubmitOutcome(
+  page: Page,
+  sheet: Locator,
+  successPattern: RegExp
+): Promise<void> {
+  const errorToast = page.locator('[data-sonner-toast]').filter({ hasText: MOVEMENT_ERROR_TOAST })
+
+  await Promise.race([
+    page
+      .locator('[data-sonner-toast]')
+      .filter({ hasText: successPattern })
+      .last()
+      .waitFor({ state: 'visible', timeout: 45_000 }),
+    errorToast
+      .last()
+      .waitFor({ state: 'visible', timeout: 45_000 })
+      .then(async () => {
+        const text = (await errorToast.last().textContent())?.trim() ?? ''
+        throw new Error(`Validación en cliente: ${text}`)
+      }),
+  ])
+
+  await expect(sheet).toBeHidden({ timeout: 20_000 })
 }
 
 export async function submitMovementDraft(page: Page): Promise<void> {
   const sheet = movementSheet(page)
   const draftBtn = sheet.getByRole('button', { name: /^borrador$/i })
   await expect(draftBtn).toBeEnabled({ timeout: 10_000 })
-
-  const rpcResponse = page.waitForResponse(
-    (res) =>
-      res.request().method() === 'POST' &&
-      res.url().includes('/rest/v1/rpc/') &&
-      (res.url().includes('create_transaction') || res.url().includes('set_operation_components')),
-    { timeout: 60_000 }
-  )
-
   await draftBtn.click()
-
-  const validationToast = page.locator('[data-sonner-toast]').first()
-  const outcome = await Promise.race([
-    rpcResponse.then((res) => ({ kind: 'rpc' as const, res })),
-    validationToast
-      .waitFor({ state: 'visible', timeout: 8_000 })
-      .then(async () => ({ kind: 'toast' as const, text: await validationToast.textContent() })),
-  ])
-
-  if (outcome.kind === 'toast') {
-    const text = outcome.text?.trim() ?? ''
-    const kind = classifyMovementToast(text)
-    if (kind === 'success') {
-      await expect(sheet).toBeHidden({ timeout: 20_000 })
-      return
-    }
-    if (kind === 'error') {
-      throw new Error(`Validación en cliente: ${text}`)
-    }
-    throw new Error(`Toast inesperado tras borrador: ${text || 'sin texto'}`)
-  }
-
-  if (!outcome.res.ok()) {
-    const body = await outcome.res.text()
-    throw new Error(`RPC falló (${outcome.res.status()}): ${body.slice(0, 500)}`)
-  }
-
-  await expect(sheet).toBeHidden({ timeout: 20_000 })
+  await waitForMovementSubmitOutcome(
+    page,
+    sheet,
+    /guardado como borrador|borrador actualizado/i
+  )
 }
 
 /** Crea el movimiento y lo envía a pendiente (no borrador). */
@@ -524,59 +595,12 @@ export async function submitMovementToApproval(page: Page): Promise<void> {
   const sheet = movementSheet(page)
   const primaryBtn = guidedPrimarySubmitButton(sheet)
   await expect(primaryBtn).toBeEnabled({ timeout: 10_000 })
-
-  const createRpc = page.waitForResponse(
-    (res) =>
-      res.request().method() === 'POST' &&
-      res.url().includes('/rest/v1/rpc/') &&
-      (res.url().includes('create_transaction') || res.url().includes('set_operation_components')),
-    { timeout: 60_000 }
-  )
-
-  const statusRpc = page
-    .waitForResponse(
-      (res) =>
-        res.request().method() === 'POST' &&
-        res.url().includes('/rest/v1/rpc/update_transaction_status'),
-      { timeout: 60_000 }
-    )
-    .catch(() => null)
-
   await primaryBtn.click()
-
-  const validationToast = page.locator('[data-sonner-toast]').first()
-  const outcome = await Promise.race([
-    createRpc.then((res) => ({ kind: 'rpc' as const, res })),
-    validationToast
-      .waitFor({ state: 'visible', timeout: 8_000 })
-      .then(async () => ({ kind: 'toast' as const, text: await validationToast.textContent() })),
-  ])
-
-  if (outcome.kind === 'toast') {
-    const text = outcome.text?.trim() ?? ''
-    const kind = classifyMovementToast(text)
-    if (kind === 'success') {
-      await expect(sheet).toBeHidden({ timeout: 20_000 })
-      return
-    }
-    if (kind === 'error') {
-      throw new Error(`Validación en cliente: ${text}`)
-    }
-    throw new Error(`Toast inesperado tras envío: ${text || 'sin texto'}`)
-  }
-
-  if (!outcome.res.ok()) {
-    const body = await outcome.res.text()
-    throw new Error(`RPC create falló (${outcome.res.status()}): ${body.slice(0, 500)}`)
-  }
-
-  const statusRes = await statusRpc
-  if (statusRes && !statusRes.ok()) {
-    const body = await statusRes.text()
-    throw new Error(`RPC status falló (${statusRes.status()}): ${body.slice(0, 500)}`)
-  }
-
-  await expect(sheet).toBeHidden({ timeout: 20_000 })
+  await waitForMovementSubmitOutcome(
+    page,
+    sheet,
+    /enviado a aprobación|movimiento actualizado|aprobado y registrado/i
+  )
 }
 
 export async function expandGuidedScopeOptions(page: Page): Promise<void> {

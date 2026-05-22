@@ -1,7 +1,11 @@
 import type { Account } from '@/lib/actions/accounts'
 import type { MovementComponentType } from '@/lib/validations/movement'
 import { defaultComponentTypeForAccount } from '@/lib/movements/form-defaults'
-import { moneyInputToNumber } from '@/lib/utils/money-input'
+import {
+  getMoneyFractionDigits,
+  moneyInputToNumber,
+  parseMoneyInputToCanonical,
+} from '@/lib/utils/money-input'
 
 /** Target para crear contacto desde el select principal (cobro/pago guiado). */
 export const GUIDED_MAIN_CONTACT_LINE_ID = '__guided-main__'
@@ -65,8 +69,12 @@ export function componentTypesForMovement(
   return type === 'income' ? INCOME_COMPONENT_TYPES : EXPENSE_COMPONENT_TYPES
 }
 
-export function lineAmountToNumber(amount: string): number {
-  return moneyInputToNumber(amount)
+export function lineAmountToNumber(amount: string, currency = 'ARS'): number {
+  const canonical = parseMoneyInputToCanonical(
+    amount,
+    getMoneyFractionDigits(currency)
+  )
+  return moneyInputToNumber(canonical)
 }
 
 /** Una línea operativa a partir de la cuenta y monto principal (pago en un solo medio). */

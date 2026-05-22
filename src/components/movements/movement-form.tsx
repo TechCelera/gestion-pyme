@@ -51,13 +51,14 @@ import {
 } from '@/components/movements/movement-form.constants'
 import {
   buildEffectiveComponentLines,
+  hasOperativeAccountForSubmit,
+  incomeExpenseSumMatchesForFooter,
   validateAndBuildMovementPayload,
 } from '@/components/movements/movement-form-submit'
 import {
   GUIDED_MAIN_CONTACT_LINE_ID,
   buildMainComponentLine,
   type ComponentLineDraft,
-  componentsSumMatchesTotal,
   newComponentLine,
 } from '@/components/movements/movement-form.types'
 import { defaultPaymentLine, linesToTotalAmount } from '@/lib/movements/payment-medium'
@@ -309,6 +310,19 @@ export function MovementForm({
     }
   }, [componentLines, currency, isOpen, type, amount])
 
+  useEffect(() => {
+    if (!isOpen || (type !== 'income' && type !== 'expense')) return
+    const operative = componentLines.find(
+      (line) =>
+        (line.componentType === 'operative_cash' ||
+          line.componentType === 'operative_bank') &&
+        line.accountId
+    )
+    if (operative?.accountId && operative.accountId !== accountId) {
+      queueMicrotask(() => setAccountId(operative.accountId))
+    }
+  }, [componentLines, isOpen, type, accountId])
+
   const usesOptionalComponentBreakdown =
     type === 'income' || type === 'expense'
 
@@ -427,14 +441,6 @@ export function MovementForm({
     }
 
     onSubmit(result.data, asDraft)
-    if (!isEditing) {
-      resetForm(
-        fixedOperationKind
-          ? operationKindToMovementType(fixedOperationKind)
-          : fixedType ?? 'income',
-        fixedOperationKind ?? undefined
-      )
-    }
   }
 
   const handleClose = () => {
@@ -492,10 +498,22 @@ export function MovementForm({
       ? filterContactsForIncomeOperations(contacts)
       : filterContactsForExpenseOperations(contacts)
 
-  const sumMatchesComponents =
-    type !== 'income' && type !== 'expense'
-      ? true
-      : componentsSumMatchesTotal(componentLines, amount)
+  const sumMatchesComponents = incomeExpenseSumMatchesForFooter({
+    type,
+    operationKind,
+    showPaymentSplit,
+    componentLines,
+    amount,
+  })
+
+  const operativeAccountReady = hasOperativeAccountForSubmit({
+    type,
+    operationKind,
+    showPaymentSplit,
+    accountId,
+    componentLines,
+    accounts,
+  })
 
   function defaultQuickContactKind(): 'client' | 'provider' {
     if (operationKind === 'payment' || type === 'expense') return 'provider'
@@ -553,6 +571,7 @@ export function MovementForm({
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent
         side="right"
+        data-e2e-operating-currency={currency}
         className="data-[side=right]:w-full data-[side=right]:sm:max-w-md data-[side=right]:lg:max-w-lg p-0 flex flex-col"
       >
         {/* Header */}
@@ -742,7 +761,7 @@ export function MovementForm({
           accountsEmpty={accounts.length === 0}
           type={type}
           operationKind={operationKind}
-          accountId={accountId}
+          operativeAccountReady={operativeAccountReady}
           categoryId={categoryId}
           contactId={contactId}
           sumMatchesComponents={sumMatchesComponents}

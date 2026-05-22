@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,15 +20,10 @@ import {
 import type { Account } from '@/lib/actions/accounts'
 import type { ContactRow } from '@/lib/actions/contacts'
 import type { OperationKind } from '@/lib/validations/movement'
-import {
-  formatMoneyInputFromCanonical,
-  getMoneyFractionDigits,
-} from '@/lib/utils/money-input'
 import { cn } from '@/lib/utils'
 import {
   MOVEMENT_GUIDED_FIELD_IDS,
   type ComponentLineDraft,
-  lineAmountToNumber,
 } from '@/components/movements/movement-form.types'
 import {
   guidedAddPaymentRowLabel,
@@ -41,9 +37,9 @@ import {
   applyAccountPickerValue,
   creditPickerLabel,
   defaultPaymentLine,
+  formatAllocationAmountCanonical,
   isCreditMedium,
   linePickerValue,
-  linesToTotalAmount,
   sumComponentLineAmounts,
 } from '@/lib/movements/payment-medium'
 import { isCollectionOrPaymentKind } from '@/lib/movements/operation-kind'
@@ -63,16 +59,6 @@ export type MovementFriendlyPaymentBreakdownProps = {
   isLoading?: boolean
   isLoadingData?: boolean
   onQuickContact?: (lineLocalId: string) => void
-}
-
-function formatAmountDisplay(value: string | number, currency: string): string {
-  const digits = getMoneyFractionDigits(currency)
-  const canonical = typeof value === 'number' ? String(value) : value
-  const formatted = formatMoneyInputFromCanonical(canonical, digits)
-  if (formatted) return formatted
-  const n = typeof value === 'number' ? value : lineAmountToNumber(canonical)
-  if (Number.isNaN(n)) return '—'
-  return formatMoneyInputFromCanonical(String(n), digits)
 }
 
 function AccountRowExtras({
@@ -168,7 +154,27 @@ export function MovementFriendlyPaymentBreakdown({
     isCollectionOrPaymentKind(operationKind) && Boolean(mainContactId)
   const creditLabel = creditPickerLabel(movementType, operationKind)
   const totalSum = sumComponentLineAmounts(componentLines)
-  const totalDisplay = linesToTotalAmount(componentLines, currency)
+  const totalDisplay =
+    totalSum > 0 ? formatAllocationAmountCanonical(totalSum, currency) : ''
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ rowIndex?: number; canonical?: string }>).detail
+      const canonical = detail?.canonical?.trim()
+      if (!canonical) return
+      const rowIndex = detail?.rowIndex ?? 0
+      onComponentLinesChange((prev) => {
+        if (rowIndex < 0 || rowIndex >= prev.length) return prev
+        return prev.map((line, idx) =>
+          idx === rowIndex ? { ...line, amount: canonical } : line
+        )
+      })
+    }
+    window.addEventListener('gestion-pyme:e2e-set-guided-payment-amount', handler)
+    return () => {
+      window.removeEventListener('gestion-pyme:e2e-set-guided-payment-amount', handler)
+    }
+  }, [onComponentLinesChange])
 
   function handleAddRow() {
     onComponentLinesChange((prev) => [
@@ -305,7 +311,7 @@ export function MovementFriendlyPaymentBreakdown({
       <div className="rounded-lg border border-border/80 bg-background px-3 py-2.5">
         <p className="text-xs font-medium text-muted-foreground">{guidedPaymentTotalLabel()}</p>
         <p className="text-lg font-semibold tabular-nums text-foreground">
-          {totalSum > 0 ? formatAmountDisplay(totalDisplay || totalSum, currency) : '—'}{' '}
+          {totalSum > 0 ? totalDisplay : '—'}{' '}
           <span className="text-sm font-medium text-muted-foreground">{currency}</span>
         </p>
       </div>

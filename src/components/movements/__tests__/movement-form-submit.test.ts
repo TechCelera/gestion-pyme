@@ -5,6 +5,8 @@ import { CASH_DATE_GENERAL_ERROR_MESSAGE } from '@/lib/movements/cash-date-polic
 import {
   buildEffectiveComponentLines,
   buildMovementComponentsFromDrafts,
+  hasOperativeAccountForSubmit,
+  incomeExpenseSumMatchesForFooter,
   resolvePrimaryAccountId,
   validateAndBuildMovementPayload,
 } from '../movement-form-submit'
@@ -108,6 +110,52 @@ describe('movement-form-submit', () => {
       })
       expect(lines).toHaveLength(1)
       expect(lines[0]?.contactId).toBe('contact-1')
+    })
+  })
+
+  describe('hasOperativeAccountForSubmit', () => {
+    it('acepta cuenta en fila del desglose sin accountId del formulario', () => {
+      expect(
+        hasOperativeAccountForSubmit({
+          type: 'income',
+          operationKind: 'collection',
+          showPaymentSplit: false,
+          accountId: '',
+          componentLines: [
+            { ...newComponentLine(), accountId: 'acc-bank', amount: '100' },
+          ],
+          accounts: submitFixtureAccounts,
+        })
+      ).toBe(true)
+    })
+
+    it('rechaza cobro sin cuenta operativa en ninguna fila', () => {
+      expect(
+        hasOperativeAccountForSubmit({
+          type: 'income',
+          operationKind: 'collection',
+          showPaymentSplit: false,
+          accountId: '',
+          componentLines: [newComponentLine()],
+          accounts: submitFixtureAccounts,
+        })
+      ).toBe(false)
+    })
+  })
+
+  describe('incomeExpenseSumMatchesForFooter', () => {
+    it('habilita pie cuando hay monto en filas y amount del form aún vacío', () => {
+      expect(
+        incomeExpenseSumMatchesForFooter({
+          type: 'income',
+          operationKind: 'collection',
+          showPaymentSplit: true,
+          componentLines: [
+            { ...newComponentLine(), accountId: 'acc-bank', amount: '2500' },
+          ],
+          amount: '',
+        })
+      ).toBe(true)
     })
   })
 

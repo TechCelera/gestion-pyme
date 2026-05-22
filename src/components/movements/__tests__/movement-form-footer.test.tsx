@@ -11,7 +11,7 @@ const baseProps = {
   accountsEmpty: false,
   type: 'income' as const,
   operationKind: 'sale' as const,
-  accountId: 'acc-1',
+  operativeAccountReady: true,
   categoryId: 'cat-1',
   contactId: '',
   sumMatchesComponents: true,
@@ -61,9 +61,26 @@ describe('MovementFormFooter', () => {
 
   it('disables primary when account or category missing on sale', () => {
     render(
-      <MovementFormFooter {...baseProps} accountId="" categoryId="cat-1" />
+      <MovementFormFooter
+        {...baseProps}
+        operativeAccountReady={false}
+        categoryId="cat-1"
+      />
     )
     expect(screen.getByRole('button', { name: 'Enviar a aprobación' })).toBeDisabled()
+  })
+
+  it('enables primary on collection when account is only on payment lines', () => {
+    render(
+      <MovementFormFooter
+        {...baseProps}
+        operationKind="collection"
+        operativeAccountReady
+        categoryId=""
+        contactId="contact-1"
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Enviar a aprobación' })).not.toBeDisabled()
   })
 
   it('disables primary when contact missing on collection', () => {

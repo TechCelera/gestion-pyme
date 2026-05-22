@@ -110,16 +110,21 @@ export function formatAllocationAmountCanonical(
   currency: string
 ): string {
   const digits = getMoneyFractionDigits(currency)
-  return formatMoneyInputFromCanonical(String(value), digits)
+  if (digits === 0) {
+    return formatMoneyInputFromCanonical(String(Math.round(value)), 0)
+  }
+  return formatMoneyInputFromCanonical(value.toFixed(digits), digits)
 }
 
+/** Total canónico (ej. `2500.00`) para estado del formulario; no usar como texto de UI. */
 export function linesToTotalAmount(
   lines: ComponentLineDraft[],
   currency: string
 ): string {
   const sum = sumComponentLineAmounts(lines)
   if (sum <= 0) return ''
-  return formatAllocationAmountCanonical(sum, currency)
+  const digits = getMoneyFractionDigits(currency)
+  return digits === 0 ? String(Math.round(sum)) : sum.toFixed(digits)
 }
 
 export function friendlyLinesSumMatchesTotal(

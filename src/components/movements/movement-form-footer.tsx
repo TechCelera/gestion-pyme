@@ -23,7 +23,8 @@ export interface MovementFormFooterProps {
   accountsEmpty: boolean
   type: string
   operationKind: OperationKind
-  accountId: string
+  /** Cuenta en campo único o en al menos una fila operativa del desglose. */
+  operativeAccountReady: boolean
   categoryId: string
   contactId: string
   sumMatchesComponents: boolean
@@ -41,7 +42,7 @@ export function MovementFormFooter({
   accountsEmpty,
   type,
   operationKind,
-  accountId,
+  operativeAccountReady,
   categoryId,
   contactId,
   sumMatchesComponents,
@@ -58,7 +59,7 @@ export function MovementFormFooter({
     isLoading ||
     accountsEmpty ||
     (needsIncomeExpenseFields &&
-      (!accountId ||
+      (!operativeAccountReady ||
         !sumMatchesComponents ||
         (needsCategory && !categoryId) ||
         (needsContact && !contactId)))

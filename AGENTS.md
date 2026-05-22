@@ -61,7 +61,7 @@ Antes de cerrar cambios en el flujo de alta/edición de movimientos:
 3. **Footer / diálogo contacto**: `movement-form-footer.test.tsx`, `movement-quick-contact-dialog.test.tsx`.
 4. **Dominio compartido**: `src/lib/movements/__tests__/` (form-defaults, operation-kind, cash-date, persistence) y `src/lib/validations/__tests__/movement.test.ts`.
 5. **Server actions**: `src/lib/actions/__tests__/movements.test.ts` (create + finalize + status).
-6. **E2E** (con credenciales): `e2e/authenticated/operaciones-flows.spec.ts` — borrador y envío a aprobación por tipo guiado; helpers en `e2e/helpers/operaciones.ts` (`submitMovementDraft`, `submitMovementToApproval`).
+6. **E2E** (con credenciales): `e2e/authenticated/operaciones-flows.spec.ts` — borrador y envío a aprobación por tipo guiado; helpers en `e2e/helpers/operaciones.ts` (`fillGuidedAmount` vía evento `gestion-pyme:e2e-set-guided-payment-amount`, `submitMovementDraft`, `submitMovementToApproval`). Con `PLAYWRIGHT_SKIP_WEBSERVER=1`, **reiniciá `pnpm run dev`** tras cambiar el formulario guiado o el helper de montos (si no, el bundle viejo deja el total en 2,50 en vez de 2.500).
 
 Regla: no mover validación de negocio solo a la UI; debe existir test en submit o Zod que falle si se regresa el requisito.
 
