@@ -513,3 +513,21 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 ### Razon
 - PYME opera en una divisa; multimoneda real (FX, revaluación) queda fuera del piloto.
 
+## 24) Montos: canónico interno y formato es-AR en UI (Mayo 2026)
+
+### Decision
+- Todo monto en estado, validación y persistencia usa **string canónico** (`1234.56` o `2500.00`; COP sin decimales).
+- La UI (inputs, totales del desglose guiado) muestra **es-AR** (`1.234,56`) solo al renderizar; no se persiste ni se sincroniza el texto formateado al estado del formulario.
+
+### Implementacion
+- Utilidades: `src/lib/utils/money-input.ts` (`parseMoneyInputToCanonical`, `formatMoneyInputFromCanonical`, `moneyInputToNumber`).
+- Desglose cobro/pago: `src/lib/movements/payment-medium.ts` — `linesToTotalAmount` → canónico; `formatAllocationAmountCanonical` → display desde `toFixed`; suma con `lineAmountToNumber` (parse es-AR).
+- Formulario: `movement-form.tsx` sincroniza `amount` desde líneas; `MovementFriendlyPaymentBreakdown` muestra total con `formatAllocationAmountCanonical`.
+- E2E: `e2e/helpers/operaciones.ts` — evento `gestion-pyme:e2e-set-guided-payment-amount`; tests en `payment-medium.test.ts` y `operaciones-flows.spec.ts`.
+
+### Gotcha (regresión documentada)
+- Formatear un **número** con `String(2500)` y pasarlo otra vez por el parser de miles produce `"2.500"` → se lee como **2,50**. Síntoma: fila correcta (`2.500,00`) y total del movimiento en `2,50 ARS`. Commit de referencia: `fix: totales guiados y E2E de borrador en operaciones`.
+
+### Razon
+- Un solo contrato de datos evita desfaces entre fila, total, footer y submit; los E2E dejan de depender de tipeo frágil en inputs controlados.
+

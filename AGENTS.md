@@ -39,6 +39,22 @@ Formularios de producto (drawers, páginas de alta/edición) importan desde `src
 
 Lógica de miles/decimales: solo `lib/utils/money-input.ts` (parse/format). Al guardar: `moneyInputToNumber()`.
 
+### Montos: canónico vs texto de UI (no mezclar)
+
+| Capa | Formato | Ejemplo ARS (2 dec.) |
+|------|---------|----------------------|
+| Estado React / Zod / BD | **Canónico** — punto decimal, sin miles | `2500.00` |
+| Input y copy al usuario | **es-AR** vía `formatMoneyInputFromCanonical` | `2.500,00` |
+
+Reglas que evitan regresiones (bug real: total `2,50` con fila en `2.500,00`):
+
+- **`FormMoneyInput` / `MoneyInput`**: `value` y `onValueChange` siempre canónico; nunca guardar `2.500,00` en el estado.
+- **`lineAmountToNumber`** (`movement-form.types.ts`): parsea con `parseMoneyInputToCanonical` antes de `moneyInputToNumber` (no usar `parseFloat` directo sobre texto con coma).
+- **`linesToTotalAmount`** (`payment-medium.ts`): devuelve **canónico** (`2500.00`) para sincronizar `amount` en `movement-form.tsx`. **No** devolver texto ya formateado para miles.
+- **`formatAllocationAmountCanonical`**: partir de `value.toFixed(fractionDigits)`, **nunca** de `String(2500)` → `"2.500"` se re-interpreta como 2,50 al volver a formatear.
+- **Total visible** en `MovementFriendlyPaymentBreakdown`: mostrar con `formatAllocationAmountCanonical(sum, currency)`; no pasar ese string otra vez por `formatMoneyInputFromCanonical` sin canónico intermedio.
+- **Tests obligatorios** al tocar totales o desglose: `src/lib/movements/__tests__/payment-medium.test.ts` (caso 2500 ARS), `movement-friendly-payment-breakdown.test.tsx` (evento E2E si aplica).
+
 Filtros y tablas compactas: `Input` / `SelectTrigger` sin prefijo `Form` (tamaño `default`).
 
 **Drawers de formulario** (`src/components/ui/form-sheet.tsx`): `FormSheet` + `FormSheetHeader` + `FormSheetBody` + `FormSheetActions` (atajo) o `FormSheetFooter` con `FormSheetCancelButton` / `FormSheetSubmitButton` (misma altura/grid que movimientos). `submitTone`: `accent` (morado, default) o `primary`. No usar `Button` suelto con clases en el pie del drawer. Tests: `src/components/ui/__tests__/form-sheet.test.tsx`, `src/components/contacts/__tests__/contact-form.test.tsx`, E2E `e2e/authenticated/contactos.spec.ts`.
@@ -61,7 +77,11 @@ Antes de cerrar cambios en el flujo de alta/edición de movimientos:
 3. **Footer / diálogo contacto**: `movement-form-footer.test.tsx`, `movement-quick-contact-dialog.test.tsx`.
 4. **Dominio compartido**: `src/lib/movements/__tests__/` (form-defaults, operation-kind, cash-date, persistence) y `src/lib/validations/__tests__/movement.test.ts`.
 5. **Server actions**: `src/lib/actions/__tests__/movements.test.ts` (create + finalize + status).
-6. **E2E** (con credenciales): `e2e/authenticated/operaciones-flows.spec.ts` — borrador y envío a aprobación por tipo guiado; helpers en `e2e/helpers/operaciones.ts` (`fillGuidedAmount` vía evento `gestion-pyme:e2e-set-guided-payment-amount`, `submitMovementDraft`, `submitMovementToApproval`). Con `PLAYWRIGHT_SKIP_WEBSERVER=1`, **reiniciá `pnpm run dev`** tras cambiar el formulario guiado o el helper de montos (si no, el bundle viejo deja el total en 2,50 en vez de 2.500).
+6. **E2E** (con credenciales): `e2e/authenticated/operaciones-flows.spec.ts` (serial, mutan datos). Helpers: `e2e/helpers/operaciones.ts`.
+   - **Monto guiado**: `fillGuidedAmount` dispara `gestion-pyme:e2e-set-guided-payment-amount` (listener en `movement-friendly-payment-breakdown.tsx`) con canónico `2500.00`; valida el total en el bloque «Total del movimiento», no el primer `p.tabular-nums` del sheet. Playwright no tipea bien `MoneyInput` controlado (2 500 → 2,50).
+   - **Submit**: toasts (`guardado como borrador`, etc.), no RPC REST. Cobro/pago: cuenta en `#account-guided` de la fila; footer usa `hasOperativeAccountForSubmit` (no solo `accountId` raíz). Borradores: `assertGuidedIncomeExpenseReady(..., { submit: 'draft' })`.
+   - **`PLAYWRIGHT_SKIP_WEBSERVER=1`** (`pnpm run test:e2e*`): **reiniciar `pnpm run dev`** tras cambios en formulario guiado, `payment-medium.ts` o helpers E2E; si el total sigue en 2,50, casi siempre es bundle viejo, no el test.
+   - **Árbol limpio**: no commitear `next-env.d.ts` apuntando a `/tmp/.../gestion-pyme-next-dev` (artefacto local de `next dev` custom).
 
 Regla: no mover validación de negocio solo a la UI; debe existir test en submit o Zod que falle si se regresa el requisito.
 
