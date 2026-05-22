@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import { CashFlowMonthlyTrend } from '@/components/reports/cash-flow-monthly-trend'
 import { ReportsPeriodTabs } from '@/components/reports/reports-period-tabs'
+import { useCompanyOperatingCurrency } from '@/hooks/use-company-operating-currency'
 import { formatReportCurrency } from '@/lib/reports/format'
 
 export function ReportsPageContent({ rango }: { rango?: string }) {
@@ -22,6 +23,8 @@ export function ReportsPageContent({ rango }: { rango?: string }) {
 }
 
 function ReportsPageInner({ rango }: { rango: string | undefined }) {
+  const { currency } = useCompanyOperatingCurrency(true)
+  const reportMoney = (amount: number) => formatReportCurrency(amount, currency)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<Awaited<ReturnType<typeof getReportsData>>['data']>(undefined)
@@ -94,17 +97,17 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
               <ReportMetricRows>
                 <ReportMetricRow
                   label="Ingresos"
-                  value={formatReportCurrency(incomeStatement.totalIncome)}
+                  value={reportMoney(incomeStatement.totalIncome)}
                   valueClassName="font-medium text-green-600"
                 />
                 <ReportMetricRow
                   label="Gastos"
-                  value={formatReportCurrency(incomeStatement.totalExpenses)}
+                  value={reportMoney(incomeStatement.totalExpenses)}
                   valueClassName="font-medium text-red-600"
                 />
                 <ReportMetricRow
                   label="Utilidad neta"
-                  value={formatReportCurrency(incomeStatement.netProfit)}
+                  value={reportMoney(incomeStatement.netProfit)}
                   emphasize
                   valueClassName={cn(
                     'font-semibold',
@@ -127,7 +130,7 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
                       <ReportMetricRow
                         key={item.category}
                         label={item.category}
-                        value={formatReportCurrency(item.amount)}
+                        value={reportMoney(item.amount)}
                         valueClassName="font-medium"
                       />
                     ))}
@@ -151,17 +154,17 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
               <ReportMetricRows>
                 <ReportMetricRow
                   label="Activos"
-                  value={formatReportCurrency(balanceSheet.totalAssets)}
+                  value={reportMoney(balanceSheet.totalAssets)}
                   valueClassName="font-medium"
                 />
                 <ReportMetricRow
                   label="Pasivos"
-                  value={formatReportCurrency(balanceSheet.totalLiabilities)}
+                  value={reportMoney(balanceSheet.totalLiabilities)}
                   valueClassName="font-medium"
                 />
                 <ReportMetricRow
                   label="Patrimonio"
-                  value={formatReportCurrency(balanceSheet.totalEquity)}
+                  value={reportMoney(balanceSheet.totalEquity)}
                   valueClassName="font-medium"
                 />
               </ReportMetricRows>
@@ -170,7 +173,7 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
                 <ReportMetricRows>
                   <ReportMetricRow
                     label="Activos − Pasivos − Patrimonio"
-                    value={formatReportCurrency(
+                    value={reportMoney(
                       balanceSheet.totalAssets -
                         balanceSheet.totalLiabilities -
                         balanceSheet.totalEquity
@@ -201,17 +204,17 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
               <ReportMetricRows className="divide-green-200/50">
                 <ReportMetricRow
                   label="Entradas"
-                  value={formatReportCurrency(cashFlow.cashInReal)}
+                  value={reportMoney(cashFlow.cashInReal)}
                   valueClassName="font-medium text-green-600"
                 />
                 <ReportMetricRow
                   label="Salidas"
-                  value={formatReportCurrency(cashFlow.cashOutReal)}
+                  value={reportMoney(cashFlow.cashOutReal)}
                   valueClassName="font-medium text-red-600"
                 />
                 <ReportMetricRow
                   label="Flujo neto"
-                  value={formatReportCurrency(cashFlow.netCashFlowReal)}
+                  value={reportMoney(cashFlow.netCashFlowReal)}
                   emphasize
                   valueClassName={cn(
                     'font-semibold',
@@ -228,17 +231,17 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
               <ReportMetricRows className="divide-blue-200/50">
                 <ReportMetricRow
                   label="Entradas"
-                  value={formatReportCurrency(cashFlow.cashInProjected)}
+                  value={reportMoney(cashFlow.cashInProjected)}
                   valueClassName="font-medium text-green-600"
                 />
                 <ReportMetricRow
                   label="Salidas"
-                  value={formatReportCurrency(cashFlow.cashOutProjected)}
+                  value={reportMoney(cashFlow.cashOutProjected)}
                   valueClassName="font-medium text-red-600"
                 />
                 <ReportMetricRow
                   label="Flujo neto"
-                  value={formatReportCurrency(cashFlow.netCashFlowProjected)}
+                  value={reportMoney(cashFlow.netCashFlowProjected)}
                   emphasize
                   valueClassName={cn(
                     'font-semibold',
@@ -259,15 +262,20 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 min-w-0">
-          <CashFlowMonthlyTrend title="Real (aprobadas)" items={cashFlow.monthlyTrend} />
+          <CashFlowMonthlyTrend
+            title="Real (aprobadas)"
+            items={cashFlow.monthlyTrend}
+            currency={currency}
+          />
           <CashFlowMonthlyTrend
             title="Proyectado (pendientes de aprobación)"
             items={cashFlow.monthlyTrendProjected}
+            currency={currency}
           />
         </CardContent>
       </Card>
 
-      <ReportsCharts data={data} />
+      <ReportsCharts data={data} currency={currency} />
     </div>
   )
 }

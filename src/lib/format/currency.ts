@@ -27,7 +27,11 @@ export function formatCurrency(
   }
 }
 
-/** Reports default to ARS company currency. */
-export function formatReportCurrency(value: number): string {
-  return formatCurrency(value, 'ARS')
+/** Formato de montos en reportes y dashboard (moneda operativa de la empresa). */
+export function formatReportCurrency(
+  value: number,
+  currency: string,
+  options?: { minimumFractionDigits?: number; maximumFractionDigits?: number }
+): string {
+  return formatCurrency(value, currency, options)
 }

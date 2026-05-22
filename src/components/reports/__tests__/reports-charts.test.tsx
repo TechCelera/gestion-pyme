@@ -40,7 +40,7 @@ const emptyReportsData: ReportsData = {
 
 describe('ReportsCharts', () => {
   it('shows empty state messages when there is no chart data', () => {
-    render(<ReportsCharts data={emptyReportsData} />)
+    render(<ReportsCharts data={emptyReportsData} currency="ARS" />)
 
     expect(screen.getByText('Sin ingresos ni gastos en el período')).toBeInTheDocument()
     expect(screen.getByText('No hay gastos por categoría')).toBeInTheDocument()

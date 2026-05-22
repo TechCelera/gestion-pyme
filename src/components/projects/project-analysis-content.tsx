@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/ui/page-header'
 import { ReportsPeriodTabs } from '@/components/reports/reports-period-tabs'
 import { formatCurrency } from '@/lib/format/currency'
+import { useCompanyOperatingCurrency } from '@/hooks/use-company-operating-currency'
 
 export function ProjectAnalysisContent({
   id,
@@ -27,6 +28,7 @@ export function ProjectAnalysisContent({
 }
 
 function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undefined }) {
+  const { currency } = useCompanyOperatingCurrency(true)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [analysis, setAnalysis] = useState<
@@ -106,7 +108,7 @@ function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undef
             <CardTitle className="text-sm font-medium text-muted-foreground">Presupuesto</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{formatCurrency(a.budgetAmount, 'ARS')}</p>
+            <p className="text-2xl font-semibold tabular-nums">{formatCurrency(a.budgetAmount, currency)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -115,7 +117,7 @@ function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undef
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold tabular-nums text-red-600 dark:text-red-400">
-              {formatCurrency(a.expensesApproved, 'ARS')}
+              {formatCurrency(a.expensesApproved, currency)}
             </p>
           </CardContent>
         </Card>
@@ -125,7 +127,7 @@ function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undef
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(a.incomeApproved, 'ARS')}
+              {formatCurrency(a.incomeApproved, currency)}
             </p>
           </CardContent>
         </Card>
@@ -142,7 +144,7 @@ function ProjectAnalysisInner({ id, rango }: { id: string; rango: string | undef
                 a.varianceVsBudget < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'
               }`}
             >
-              {formatCurrency(a.varianceVsBudget, 'ARS')}
+              {formatCurrency(a.varianceVsBudget, currency)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Positivo: aún queda cupo antes de agotar el presupuesto (según gastos aprobados).

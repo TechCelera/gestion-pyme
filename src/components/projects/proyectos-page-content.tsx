@@ -17,9 +17,11 @@ import {
 } from '@/components/ui/table'
 import { getProjects, type Project } from '@/lib/actions/projects'
 import { formatCurrency } from '@/lib/format/currency'
+import { useCompanyOperatingCurrency } from '@/hooks/use-company-operating-currency'
 import { ProjectForm } from '@/components/projects/project-form'
 
 export function ProyectosPageContent() {
+  const { currency } = useCompanyOperatingCurrency(true)
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isProjectFormOpen, setIsProjectFormOpen] = useState(false)
@@ -61,8 +63,8 @@ export function ProyectosPageContent() {
       const currentRow = (
         <TableRow key={project.id}>
           <TableCell className="font-medium">{`${'— '.repeat(depth)}${project.name}`}</TableCell>
-          <TableCell>{formatCurrency(project.budgetAmount, 'ARS')}</TableCell>
-          <TableCell>{formatCurrency(project.spentAmount ?? 0, 'ARS')}</TableCell>
+          <TableCell>{formatCurrency(project.budgetAmount, currency)}</TableCell>
+          <TableCell>{formatCurrency(project.spentAmount ?? 0, currency)}</TableCell>
           <TableCell className={usage > 100 ? 'text-red-600 font-medium' : ''}>{usage.toFixed(1)}%</TableCell>
           <TableCell className="text-right">
             <div className="inline-flex items-center gap-1">

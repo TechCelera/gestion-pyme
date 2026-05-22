@@ -10,9 +10,10 @@ interface RealDashboardProps {
   stats: DashboardStats
   reportsData: ReportsData | null | undefined
   reportsError?: string | null
+  currency: string
 }
 
-export function RealDashboard({ stats, reportsData, reportsError }: RealDashboardProps) {
+export function RealDashboard({ stats, reportsData, reportsError, currency }: RealDashboardProps) {
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
@@ -24,19 +25,19 @@ export function RealDashboard({ stats, reportsData, reportsError }: RealDashboar
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 min-w-0">
         <KpiCard
           title="Ingresos"
-          value={formatCurrency(stats.totalIncome)}
+          value={formatCurrency(stats.totalIncome, currency)}
           icon={TrendingUp}
           gradient="from-[#7B68EE] to-[#00C9FF]"
         />
         <KpiCard
           title="Gastos"
-          value={formatCurrency(stats.totalExpenses, 'ARS')}
+          value={formatCurrency(stats.totalExpenses, currency)}
           icon={ArrowDownRight}
           gradient="from-[#FF6B6B] to-[#FFE66D]"
         />
         <KpiCard
           title="Balance Neto"
-          value={formatCurrency(stats.netBalance, 'ARS')}
+          value={formatCurrency(stats.netBalance, currency)}
           icon={DollarSign}
           gradient="from-[#00C9FF] to-[#92FE9D]"
         />
@@ -49,7 +50,7 @@ export function RealDashboard({ stats, reportsData, reportsError }: RealDashboar
       </div>
 
       {reportsData ? (
-        <ReportsCharts data={reportsData} />
+        <ReportsCharts data={reportsData} currency={currency} />
       ) : (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="text-sm font-medium text-red-700">

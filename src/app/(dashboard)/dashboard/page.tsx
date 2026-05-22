@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCompanyOperatingCurrency } from '@/lib/actions/company-settings'
 import { getDashboardStats, getReportsData } from '@/lib/actions/movements'
 import { redirect } from 'next/navigation'
 import { RealDashboard } from '@/components/dashboard/real-dashboard'
@@ -18,10 +19,16 @@ export default async function DashboardPage() {
 
   let statsResult: Awaited<ReturnType<typeof getDashboardStats>>
   let reportsResult: Awaited<ReturnType<typeof getReportsData>>
+  let currencyResult: Awaited<ReturnType<typeof getCompanyOperatingCurrency>>
   try {
-    const [stats, reports] = await Promise.all([getDashboardStats(), getReportsData()])
+    const [stats, reports, currency] = await Promise.all([
+      getDashboardStats(),
+      getReportsData(),
+      getCompanyOperatingCurrency(),
+    ])
     statsResult = stats
     reportsResult = reports
+    currencyResult = currency
   } catch (error) {
     console.error('DashboardPage uncaught error:', error)
     return <DashboardError message="Error al cargar el dashboard. Intenta recargar la página." />
@@ -44,11 +51,15 @@ export default async function DashboardPage() {
     console.error('Dashboard reports failed:', reportsError)
   }
 
+  const operatingCurrency =
+    currencyResult.success && currencyResult.data ? currencyResult.data : 'ARS'
+
   return (
     <RealDashboard
       stats={statsResult.data}
       reportsData={reportsData}
       reportsError={reportsError}
+      currency={operatingCurrency}
     />
   )
 }

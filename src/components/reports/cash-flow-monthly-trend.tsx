@@ -11,14 +11,17 @@ export type CashFlowMonthRow = {
 type CashFlowMonthlyTrendProps = {
   title: string
   items: CashFlowMonthRow[]
+  currency: string
   emptyMessage?: string
 }
 
 export function CashFlowMonthlyTrend({
   title,
   items,
+  currency,
   emptyMessage = 'Sin datos en el período.',
 }: CashFlowMonthlyTrendProps) {
+  const formatAmount = (value: number) => formatReportCurrency(value, currency)
   if (items.length === 0) {
     return (
       <div className="space-y-2">
@@ -43,13 +46,13 @@ export function CashFlowMonthlyTrend({
               <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Entradas</span>
                 <span className="font-medium text-green-600 tabular-nums text-right">
-                  {formatReportCurrency(item.inflow)}
+                  {formatAmount(item.inflow)}
                 </span>
               </div>
               <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Salidas</span>
                 <span className="font-medium text-red-600 tabular-nums text-right">
-                  {formatReportCurrency(item.outflow)}
+                  {formatAmount(item.outflow)}
                 </span>
               </div>
               <div className="flex justify-between gap-3 border-t border-border/60 pt-1.5">
@@ -60,7 +63,7 @@ export function CashFlowMonthlyTrend({
                     item.net >= 0 ? 'text-green-600' : 'text-red-600'
                   )}
                 >
-                  {formatReportCurrency(item.net)}
+                  {formatAmount(item.net)}
                 </span>
               </div>
             </div>
@@ -85,10 +88,10 @@ export function CashFlowMonthlyTrend({
                   {formatReportMonth(item.month)}
                 </td>
                 <td className="py-2.5 px-2 text-right font-medium text-green-600 tabular-nums whitespace-nowrap">
-                  {formatReportCurrency(item.inflow)}
+                  {formatAmount(item.inflow)}
                 </td>
                 <td className="py-2.5 px-2 text-right font-medium text-red-600 tabular-nums whitespace-nowrap">
-                  {formatReportCurrency(item.outflow)}
+                  {formatAmount(item.outflow)}
                 </td>
                 <td
                   className={cn(
@@ -96,7 +99,7 @@ export function CashFlowMonthlyTrend({
                     item.net >= 0 ? 'text-green-600' : 'text-red-600'
                   )}
                 >
-                  {formatReportCurrency(item.net)}
+                  {formatAmount(item.net)}
                 </td>
               </tr>
             ))}

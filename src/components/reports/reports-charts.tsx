@@ -24,12 +24,14 @@ import { cn } from '@/lib/utils'
 
 interface ReportsChartsProps {
   data: ReportsData
+  currency: string
 }
 
 const PIE_COLORS = ['#7B68EE', '#00C9FF', '#92FE9D', '#FF6B6B', '#FFE66D', '#FF9F43', '#A78BFA', '#34D399']
 
-function formatChartCurrency(value: number): string {
-  return formatCurrency(value, 'ARS', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+function chartCurrencyFormatter(currency: string) {
+  return (value: number) =>
+    formatCurrency(value, currency, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 function formatMonth(monthKey: string): string {
@@ -54,7 +56,8 @@ function ChartPanel({ title, heightClass = 'h-72', className, children }: ChartP
   )
 }
 
-export function ReportsCharts({ data }: ReportsChartsProps) {
+export function ReportsCharts({ data, currency }: ReportsChartsProps) {
+  const formatChartCurrency = chartCurrencyFormatter(currency)
   const { incomeStatement, cashFlow } = data
 
   const incomeVsExpenseData = [
