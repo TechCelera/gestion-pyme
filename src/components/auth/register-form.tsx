@@ -19,6 +19,7 @@ import { COUNTRY_OPTIONS } from '@/lib/country-config'
 import { ROUTES } from '@/lib/constants'
 import {
   isSignUpDuplicateEmail,
+  mapGoogleOAuthStartError,
   mapSignUpErrorMessage,
   normalizeAuthEmail,
   validateTermsAccepted,
@@ -28,11 +29,17 @@ import {
   validateRegisterPasswords,
 } from '@/lib/validations/register'
 import { getClientAppOrigin } from '@/lib/utils/app-origin'
+import { startGoogleOAuth } from '@/lib/auth/google-oauth'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { AuthSubmitButton } from '@/components/auth/auth-submit-button'
 import { AuthFooterLink } from '@/components/auth/auth-footer-link'
 import { PasswordStrengthHint } from '@/components/auth/password-strength-hint'
 import { TermsConsent } from '@/components/auth/terms-consent'
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
+import { AuthMethodDivider } from '@/components/auth/auth-method-divider'
+import { AuthGoogleHint } from '@/components/auth/auth-google-hint'
+import { CompleteAccountFields } from '@/components/auth/complete-account-fields'
+import { useAuthCompletionView } from '@/components/auth/use-auth-completion-view'
 import { Button } from '@/components/ui/button'
 
 interface RegisterFormProps {
@@ -48,12 +55,14 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
   const [country, setCountry] = useState('AR')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [registered, setRegistered] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState('')
   const [inviteLoading, setInviteLoading] = useState(!!inviteToken)
   const [inviteCompany, setInviteCompany] = useState<string | null>(null)
   const [inviteExpired, setInviteExpired] = useState(false)
   const router = useRouter()
+  const { view: completionView, prefill, nextPath } = useAuthCompletionView()
 
   const supabase = createSafeBrowserClient()
   const isInviteMode = Boolean(inviteToken && inviteCompany && !inviteExpired)
@@ -81,6 +90,24 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
       cancelled = true
     }
   }, [inviteToken])
+
+  async function handleGoogleRegister() {
+    setGoogleLoading(true)
+    try {
+      const result = await startGoogleOAuth({
+        returnSurface: 'register',
+        nextPath: ROUTES.DASHBOARD,
+        metadata: { country },
+      })
+      if (!result.ok) {
+        toast.error(mapGoogleOAuthStartError(result.error))
+        setGoogleLoading(false)
+      }
+    } catch {
+      toast.error(mapGoogleOAuthStartError())
+      setGoogleLoading(false)
+    }
+  }
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -115,9 +142,10 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
     setLoading(true)
 
     try {
-      const metadata: Record<string, string> = {
+      const metadata: Record<string, string | boolean> = {
         full_name: trimmedFullName,
         country,
+        profile_completed: true,
       }
 
       if (isInviteMode && inviteToken) {
@@ -177,6 +205,34 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
     )
   }
 
+  if (!isInviteMode && !registered && completionView === 'loading') {
+    return (
+      <AuthShell title="Gestion PYME Pro" description="Cargando…">
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AuthShell>
+    )
+  }
+
+  if (!isInviteMode && !registered && completionView === 'complete' && prefill) {
+    return (
+      <AuthShell
+        title="Terminemos tu registro"
+        description="Completá tu empresa en este paso para entrar al panel."
+        footer={
+          <AuthFooterLink prompt="¿Ya tienes cuenta?" href={ROUTES.LOGIN} linkLabel="Inicia sesión" />
+        }
+      >
+        <CompleteAccountFields
+          prefill={prefill}
+          nextPath={nextPath}
+          submitLabel="Crear mi empresa"
+        />
+      </AuthShell>
+    )
+  }
+
   if (registered) {
     return (
       <AuthShell
@@ -217,7 +273,49 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
           La invitación no es válida. Pídele a tu administrador un enlace nuevo.
         </p>
       ) : (
-        <form onSubmit={handleRegister} className="space-y-4" autoComplete="on">
+        <div className="space-y-4">
+          {!isInviteMode ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="country">País</Label>
+                <Select
+                  value={country}
+                  onValueChange={(value) => {
+                    if (value) setCountry(value)
+                  }}
+                >
+                  <SelectTrigger id="country" className="h-10 w-full">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      {COUNTRY_OPTIONS.find((c) => c.value === country)?.flag}{' '}
+                      {COUNTRY_OPTIONS.find((c) => c.value === country)?.label}
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRY_OPTIONS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        <span className="mr-2">{c.flag}</span>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <GoogleSignInButton
+                  onClick={handleGoogleRegister}
+                  loading={googleLoading}
+                  disabled={loading}
+                  label="Registrarse con Google"
+                  loadingLabel="Conectando con Google…"
+                />
+                <AuthGoogleHint variant="register" />
+              </div>
+              <AuthMethodDivider label="o completa el formulario" />
+            </>
+          ) : null}
+
+          <form onSubmit={handleRegister} className="space-y-4" autoComplete="on">
           {!isInviteMode ? (
             <div className="space-y-2">
               <Label htmlFor="companyName">Nombre de la empresa</Label>
@@ -244,33 +342,6 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
               required
             />
           </div>
-          {!isInviteMode ? (
-            <div className="space-y-2">
-              <Label htmlFor="country">País</Label>
-              <Select
-                value={country}
-                onValueChange={(value) => {
-                  if (value) setCountry(value)
-                }}
-              >
-                <SelectTrigger id="country" className="h-10 w-full">
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    {COUNTRY_OPTIONS.find((c) => c.value === country)?.flag}{' '}
-                    {COUNTRY_OPTIONS.find((c) => c.value === country)?.label}
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRY_OPTIONS.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      <span className="mr-2">{c.flag}</span>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
           <div className="space-y-2">
             <Label htmlFor="email">Correo</Label>
             <Input
@@ -318,10 +389,15 @@ export function RegisterForm({ inviteToken }: RegisterFormProps) {
             />
           </div>
           <TermsConsent checked={acceptedTerms} onCheckedChange={setAcceptedTerms} />
-          <AuthSubmitButton loading={loading} loadingLabel="Creando cuenta...">
+          <AuthSubmitButton
+            loading={loading}
+            loadingLabel="Creando cuenta..."
+            disabled={googleLoading}
+          >
             {isInviteMode ? 'Crear cuenta y unirme' : 'Crear cuenta'}
           </AuthSubmitButton>
         </form>
+        </div>
       )}
     </AuthShell>
   )

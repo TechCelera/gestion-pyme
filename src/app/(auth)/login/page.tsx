@@ -1,23 +1,32 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { signInAction } from '@/lib/actions/auth'
 import { navigateAfterAuth } from '@/lib/auth/post-auth-navigation'
-import { createSafeBrowserClient } from '@/lib/supabase/client-safe'
-import { buildAuthCallbackRedirect, getClientAppOrigin } from '@/lib/utils/app-origin'
+import { startGoogleOAuth } from '@/lib/auth/google-oauth'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 import { ROUTES } from '@/lib/constants'
+import {
+  mapGoogleOAuthStartError,
+  mapOAuthCallbackError,
+} from '@/lib/validations/auth'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { AuthSubmitButton } from '@/components/auth/auth-submit-button'
 import { AuthFooterLink } from '@/components/auth/auth-footer-link'
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
+import { AuthMethodDivider } from '@/components/auth/auth-method-divider'
+import { AuthGoogleHint } from '@/components/auth/auth-google-hint'
+import { CompleteAccountFields } from '@/components/auth/complete-account-fields'
+import { useAuthCompletionView } from '@/components/auth/use-auth-completion-view'
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const { view, prefill, nextPath } = useAuthCompletionView()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,8 +34,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get('error') === 'auth_callback') {
-      toast.error('No pudimos verificar tu cuenta. Pedí un enlace nuevo o iniciá sesión.')
+    const error = params.get('error')
+    const description = params.get('error_description')
+    if (error) {
+      toast.error(mapOAuthCallbackError(error, description))
+      const url = new URL(window.location.href)
+      url.searchParams.delete('error')
+      url.searchParams.delete('error_description')
+      window.history.replaceState({}, '', url.pathname + url.search)
     }
   }, [])
 
@@ -51,21 +66,42 @@ export default function LoginPage() {
   async function handleGoogleLogin() {
     setGoogleLoading(true)
     try {
-      const redirectTo = buildAuthCallbackRedirect(ROUTES.DASHBOARD, getClientAppOrigin())
-      const supabase = createSafeBrowserClient()
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo },
+      const result = await startGoogleOAuth({
+        returnSurface: 'login',
+        nextPath,
       })
-
-      if (error) {
-        toast.error('No pudimos iniciar sesión con Google. Intenta de nuevo.')
+      if (!result.ok) {
+        toast.error(mapGoogleOAuthStartError(result.error))
         setGoogleLoading(false)
       }
     } catch {
-      toast.error('No pudimos iniciar sesión con Google. Intenta de nuevo.')
+      toast.error(mapGoogleOAuthStartError())
       setGoogleLoading(false)
     }
+  }
+
+  if (view === 'loading') {
+    return (
+      <AuthShell title="Gestion PYME Pro" description="Cargando…">
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden />
+        </div>
+      </AuthShell>
+    )
+  }
+
+  if (view === 'complete' && prefill) {
+    return (
+      <AuthShell
+        title="Terminemos tu registro"
+        description="Es tu primer ingreso con Google. Completá tu empresa en este paso."
+        footer={
+          <AuthFooterLink prompt="¿Ya tienes cuenta?" href={ROUTES.REGISTER} linkLabel="Regístrate" />
+        }
+      >
+        <CompleteAccountFields prefill={prefill} nextPath={nextPath} />
+      </AuthShell>
+    )
   }
 
   return (
@@ -77,24 +113,16 @@ export default function LoginPage() {
       }
     >
       <div className="space-y-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleGoogleLogin}
-          disabled={loading || googleLoading}
-          className="h-10 w-full"
-        >
-          {googleLoading ? 'Conectando con Google...' : 'Continuar con Google'}
-        </Button>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border/60" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">o con correo y contraseña</span>
-          </div>
+        <div className="space-y-2">
+          <GoogleSignInButton
+            onClick={handleGoogleLogin}
+            loading={googleLoading}
+            disabled={loading}
+          />
+          <AuthGoogleHint variant="login" />
         </div>
+
+        <AuthMethodDivider />
 
         <form onSubmit={handleLogin} className="space-y-4" autoComplete="on">
           <div className="space-y-2">
@@ -112,7 +140,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="h-10"
             />
           </div>
@@ -134,15 +162,35 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="h-10"
             />
           </div>
-          <AuthSubmitButton loading={loading} loadingLabel="Ingresando...">
+          <AuthSubmitButton
+            loading={loading}
+            loadingLabel="Ingresando..."
+            disabled={googleLoading}
+          >
             Iniciar sesión
           </AuthSubmitButton>
         </form>
       </div>
     </AuthShell>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthShell title="Gestion PYME Pro" description="Cargando…">
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden />
+          </div>
+        </AuthShell>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   )
 }

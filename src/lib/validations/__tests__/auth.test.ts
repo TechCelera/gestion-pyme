@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
+  mapGoogleOAuthStartError,
+  mapOAuthCallbackError,
   mapPasswordResetErrorMessage,
   mapSignInErrorMessage,
   mapSignUpErrorMessage,
@@ -55,6 +57,22 @@ describe('mapSignUpErrorMessage', () => {
     expect(mapSignUpErrorMessage({ message: 'User already registered' })).toMatch(
       /No pudimos crear/
     )
+  })
+})
+
+describe('mapOAuthCallbackError', () => {
+  it('mensaje claro si el usuario cancela en Google', () => {
+    expect(mapOAuthCallbackError('access_denied', null)).toMatch(/Cancelaste/)
+  })
+
+  it('mensaje genérico en fallo de callback', () => {
+    expect(mapOAuthCallbackError('auth_callback', null)).toMatch(/correo y contraseña/)
+  })
+})
+
+describe('mapGoogleOAuthStartError', () => {
+  it('avisa si el proveedor no está habilitado', () => {
+    expect(mapGoogleOAuthStartError('Provider google is not enabled')).toMatch(/habilitado/)
   })
 })
 

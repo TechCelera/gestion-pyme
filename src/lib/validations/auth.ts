@@ -86,3 +86,35 @@ export function isSignUpDuplicateEmail(
 ): boolean {
   return Boolean(user?.identities && user.identities.length === 0)
 }
+
+/** Errores en query tras OAuth / callback PKCE (login con Google, etc.). */
+export function mapOAuthCallbackError(
+  error: string | null,
+  description?: string | null
+): string {
+  const code = (error ?? '').toLowerCase()
+  const desc = (description ?? '').toLowerCase()
+
+  if (
+    code.includes('access_denied') ||
+    desc.includes('access_denied') ||
+    desc.includes('user denied') ||
+    desc.includes('cancel')
+  ) {
+    return 'Cancelaste el acceso con Google. Podés intentar de nuevo o usar correo y contraseña.'
+  }
+
+  if (code === 'auth_callback' || desc.includes('exchange')) {
+    return 'No pudimos completar el acceso con Google. Intentá de nuevo o usá correo y contraseña.'
+  }
+
+  return 'No pudimos iniciar sesión con Google. Intentá de nuevo o usá correo y contraseña.'
+}
+
+export function mapGoogleOAuthStartError(message?: string | null): string {
+  const msg = (message ?? '').toLowerCase()
+  if (msg.includes('provider') && msg.includes('not enabled')) {
+    return 'Google no está habilitado en el servidor. Contactá al administrador.'
+  }
+  return 'No pudimos conectar con Google. Intentá de nuevo en unos minutos.'
+}
