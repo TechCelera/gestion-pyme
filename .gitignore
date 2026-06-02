@@ -28,6 +28,9 @@ tmp/
 # Artefactos JS compilados por error dentro de src/
 src/**/*.js
 
+# OAuth / credentials descargados de consolas (Google, etc.)
+client_secret*.json
+
 # Sensitive setup files
 setup-database.sql
 SECURITY.md.playwright-mcp/
