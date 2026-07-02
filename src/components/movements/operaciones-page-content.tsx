@@ -326,12 +326,8 @@ export function OperacionesPageContent({
           </div>
 
           <div className="flex w-full min-w-0 flex-col gap-2 lg:flex-1 lg:max-w-3xl">
-            {showImportExcel ? (
-              <div className="flex w-full min-w-0 justify-end lg:justify-start">
-                <ImportExcelDemoButton />
-              </div>
-            ) : null}
-            <div className="flex w-full min-w-0 flex-row items-stretch gap-1.5 sm:gap-2">
+            <div className="flex w-full min-w-0 flex-row flex-wrap items-stretch gap-1.5 sm:flex-nowrap sm:gap-2">
+              {showImportExcel ? <ImportExcelDemoButton /> : null}
               {OPERATION_CREATE_BUTTONS.map(({ kind, label, variant, icon: Icon }) => (
                 <Button
                   key={kind}
