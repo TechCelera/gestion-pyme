@@ -20,13 +20,15 @@ const navItems = [
 export function BottomNav({
   pendingCount = 0,
   operatingProfile = 'default',
+  isAdmin = true,
 }: {
   pendingCount?: number
   operatingProfile?: CompanyOperatingProfile
+  isAdmin?: boolean
 }) {
   const pathname = usePathname()
   const visibleNavItems = navItems.filter((item) =>
-    shouldShowDashboardNavItem(item.href, operatingProfile, true)
+    shouldShowDashboardNavItem(item.href, operatingProfile, isAdmin)
   )
 
   return (

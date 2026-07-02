@@ -2,7 +2,6 @@ import { test, expect } from '@playwright/test'
 
 import { hasE2eCredentials, hasSupabasePublicEnv } from '../helpers/auth'
 import {
-  expandGuidedScopeOptions,
   assertGuidedIncomeExpenseReady,
   ensureGuidedContactSelected,
   expectGuidedTitle,
@@ -144,22 +143,13 @@ test.describe('operaciones — flujos guiados (mutan datos)', () => {
   test('cobro en general con caja limita fecha a hoy o ayer', async ({ page }) => {
     await openGuidedOperation(page, 'Cobro')
     await waitGuidedFormReady(page)
-    await expandGuidedScopeOptions(page)
-
-    const sheet = movementSheet(page)
-    await sheet.locator('#guided-scope').click()
-    const scopeListbox = page.getByRole('listbox').filter({
-      has: page.getByRole('option', { name: /general empresa/i }),
-    })
-    await scopeListbox.getByRole('option', { name: /general empresa/i }).click()
-    await page.keyboard.press('Escape')
-    await waitGuidedFormReady(page)
 
     const hasCash = await pickGuidedCashAccountIfAny(page)
     expect(hasCash, 'Tras seed E2E debe existir cuenta Caja').toBe(true)
 
     await fillGuidedAmount(page, '5000')
 
+    const sheet = movementSheet(page)
     const dateInput = sheet.locator('#date-guided')
     const min = await dateInput.getAttribute('min')
     const max = await dateInput.getAttribute('max')

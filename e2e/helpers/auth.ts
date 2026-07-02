@@ -25,8 +25,18 @@ export async function loginViaUi(page: Page, email: string, password: string): P
   await page.goto('/login')
   await expect(page.getByRole('button', { name: /iniciar sesión/i })).toBeVisible()
 
-  await page.locator('#email').fill(email)
-  await page.locator('input#password').fill(password)
+  const emailInput = page.locator('#email')
+  const passwordInput = page.locator('input#password')
+  const emailReadonly = (await emailInput.getAttribute('readonly')) !== null
+
+  if (emailReadonly) {
+    await expect(emailInput).toHaveValue(email)
+    await expect(passwordInput).toHaveValue(password)
+  } else {
+    await emailInput.fill(email)
+    await passwordInput.fill(password)
+  }
+
   await page.getByRole('button', { name: /iniciar sesión/i }).click()
 
   try {

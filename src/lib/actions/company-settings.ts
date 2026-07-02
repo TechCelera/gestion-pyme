@@ -51,7 +51,7 @@ export async function getCompanySettings(): Promise<ActionResult<CompanySettings
       .from('companies')
       .select('id, name, country, currency, operating_profile')
       .eq('id', companyId)
-      .single()
+      .maybeSingle()
 
     if (error || !company) {
       return { success: false, error: error?.message ?? 'No se encontró la empresa' }

@@ -5,6 +5,8 @@ import { SyncIndicator } from '@/components/layout/sync-indicator'
 import { SeedOnFirstAccess } from '@/components/layout/seed-on-first-access'
 import { getCompanySettings } from '@/lib/actions/company-settings'
 import { getPendingMovementsCount } from '@/lib/actions/movements'
+import { getAuthenticatedContext } from '@/lib/auth/server-context'
+import { isAdminRole } from '@/lib/auth/roles'
 
 function SidebarFallback() {
   return (
@@ -21,11 +23,13 @@ export default async function DashboardLayout({
     getPendingMovementsCount(),
     getCompanySettings(),
   ])
+  const auth = await getAuthenticatedContext()
   const pendingCount = pendingRes.success ? (pendingRes.data ?? 0) : 0
   const operatingProfile =
     settingsRes.success && settingsRes.data
       ? settingsRes.data.operatingProfile
       : 'default'
+  const isAdmin = isAdminRole(auth?.role)
 
   return (
     <div className="flex h-screen">
@@ -37,7 +41,7 @@ export default async function DashboardLayout({
         <SyncIndicator />
         {children}
       </main>
-      <BottomNav pendingCount={pendingCount} operatingProfile={operatingProfile} />
+      <BottomNav pendingCount={pendingCount} operatingProfile={operatingProfile} isAdmin={isAdmin} />
     </div>
   )
 }

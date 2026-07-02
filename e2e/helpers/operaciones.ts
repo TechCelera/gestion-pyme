@@ -241,10 +241,12 @@ export function movementSheet(page: Page): Locator {
   })
 }
 
-async function dismissOpenListbox(page: Page): Promise<void> {
+/** Cierra listbox abierto sin disparar Escape en el sheet (Escape cierra el drawer). */
+export async function dismissOpenListbox(page: Page): Promise<void> {
   const listbox = page.getByRole('listbox')
   if (await listbox.first().isVisible().catch(() => false)) {
-    await page.keyboard.press('Escape')
+    await page.locator('body').click({ position: { x: 8, y: 8 } })
+    await expect(listbox.first()).toBeHidden({ timeout: 5_000 }).catch(() => {})
   }
 }
 

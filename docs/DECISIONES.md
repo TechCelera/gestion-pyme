@@ -542,7 +542,8 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 
 ### Implementacion
 - Onboarding: registro / invite → `handle_new_user` crea `companies` (+ `operating_profile` opcional en metadata).
-- Cliente piloto distribuidora: `operating_profile: 'distribuidora'` (ver `docs/matias-distribuidora/`).
+- Cliente piloto distribuidora: `operating_profile: 'distribuidora'` (ver `docs/matias-distribuidora/`, diagnóstico Bernabé **v3**).
+- **Distribuidora (v3):** Estado de Resultados mixto — ventas y compras **devengado**, gastos operativos **percibido**; flujo de caja **percibido puro** (cobros, pagos, cheques recibidos/emitidos), independiente del P&L. **RBAC:** bruto, neto y ganancia solo `role: admin`; operador carga sin ver resultados.
 - Infra objetivo: ~USD 45–50/mes fijos; fee mensual por cliente (ej. USD 50–55) escala margen sin multiplicar hosting.
 
 ### Razon

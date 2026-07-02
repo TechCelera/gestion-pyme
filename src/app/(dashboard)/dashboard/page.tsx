@@ -1,6 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
 import { getCompanyOperatingCurrency, getCompanySettings } from '@/lib/actions/company-settings'
 import { getDashboardStats, getReportsData } from '@/lib/actions/movements'
+import { getAuthenticatedContext } from '@/lib/auth/server-context'
+import { isAdminRole } from '@/lib/auth/roles'
 import { isDistribuidoraProfile } from '@/lib/company-operating-profile'
 import { computeDistribuidoraResults } from '@/lib/distribuidora/distribuidora-results'
 import { redirect } from 'next/navigation'
@@ -11,11 +12,8 @@ import { DashboardError } from '@/components/dashboard/dashboard-error'
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  if (!session) {
+  const auth = await getAuthenticatedContext()
+  if (!auth) {
     redirect('/login')
   }
 
@@ -24,23 +22,25 @@ export default async function DashboardPage() {
     settingsResult.success &&
     settingsResult.data != null &&
     isDistribuidoraProfile(settingsResult.data.operatingProfile)
+  const canViewFinancialResults = !isDistribuidora || isAdminRole(auth.role)
+
+  const operatingProfile =
+    settingsResult.success && settingsResult.data
+      ? settingsResult.data.operatingProfile
+      : 'default'
 
   let statsResult: Awaited<ReturnType<typeof getDashboardStats>>
   let reportsResult: Awaited<ReturnType<typeof getReportsData>>
-  let weekReportsResult: Awaited<ReturnType<typeof getReportsData>> | null = null
   let currencyResult: Awaited<ReturnType<typeof getCompanyOperatingCurrency>>
   try {
     const [stats, reports, currency] = await Promise.all([
       getDashboardStats(),
-      getReportsData(),
+      getReportsData(isDistribuidora ? 'hoy' : undefined, { operatingProfile }),
       getCompanyOperatingCurrency(),
     ])
     statsResult = stats
     reportsResult = reports
     currencyResult = currency
-    if (isDistribuidora) {
-      weekReportsResult = await getReportsData('esta_semana')
-    }
   } catch (error) {
     console.error('DashboardPage uncaught error:', error)
     return <DashboardError message="Error al cargar el dashboard. Intenta recargar la página." />
@@ -66,14 +66,14 @@ export default async function DashboardPage() {
   const operatingCurrency =
     currencyResult.success && currencyResult.data ? currencyResult.data : 'ARS'
 
-  let distribuidoraWeek: {
+  let distribuidoraToday: {
     periodLabel: string
     results: ReturnType<typeof computeDistribuidoraResults>
   } | null = null
 
-  if (isDistribuidora && weekReportsResult?.success && weekReportsResult.data) {
-    const { incomeStatement } = weekReportsResult.data
-    distribuidoraWeek = {
+  if (isDistribuidora && canViewFinancialResults && reportsResult.success && reportsResult.data) {
+    const { incomeStatement } = reportsResult.data
+    distribuidoraToday = {
       periodLabel: incomeStatement.periodLabel,
       results: computeDistribuidoraResults(
         incomeStatement.totalIncome,
@@ -89,7 +89,8 @@ export default async function DashboardPage() {
       reportsError={reportsError}
       currency={operatingCurrency}
       isDistribuidora={isDistribuidora}
-      distribuidoraWeek={distribuidoraWeek}
+      canViewFinancialResults={canViewFinancialResults}
+      distribuidoraToday={distribuidoraToday}
     />
   )
 }

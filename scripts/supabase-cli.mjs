@@ -7,7 +7,12 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { loadDotenvFiles } from './load-dotenv.mjs'
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+loadDotenvFiles(root)
 
 const args = process.argv.slice(2)
 

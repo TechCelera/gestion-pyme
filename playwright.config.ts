@@ -27,6 +27,21 @@ const e2eAuthEnabled = Boolean(
     process.env.E2E_TEST_PASSWORD
 )
 
+/** Usuario E2E dedicado: no mezclar con prefill demo (campos readonly en /login). */
+const e2eEmail = process.env.E2E_TEST_EMAIL?.trim().toLowerCase()
+const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL?.trim().toLowerCase()
+const disableDemoLoginForE2e =
+  e2eAuthEnabled && (!demoEmail || e2eEmail !== demoEmail)
+
+const webServerEnv = disableDemoLoginForE2e
+  ? {
+      ...process.env,
+      NEXT_PUBLIC_DEMO_LOGIN_ENABLED: '0',
+      NEXT_PUBLIC_DEMO_EMAIL: '',
+      NEXT_PUBLIC_DEMO_PASSWORD: '',
+    }
+  : process.env
+
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
@@ -71,6 +86,7 @@ export default defineConfig({
           url: webServerReadyURL,
           reuseExistingServer: process.env.PLAYWRIGHT_FORCE_FRESH_SERVER !== '1',
           timeout: 300_000,
+          env: webServerEnv as Record<string, string>,
         },
       }),
 })

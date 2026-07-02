@@ -23,6 +23,10 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
 const demoEmail = (process.env.DEMO_EMAIL ?? 'matias-demo@gestion-pyme.app').trim().toLowerCase()
 const demoPassword = (process.env.DEMO_PASSWORD ?? 'DemoMatias2026!').trim()
+const operatorEmail = (
+  process.env.DEMO_OPERATOR_EMAIL ?? 'operador-matias-demo@gestion-pyme.app'
+).trim().toLowerCase()
+const operatorPassword = (process.env.DEMO_OPERATOR_PASSWORD ?? demoPassword).trim()
 
 const DISTRIBUIDORA_CATEGORIES = [
   { name: 'Compra mercadería', type: 'expense' },
@@ -104,12 +108,92 @@ async function getCompanyIdForUser(userId) {
   return data.company_id
 }
 
+async function ensureOperatorInvite(companyId, invitedBy) {
+  const token = 'matias-demo-operator'
+  const { error } = await admin.from('company_invites').upsert(
+    {
+      company_id: companyId,
+      email: operatorEmail,
+      full_name: 'Operador Administrativo (Demo)',
+      role: 'collaborator',
+      token,
+      invited_by: invitedBy,
+      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      accepted_at: null,
+    },
+    { onConflict: 'token' }
+  )
+  if (error) throw new Error(`invite operador: ${error.message}`)
+  return token
+}
+
+async function ensureOperatorUser(companyId, invitedBy) {
+  let user = await findUserByEmail(operatorEmail)
+  const appMetadata = {
+    company_id: companyId,
+    role: 'collaborator',
+    is_active: true,
+    country: 'AR',
+  }
+  const userMetadata = {
+    full_name: 'Operador Administrativo (Demo)',
+    company_name: 'Matías Distribuidora',
+    country: 'AR',
+  }
+
+  if (!user) {
+    const inviteToken = await ensureOperatorInvite(companyId, invitedBy)
+    const { data, error } = await admin.auth.admin.createUser({
+      email: operatorEmail,
+      password: operatorPassword,
+      email_confirm: true,
+      user_metadata: { ...userMetadata, invite_token: inviteToken },
+    })
+    if (error) throw new Error(`crear operador: ${error.message}`)
+    user = data.user
+    console.log('Usuario operador creado:', operatorEmail)
+  } else {
+    const { data, error } = await admin.auth.admin.updateUserById(user.id, {
+      password: operatorPassword,
+      app_metadata: { ...user.app_metadata, ...appMetadata },
+      user_metadata: { ...user.user_metadata, ...userMetadata },
+    })
+    if (error) throw new Error(`actualizar operador: ${error.message}`)
+    user = data.user
+    console.log('Usuario operador existente:', operatorEmail)
+  }
+
+  const { error: profileError } = await admin.from('users').upsert({
+    id: user.id,
+    company_id: companyId,
+    email: operatorEmail,
+    full_name: 'Operador Administrativo (Demo)',
+    role: 'collaborator',
+    is_active: true,
+  })
+  if (profileError) throw new Error(`perfil operador: ${profileError.message}`)
+
+  const { error: metaError } = await admin.auth.admin.updateUserById(user.id, {
+    app_metadata: { ...user.app_metadata, ...appMetadata },
+    user_metadata: { ...user.user_metadata, ...userMetadata },
+  })
+  if (metaError) throw new Error(`metadata operador: ${metaError.message}`)
+
+  return user
+}
+
 async function ensureDistribuidoraCompany(companyId) {
-  const { error } = await admin
-    .from('companies')
-    .update({ name: 'Matías Distribuidora', country: 'AR', currency: 'ARS', operating_profile: 'distribuidora' })
-    .eq('id', companyId)
+  const base = { name: 'Matías Distribuidora', country: 'AR', currency: 'ARS' }
+  const withProfile = { ...base, operating_profile: 'distribuidora' }
+  const { error } = await admin.from('companies').update(withProfile).eq('id', companyId)
+  if (error?.message?.includes('operating_profile')) {
+    console.warn('⚠ operating_profile no existe aún — corré: pnpm sb:push')
+    const { error: fallbackError } = await admin.from('companies').update(base).eq('id', companyId)
+    if (fallbackError) throw new Error(fallbackError.message)
+    return false
+  }
   if (error) throw new Error(error.message)
+  return true
 }
 
 async function bootstrapOperational(companyId) {
@@ -141,25 +225,25 @@ async function seedDistribuidoraCategories(companyId) {
 async function seedContacts(companyId) {
   const { data: existing } = await admin
     .from('contacts')
-    .select('name, type')
+    .select('name, kind')
     .eq('company_id', companyId)
     .is('deleted_at', null)
-  const keys = new Set((existing ?? []).map((c) => `${c.type}:${c.name}`))
+  const keys = new Set((existing ?? []).map((c) => `${c.kind}:${c.name}`))
 
   const rows = [
     ...DEMO_CLIENTS.map((c) => ({
       company_id: companyId,
       name: c.name,
-      type: 'cliente',
+      kind: 'client',
       tax_id: c.tax_id,
     })),
     ...DEMO_SUPPLIERS.map((c) => ({
       company_id: companyId,
       name: c.name,
-      type: 'proveedor',
+      kind: 'provider',
       tax_id: c.tax_id,
     })),
-  ].filter((r) => !keys.has(`${r.type}:${r.name}`))
+  ].filter((r) => !keys.has(`${r.kind}:${r.name}`))
 
   if (rows.length > 0) {
     const { error } = await admin.from('contacts').insert(rows)
@@ -205,13 +289,14 @@ async function createCashMovement(client, companyId, ids, spec) {
   })
   if (error) throw new Error(error.message)
 
+  const componentType = spec.componentType ?? 'operative_cash'
   const { error: cmpError } = await client.rpc('set_operation_components', {
     p_transaction_id: txId,
     p_components: [
       {
-        component_type: 'operative_cash',
-        account_id: ids.caja,
-        contact_id: null,
+        component_type: componentType,
+        account_id: componentType === 'operative_cash' ? ids.caja : null,
+        contact_id: spec.componentContactId ?? null,
         amount: spec.amount,
         currency: 'ARS',
       },
@@ -224,16 +309,14 @@ async function createCashMovement(client, companyId, ids, spec) {
 }
 
 async function seedMovements(companyId, userId) {
-  const { count } = await admin
+  const { data: existingRows, error: existingError } = await admin
     .from('transactions')
-    .select('*', { count: 'exact', head: true })
+    .select('description')
     .eq('company_id', companyId)
     .is('deleted_at', null)
 
-  if ((count ?? 0) >= 5) {
-    console.log(`Movimientos existentes (${count}) — omitiendo seed`)
-    return
-  }
+  if (existingError) throw new Error(existingError.message)
+  const existingDescriptions = new Set((existingRows ?? []).map((row) => row.description))
 
   const ids = {
     caja: await lookupId('accounts', companyId, { name: 'Caja' }),
@@ -241,8 +324,9 @@ async function seedMovements(companyId, userId) {
     cmv: await lookupId('categories', companyId, { name: 'Compra mercadería' }),
     flete: await lookupId('categories', companyId, { name: 'Flete' }),
     combustible: await lookupId('categories', companyId, { name: 'Combustible' }),
-    cliente1: await lookupId('contacts', companyId, { name: DEMO_CLIENTS[0].name, type: 'cliente' }),
-    proveedor1: await lookupId('contacts', companyId, { name: DEMO_SUPPLIERS[0].name, type: 'proveedor' }),
+    cliente1: await lookupId('contacts', companyId, { name: DEMO_CLIENTS[0].name, kind: 'client' }),
+    cliente2: await lookupId('contacts', companyId, { name: DEMO_CLIENTS[1].name, kind: 'client' }),
+    proveedor1: await lookupId('contacts', companyId, { name: DEMO_SUPPLIERS[0].name, kind: 'provider' }),
   }
 
   if (!ids.caja || !ids.ventas || !ids.cmv) {
@@ -304,20 +388,56 @@ async function seedMovements(companyId, userId) {
       description: 'Combustible camioneta',
       categoryId: ids.combustible ?? ids.cmv,
     },
+    {
+      type: 'income',
+      kind: 'sale',
+      amount: 64000,
+      date: daysAgo(0),
+      description: 'Venta a cuenta corriente — San Martín',
+      categoryId: ids.ventas,
+      contactId: ids.cliente2,
+      contactType: 'cliente',
+      componentType: 'client_receivable',
+      componentContactId: ids.cliente2,
+    },
+    {
+      type: 'income',
+      kind: 'collection',
+      amount: 30000,
+      date: daysAgo(0),
+      description: 'Cobro parcial — San Martín',
+      categoryId: null,
+      contactId: ids.cliente2,
+      contactType: 'cliente',
+    },
+    {
+      type: 'expense',
+      kind: 'payment',
+      amount: 11500,
+      date: daysAgo(0),
+      description: 'Pago flete operativo — Mercofus',
+      categoryId: null,
+      contactId: ids.proveedor1,
+      contactType: 'proveedor',
+    },
   ]
 
+  let inserted = 0
   for (const spec of specs) {
+    if (existingDescriptions.has(spec.description)) continue
     await createCashMovement(userClient, companyId, ids, spec)
+    inserted += 1
   }
 
-  console.log(`+${specs.length} movimientos demo (aprobados)`)
+  console.log(`+${inserted} movimientos demo nuevos (aprobados)`)
   void userId
 }
 
 async function main() {
   const user = await ensureDemoUser()
   const companyId = await getCompanyIdForUser(user.id)
-  await ensureDistribuidoraCompany(companyId)
+  const hasProfile = await ensureDistribuidoraCompany(companyId)
+  await ensureOperatorUser(companyId, user.id)
   await bootstrapOperational(companyId)
   await seedDistribuidoraCategories(companyId)
   await seedContacts(companyId)
@@ -325,6 +445,9 @@ async function main() {
 
   console.log('')
   console.log('Demo lista:')
+  if (!hasProfile) {
+    console.log('  ⚠ Falta migración operating_profile → pnpm sb:push y volvé a correr seed')
+  }
   console.log(`  URL:   ${process.env.NEXT_PUBLIC_APP_URL ?? 'https://gestion-pyme-gamma.vercel.app'}/login`)
   console.log(`  Email: ${demoEmail}`)
   console.log(`  Pass:  ${demoPassword}`)

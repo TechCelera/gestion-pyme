@@ -342,6 +342,79 @@ describe('getReportsData server action', () => {
     }
   })
 
+  it('redacta estado de resultados y balance para operador distribuidora', async () => {
+    stubAuthenticatedContext({
+      ...TEST_AUTH,
+      role: USER_ROLES.COLLABORATOR,
+    })
+
+    const txQuery = {
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockResolvedValue({
+        data: [{ type: 'income', amount: 500, status: 'pending', date: '2026-06-03' }],
+        error: null,
+      }),
+    }
+
+    const mockFrom = vi.fn((table: string) => {
+      if (table === 'transactions') return { select: vi.fn().mockReturnValue(txQuery) }
+      return { select: vi.fn() }
+    })
+
+    const mockRpc = vi.fn((name: string) => {
+      if (name === 'rpc_reports_income_statement_period') {
+        return Promise.resolve({
+          data: {
+            totalIncome: 1500,
+            totalExpenses: 600,
+            expenseBreakdown: [{ category: 'Compra mercadería', amount: 600 }],
+          },
+          error: null,
+        })
+      }
+      if (name === 'rpc_reports_cash_flow_real_monthly') {
+        return Promise.resolve({
+          data: [{ month: '2026-06', inflow: 1000, outflow: 250, net: 750 }],
+          error: null,
+        })
+      }
+      if (name === 'rpc_reports_balance_sheet') {
+        return Promise.resolve({
+          data: {
+            totalAssets: 12000,
+            totalLiabilities: 5000,
+            totalEquity: 7000,
+            asOf: '2026-06-30',
+          },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: vi.fn() },
+      from: mockFrom,
+      rpc: mockRpc,
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    const result = await getReportsData('esta_semana', { operatingProfile: 'distribuidora' })
+
+    expect(result.success).toBe(true)
+    if (result.success && result.data) {
+      expect(result.data.incomeStatement.totalIncome).toBe(0)
+      expect(result.data.incomeStatement.totalExpenses).toBe(0)
+      expect(result.data.incomeStatement.expenseBreakdown).toEqual([])
+      expect(result.data.balanceSheet.totalAssets).toBe(0)
+      expect(result.data.balanceSheet.totalLiabilities).toBe(0)
+      expect(result.data.balanceSheet.totalEquity).toBe(0)
+      expect(result.data.cashFlow.cashInReal).toBe(1000)
+      expect(result.data.cashFlow.cashOutReal).toBe(250)
+    }
+  })
+
   it('propaga error si falla la consulta de transacciones (proyectado)', async () => {
     const mockAuthGetUser = vi.fn().mockResolvedValue({
       data: { user: { id: 'user-123' } },

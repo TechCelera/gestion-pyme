@@ -3,6 +3,12 @@
 import { createClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/lib/actions/types'
 import { requireAuthenticatedContext } from '@/lib/auth/server-context'
+import { isAdminRole } from '@/lib/auth/roles'
+import {
+  type CompanyOperatingProfile,
+  isDistribuidoraProfile,
+  normalizeOperatingProfile,
+} from '@/lib/company-operating-profile'
 import { errorMessageForUser } from '@/lib/utils/errors'
 import {
   sumProjectedCashFlowForPeriod,
@@ -66,14 +72,15 @@ function numFromJson(v: unknown): number {
 }
 
 export async function getReportsData(
-  rangePreset?: string | null
+  rangePreset?: string | null,
+  options?: { operatingProfile?: CompanyOperatingProfile }
 ): Promise<ActionResult<ReportsData>> {
   try {
     const auth = await requireAuthenticatedContext()
     if ('error' in auth) {
       return { success: false, error: auth.error }
     }
-    const { companyId } = auth
+    const { companyId, role } = auth
 
     const supabase = await createClient()
     const { start, end, key: rangeKey } = resolveReportsPeriod(rangePreset)
@@ -82,12 +89,7 @@ export async function getReportsData(
     const trendStart = new Date(end.getFullYear(), end.getMonth() - 5, 1)
     const trendStartStr = trendStart.toISOString().split('T')[0]
 
-    const [
-      plRes,
-      cashRes,
-      balRes,
-      trendResult,
-    ] = await Promise.all([
+    const [plRes, cashRes, balRes, trendResult] = await Promise.all([
       supabase.rpc('rpc_reports_income_statement_period', {
         p_company_id: companyId,
         p_from: startStr,
@@ -124,27 +126,34 @@ export async function getReportsData(
       return { success: false, error: trendResult.error.message }
     }
 
+    const operatingProfile = normalizeOperatingProfile(options?.operatingProfile)
+    const canViewFinancialResults =
+      !isDistribuidoraProfile(operatingProfile) || isAdminRole(role)
+
     const pl = (plRes.data ?? {}) as Record<string, unknown>
-    const totalIncome = numFromJson(pl.totalIncome)
-    const totalExpenses = numFromJson(pl.totalExpenses)
+    const totalIncome = canViewFinancialResults ? numFromJson(pl.totalIncome) : 0
+    const totalExpenses = canViewFinancialResults ? numFromJson(pl.totalExpenses) : 0
     const netProfit = totalIncome - totalExpenses
-    const marginPercent = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0
+    const marginPercent =
+      canViewFinancialResults && totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0
 
     const ebRaw = pl.expenseBreakdown as unknown[] | undefined
-    const expenseBreakdown = (ebRaw ?? []).map((item) => {
-      const row = item as Record<string, unknown>
-      return {
-        category: String(row.category ?? ''),
-        amount: numFromJson(row.amount),
-      }
-    })
+    const expenseBreakdown = canViewFinancialResults
+      ? (ebRaw ?? []).map((item) => {
+          const row = item as Record<string, unknown>
+          return {
+            category: String(row.category ?? ''),
+            amount: numFromJson(row.amount),
+          }
+        })
+      : []
 
     const bal = (balRes.data ?? {}) as Record<string, unknown>
     const balanceSheet: BalanceSheetReport = {
       asOf: String(bal.asOf ?? endStr),
-      totalAssets: numFromJson(bal.totalAssets),
-      totalLiabilities: numFromJson(bal.totalLiabilities),
-      totalEquity: numFromJson(bal.totalEquity),
+      totalAssets: canViewFinancialResults ? numFromJson(bal.totalAssets) : 0,
+      totalLiabilities: canViewFinancialResults ? numFromJson(bal.totalLiabilities) : 0,
+      totalEquity: canViewFinancialResults ? numFromJson(bal.totalEquity) : 0,
     }
 
     const trendRows = (trendResult.data ?? []) as Array<Record<string, unknown>>

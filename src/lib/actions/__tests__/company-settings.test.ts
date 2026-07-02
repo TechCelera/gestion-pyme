@@ -32,7 +32,7 @@ describe('company-settings', () => {
         return {
           select: () => ({
             eq: () => ({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: {
                   id: 'c1',
                   name: 'Acme',
