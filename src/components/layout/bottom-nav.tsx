@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 import { LayoutDashboard, ArrowLeftRight, FileText, Settings, FolderKanban, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import type { CompanyOperatingProfile } from '@/lib/company-operating-profile'
+import { shouldShowDashboardNavItem } from '@/lib/navigation/dashboard-nav'
 
 const navItems = [
   { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard, match: (p: string) => p === '/dashboard' },
@@ -15,13 +17,22 @@ const navItems = [
   { href: '/configuracion', label: 'Ajustes', icon: Settings, match: (p: string) => p === '/configuracion' },
 ]
 
-export function BottomNav({ pendingCount = 0 }: { pendingCount?: number }) {
+export function BottomNav({
+  pendingCount = 0,
+  operatingProfile = 'default',
+}: {
+  pendingCount?: number
+  operatingProfile?: CompanyOperatingProfile
+}) {
   const pathname = usePathname()
+  const visibleNavItems = navItems.filter((item) =>
+    shouldShowDashboardNavItem(item.href, operatingProfile, true)
+  )
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
       <div className="flex items-center justify-around h-16">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isOperaciones = item.href === '/operaciones'
           const active = isOperaciones ? pathname === '/operaciones' : item.match(pathname)
           return (

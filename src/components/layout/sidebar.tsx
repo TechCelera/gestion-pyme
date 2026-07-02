@@ -24,6 +24,8 @@ import { useLogout } from '@/hooks/use-logout'
 import { Badge } from '@/components/ui/badge'
 import { ROUTES } from '@/lib/constants'
 import { isAdminRole } from '@/lib/auth/roles'
+import type { CompanyOperatingProfile } from '@/lib/company-operating-profile'
+import { shouldShowDashboardNavItem } from '@/lib/navigation/dashboard-nav'
 import { UserRoleBadge } from '@/components/layout/user-role-badge'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -69,14 +71,20 @@ function NavRow({
   )
 }
 
-export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
+export function Sidebar({
+  pendingCount = 0,
+  operatingProfile = 'default',
+}: {
+  pendingCount?: number
+  operatingProfile?: CompanyOperatingProfile
+}) {
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
   const { logout } = useLogout()
   const role = useAuthStore((state) => state.role)
   const isAdmin = isAdminRole(role)
 
-  const mainNavItems: NavLink[] = [
+  const allNavItems: NavLink[] = [
     {
       href: ROUTES.DASHBOARD,
       label: 'Inicio',
@@ -137,6 +145,10 @@ export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
         ]
       : []),
   ]
+
+  const mainNavItems = allNavItems.filter((item) =>
+    shouldShowDashboardNavItem(item.href, operatingProfile, isAdmin)
+  )
 
   const isActive = (item: NavLink) =>
     item.match ? item.match(pathname) : pathname === item.href

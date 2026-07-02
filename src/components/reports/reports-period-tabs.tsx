@@ -9,7 +9,7 @@ import {
   type ReportsRangeKey,
 } from '@/lib/utils/reports-period'
 
-const PERIOD_TABS = pageTabsFromPresets(REPORTS_PERIOD_PRESETS)
+type PeriodPreset = { key: ReportsRangeKey; label: string }
 
 type ReportsPeriodTabsProps = {
   value: ReportsRangeKey
@@ -17,6 +17,7 @@ type ReportsPeriodTabsProps = {
   basePath: string
   className?: string
   showHint?: boolean
+  presets?: ReadonlyArray<PeriodPreset>
 }
 
 /** Selector de período reutilizable (informes, análisis por proyecto). */
@@ -25,11 +26,12 @@ export function ReportsPeriodTabs({
   basePath,
   className,
   showHint = true,
+  presets = REPORTS_PERIOD_PRESETS,
 }: ReportsPeriodTabsProps) {
   const tabs = (
     <PageUrlTabs
       value={value}
-      tabs={PERIOD_TABS}
+      tabs={pageTabsFromPresets(presets)}
       hrefForValue={(next) => reportsPeriodHref(basePath, next as ReportsRangeKey)}
       className={className}
     />

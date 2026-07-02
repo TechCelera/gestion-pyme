@@ -32,6 +32,7 @@ import {
   operacionesFlowToTypeFilter,
   parseOperacionesFlow,
 } from '@/lib/movements/operaciones-flow'
+import { ImportExcelDemoButton } from '@/components/distribuidora/import-excel-demo-button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +40,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
+export function OperacionesPageContent({
+  flujo,
+  showImportExcel = false,
+}: {
+  flujo?: string | null
+  showImportExcel?: boolean
+}) {
   const router = useRouter()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formMode, setFormMode] = useState<MovementType | null>(null)
@@ -312,11 +319,18 @@ export function OperacionesPageContent({ flujo }: { flujo?: string | null }) {
           <div className="min-w-0 space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">Movimientos</h1>
             <p className="text-sm text-muted-foreground">
-              Ventas, compras, cobros y pagos de tu empresa
+              {showImportExcel
+                ? 'Ventas, compras, gastos y cobros — carga única desde Excel'
+                : 'Ventas, compras, cobros y pagos de tu empresa'}
             </p>
           </div>
 
           <div className="flex w-full min-w-0 flex-col gap-2 lg:flex-1 lg:max-w-3xl">
+            {showImportExcel ? (
+              <div className="flex w-full min-w-0 justify-end lg:justify-start">
+                <ImportExcelDemoButton />
+              </div>
+            ) : null}
             <div className="flex w-full min-w-0 flex-row items-stretch gap-1.5 sm:gap-2">
               {OPERATION_CREATE_BUTTONS.map(({ kind, label, variant, icon: Icon }) => (
                 <Button

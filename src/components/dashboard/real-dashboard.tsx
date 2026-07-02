@@ -3,7 +3,11 @@
 import { KpiCard } from './kpi-card'
 import { TrendingUp, ArrowDownRight, DollarSign, Wallet } from 'lucide-react'
 import { ReportsCharts } from '@/components/reports/reports-charts'
+import { ChequesDemoCard } from '@/components/distribuidora/cheques-demo-card'
+import { DemoBanner } from '@/components/distribuidora/demo-banner'
+import { DistribuidoraResultsCard } from '@/components/distribuidora/distribuidora-results-card'
 import type { DashboardStats, ReportsData } from '@/lib/actions/movements'
+import type { DistribuidoraResults } from '@/lib/distribuidora/distribuidora-results'
 import { formatCurrency } from '@/lib/format/currency'
 
 interface RealDashboardProps {
@@ -11,18 +15,48 @@ interface RealDashboardProps {
   reportsData: ReportsData | null | undefined
   reportsError?: string | null
   currency: string
+  isDistribuidora?: boolean
+  distribuidoraWeek?: {
+    periodLabel: string
+    results: DistribuidoraResults
+  } | null
 }
 
-export function RealDashboard({ stats, reportsData, reportsError, currency }: RealDashboardProps) {
+export function RealDashboard({
+  stats,
+  reportsData,
+  reportsError,
+  currency,
+  isDistribuidora = false,
+  distribuidoraWeek,
+}: RealDashboardProps) {
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="space-y-6 p-4 md:p-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Resumen de la situación de tu empresa</p>
+        <h1 className="text-2xl font-bold text-foreground">
+          {isDistribuidora ? 'Resumen del día' : 'Dashboard'}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {isDistribuidora
+            ? 'Administración y finanzas · distribución mayorista'
+            : 'Resumen de la situación de tu empresa'}
+        </p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+      {isDistribuidora ? <DemoBanner /> : null}
+
+      {isDistribuidora && distribuidoraWeek ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <DistribuidoraResultsCard
+            periodLabel={distribuidoraWeek.periodLabel}
+            results={distribuidoraWeek.results}
+            currency={currency}
+          />
+          <ChequesDemoCard currency={currency} />
+        </div>
+      ) : null}
+
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         <KpiCard
           title="Ingresos"
           value={formatCurrency(stats.totalIncome, currency)}
@@ -56,9 +90,7 @@ export function RealDashboard({ stats, reportsData, reportsError, currency }: Re
           <p className="text-sm font-medium text-red-700">
             No se pudieron cargar los gráficos del dashboard en este momento.
           </p>
-          {reportsError ? (
-            <p className="mt-1 text-xs text-red-600">{reportsError}</p>
-          ) : null}
+          {reportsError ? <p className="mt-1 text-xs text-red-600">{reportsError}</p> : null}
           <p className="mt-2 text-xs text-red-600">
             Recarga la página y, si persiste, revisa el módulo de reportes.
           </p>

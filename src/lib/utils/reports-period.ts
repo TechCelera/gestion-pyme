@@ -1,13 +1,24 @@
 import {
+  endOfDay,
   endOfMonth,
   endOfQuarter,
+  endOfWeek,
+  startOfDay,
   startOfMonth,
   startOfQuarter,
+  startOfWeek,
   subMonths,
   subQuarters,
 } from 'date-fns'
 
-export const REPORTS_RANGE_KEYS = ['mes', 'mes_anterior', 'trimestre', 'trim_anterior'] as const
+export const REPORTS_RANGE_KEYS = [
+  'hoy',
+  'esta_semana',
+  'mes',
+  'mes_anterior',
+  'trimestre',
+  'trim_anterior',
+] as const
 export type ReportsRangeKey = (typeof REPORTS_RANGE_KEYS)[number]
 
 export const REPORTS_PERIOD_PRESETS: ReadonlyArray<{ key: ReportsRangeKey; label: string }> = [
@@ -16,6 +27,17 @@ export const REPORTS_PERIOD_PRESETS: ReadonlyArray<{ key: ReportsRangeKey; label
   { key: 'trimestre', label: 'Este trimestre' },
   { key: 'trim_anterior', label: 'Trimestre anterior' },
 ]
+
+export const DISTRIBUIDORA_REPORTS_PERIOD_PRESETS: ReadonlyArray<{
+  key: ReportsRangeKey
+  label: string
+}> = [
+  { key: 'hoy', label: 'Hoy' },
+  { key: 'esta_semana', label: 'Esta semana' },
+  ...REPORTS_PERIOD_PRESETS,
+]
+
+const WEEK_OPTS = { weekStartsOn: 1 as const }
 
 function isReportsRangeKey(v: string | null | undefined): v is ReportsRangeKey {
   return v !== undefined && v !== null && (REPORTS_RANGE_KEYS as readonly string[]).includes(v)
@@ -41,6 +63,14 @@ export function resolveReportsPeriod(
   const key: ReportsRangeKey = isReportsRangeKey(preset) ? preset : 'mes'
 
   switch (key) {
+    case 'hoy':
+      return { start: startOfDay(reference), end: endOfDay(reference), key }
+    case 'esta_semana':
+      return {
+        start: startOfWeek(reference, WEEK_OPTS),
+        end: endOfWeek(reference, WEEK_OPTS),
+        key,
+      }
     case 'mes_anterior': {
       const ref = subMonths(reference, 1)
       return { start: startOfMonth(ref), end: endOfMonth(ref), key }
@@ -62,6 +92,10 @@ export function resolveReportsPeriod(
 
 export function reportsPeriodHint(key: ReportsRangeKey): string {
   switch (key) {
+    case 'hoy':
+      return 'Movimientos aprobados del día de hoy.'
+    case 'esta_semana':
+      return 'Semana calendario en curso (lun–dom).'
     case 'mes_anterior':
       return 'Mes calendario anterior completo.'
     case 'trimestre':

@@ -5,7 +5,7 @@ Este documento registra decisiones funcionales y tecnicas acordadas durante el d
 ## Estado
 
 - Activo
-- Ultima actualizacion: 2026-05-22 (moneda operativa única por país)
+- Ultima actualizacion: 2026-07-01 (modelo SaaS multi-tenant)
 
 ## 1) Caja unica por empresa
 
@@ -530,4 +530,27 @@ Cuando se tome una decision nueva de negocio o arquitectura, agregar:
 
 ### Razon
 - Un solo contrato de datos evita desfaces entre fila, total, footer y submit; los E2E dejan de depender de tipeo frágil en inputs controlados.
+
+## 25) Modelo comercial: plataforma única multi-tenant (Jul 2026)
+
+### Decision
+- **Un** despliegue de `gestion-pyme` (un Vercel + un Supabase prod) para **todos** los clientes PYME.
+- Cada cliente = fila en `companies` + `company_id` en datos (RLS ya existente).
+- Personalización por **`operating_profile`** y config (semillas, import mapping), **no** por repo, fork ni proyecto Supabase/Vercel duplicado.
+- **Mismo dominio** compartido por ahora (ej. `gestion-pyme-gamma.vercel.app` o dominio único del producto). Sin dominio custom por tenant en v1.
+- Dominio o instancia dedicada solo como **add-on** futuro (enterprise, contrato aparte).
+
+### Implementacion
+- Onboarding: registro / invite → `handle_new_user` crea `companies` (+ `operating_profile` opcional en metadata).
+- Cliente piloto distribuidora: `operating_profile: 'distribuidora'` (ver `docs/matias-distribuidora/`).
+- Infra objetivo: ~USD 45–50/mes fijos; fee mensual por cliente (ej. USD 50–55) escala margen sin multiplicar hosting.
+
+### Razon
+- Rentable desde el segundo cliente (mismo costo fijo, más ingreso recurrente).
+- Un bugfix y una migración benefician a todos los tenants.
+- Evita vender “software a medida con repo propio” cuando la base ya es producto compartido.
+
+### Fuera de alcance (v1)
+- Repo o deploy independiente por PYME.
+- Subdominio o dominio propio por cliente (Matías incluido).
 

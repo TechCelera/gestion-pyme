@@ -71,6 +71,33 @@ describe('parseReportsRange', () => {
   it('acepta presets válidos', () => {
     expect(parseReportsRange('trimestre')).toBe('trimestre')
     expect(parseReportsRange('trim_anterior')).toBe('trim_anterior')
+    expect(parseReportsRange('hoy')).toBe('hoy')
+    expect(parseReportsRange('esta_semana')).toBe('esta_semana')
+  })
+})
+
+describe('resolveReportsPeriod distribuidora', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('resuelve hoy', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-01T15:00:00Z'))
+
+    const { start, end, key } = resolveReportsPeriod('hoy')
+    expect(key).toBe('hoy')
+    expect(start.getDate()).toBe(end.getDate())
+  })
+
+  it('resuelve esta semana (lun–dom)', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-01T15:00:00Z')) // miércoles
+
+    const { start, end, key } = resolveReportsPeriod('esta_semana')
+    expect(key).toBe('esta_semana')
+    expect(start.getDay()).toBe(1)
+    expect(end.getDay()).toBe(0)
   })
 })
 

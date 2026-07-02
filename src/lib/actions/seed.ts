@@ -2,18 +2,33 @@
 
 import type { ActionResult } from '@/lib/actions/types'
 import { requireAuthenticatedContext } from '@/lib/auth/server-context'
+import { normalizeOperatingProfile } from '@/lib/company-operating-profile'
 import { createClient } from '@/lib/supabase/server'
 import { COUNTRY_CONFIGS } from '@/lib/country-config'
+import { seedCategoriesForCompany } from '@/lib/distribuidora-profile-config'
 
 interface SeedSummary {
   accountsCreated: number
   categoriesCreated: number
 }
 
-async function getCompanyCountry(companyId: string): Promise<string | null> {
+async function getCompanySeedContext(companyId: string): Promise<{
+  country: string
+  operatingProfile: ReturnType<typeof normalizeOperatingProfile>
+}> {
   const supabase = await createClient()
-  const { data } = await supabase.from('companies').select('country').eq('id', companyId).single()
-  return data?.country ?? null
+  const { data } = await supabase
+    .from('companies')
+    .select('country, operating_profile')
+    .eq('id', companyId)
+    .single()
+
+  return {
+    country: data?.country ?? 'AR',
+    operatingProfile: normalizeOperatingProfile(
+      data?.operating_profile as string | null | undefined
+    ),
+  }
 }
 
 /**
@@ -29,8 +44,8 @@ export async function seedCompanyDefaults(): Promise<ActionResult<SeedSummary>> 
     }
     const { companyId } = auth
 
-    const country = await getCompanyCountry(companyId)
-    const config = COUNTRY_CONFIGS[country ?? 'AR']
+    const { country, operatingProfile } = await getCompanySeedContext(companyId)
+    const config = COUNTRY_CONFIGS[country]
 
     if (!config) {
       return { success: false, error: `Configuración no disponible para país: ${country}` }
@@ -69,7 +84,7 @@ export async function seedCompanyDefaults(): Promise<ActionResult<SeedSummary>> 
         balance: 0,
       }))
 
-    const categoriesToInsert = config.categories
+    const categoriesToInsert = seedCategoriesForCompany(config, operatingProfile)
       .filter((c) => !existingCategoryNames.has(c.name))
       .map((c) => ({
         company_id: companyId,

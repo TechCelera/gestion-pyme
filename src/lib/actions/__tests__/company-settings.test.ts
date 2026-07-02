@@ -33,7 +33,13 @@ describe('company-settings', () => {
           select: () => ({
             eq: () => ({
               single: vi.fn().mockResolvedValue({
-                data: { id: 'c1', name: 'Acme', country: 'CO', currency: 'ARS' },
+                data: {
+                  id: 'c1',
+                  name: 'Acme',
+                  country: 'CO',
+                  currency: 'ARS',
+                  operating_profile: 'distribuidora',
+                },
                 error: null,
               }),
             }),
@@ -61,6 +67,7 @@ describe('company-settings', () => {
     expect(res.success).toBe(true)
     expect(res.data?.country).toBe('CO')
     expect(res.data?.currency).toBe('COP')
+    expect(res.data?.operatingProfile).toBe('distribuidora')
     expect(res.data?.canChangeCountry).toBe(true)
   })
 

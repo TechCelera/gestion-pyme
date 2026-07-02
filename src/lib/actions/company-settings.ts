@@ -1,6 +1,10 @@
 'use server'
 
 import type { ActionResult } from '@/lib/actions/types'
+import {
+  type CompanyOperatingProfile,
+  normalizeOperatingProfile,
+} from '@/lib/company-operating-profile'
 import { currencyForCountry, isSupportedCompanyCountry, normalizeCompanyCountry } from '@/lib/company-operating-currency'
 import { fetchOperatingCurrencyForCompany } from '@/lib/company-operating-currency-server'
 import { isAdminRole } from '@/lib/auth/roles'
@@ -12,6 +16,7 @@ export interface CompanySettings {
   companyName: string
   country: string
   currency: string
+  operatingProfile: CompanyOperatingProfile
   canChangeCountry: boolean
   hasMovements: boolean
 }
@@ -44,7 +49,7 @@ export async function getCompanySettings(): Promise<ActionResult<CompanySettings
     const supabase = await createClient()
     const { data: company, error } = await supabase
       .from('companies')
-      .select('id, name, country, currency')
+      .select('id, name, country, currency, operating_profile')
       .eq('id', companyId)
       .single()
 
@@ -63,6 +68,9 @@ export async function getCompanySettings(): Promise<ActionResult<CompanySettings
         companyName: (company.name as string) ?? '',
         country,
         currency,
+        operatingProfile: normalizeOperatingProfile(
+          company.operating_profile as string | null | undefined
+        ),
         canChangeCountry: !hasMovements,
         hasMovements,
       },

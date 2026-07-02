@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { stubAuthError, stubAuthenticatedContext } from '@/test-utils/mock-server-context'
 import { COUNTRY_CONFIGS } from '@/lib/country-config'
+import { DISTRIBUIDORA_EXTRA_CATEGORIES } from '@/lib/distribuidora-profile-config'
 import { USER_ROLES } from '@/lib/auth/roles'
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -14,10 +15,12 @@ const COMPANY_ID = '11111111-1111-4111-8111-111111111111'
 
 function buildSeedClient({
   country = 'AR',
+  operatingProfile = 'default',
   existingAccounts = [] as { name: string }[],
   existingCategories = [] as { name: string }[],
 }: {
   country?: string
+  operatingProfile?: string
   existingAccounts?: { name: string }[]
   existingCategories?: { name: string }[]
 } = {}) {
@@ -34,7 +37,10 @@ function buildSeedClient({
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: { country }, error: null }),
+            single: vi.fn().mockResolvedValue({
+              data: { country, operating_profile: operatingProfile },
+              error: null,
+            }),
           }),
         }),
       }
@@ -130,5 +136,20 @@ describe('seedCompanyDefaults', () => {
     expect(res.success).toBe(true)
     expect(res.data?.accountsCreated).toBe(config.accounts.length - 1)
     expect(res.data?.categoriesCreated).toBe(config.categories.length - 1)
+  })
+
+  it('distribuidora agrega categorías operativas al seed', async () => {
+    const { insertedCategories } = buildSeedClient({ operatingProfile: 'distribuidora' })
+
+    const res = await seedCompanyDefaults()
+    const config = COUNTRY_CONFIGS.AR
+
+    expect(res.success).toBe(true)
+    expect(res.data?.categoriesCreated).toBe(
+      config.categories.length + DISTRIBUIDORA_EXTRA_CATEGORIES.length
+    )
+    expect(insertedCategories.map((row) => (row as { name: string }).name)).toContain(
+      'Compra mercadería'
+    )
   })
 })

@@ -16,13 +16,28 @@ import { cn } from '@/lib/utils'
 import { CashFlowMonthlyTrend } from '@/components/reports/cash-flow-monthly-trend'
 import { ReportsPeriodTabs } from '@/components/reports/reports-period-tabs'
 import { useCompanyOperatingCurrency } from '@/hooks/use-company-operating-currency'
+import { DistribuidoraResultsCard } from '@/components/distribuidora/distribuidora-results-card'
+import { computeDistribuidoraResults } from '@/lib/distribuidora/distribuidora-results'
+import { DISTRIBUIDORA_REPORTS_PERIOD_PRESETS } from '@/lib/utils/reports-period'
 import { formatReportCurrency } from '@/lib/reports/format'
 
-export function ReportsPageContent({ rango }: { rango?: string }) {
-  return <ReportsPageInner key={rango ?? 'mes'} rango={rango} />
+export function ReportsPageContent({
+  rango,
+  isDistribuidora = false,
+}: {
+  rango?: string
+  isDistribuidora?: boolean
+}) {
+  return <ReportsPageInner key={rango ?? 'mes'} rango={rango} isDistribuidora={isDistribuidora} />
 }
 
-function ReportsPageInner({ rango }: { rango: string | undefined }) {
+function ReportsPageInner({
+  rango,
+  isDistribuidora,
+}: {
+  rango: string | undefined
+  isDistribuidora: boolean
+}) {
   const { currency } = useCompanyOperatingCurrency(true)
   const reportMoney = (amount: number) => formatReportCurrency(amount, currency)
   const [isLoading, setIsLoading] = useState(true)
@@ -71,6 +86,9 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
   }
 
   const { incomeStatement, cashFlow, balanceSheet, rangeKey } = data
+  const distribuidoraResults = isDistribuidora
+    ? computeDistribuidoraResults(incomeStatement.totalIncome, incomeStatement.expenseBreakdown)
+    : null
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -79,7 +97,19 @@ function ReportsPageInner({ rango }: { rango: string | undefined }) {
         description={`Estado de resultados, balance y flujo de caja · ${incomeStatement.periodLabel}`}
       />
 
-      <ReportsPeriodTabs value={rangeKey} basePath="/reportes" />
+      <ReportsPeriodTabs
+        value={rangeKey}
+        basePath="/reportes"
+        presets={isDistribuidora ? DISTRIBUIDORA_REPORTS_PERIOD_PRESETS : undefined}
+      />
+
+      {isDistribuidora && distribuidoraResults ? (
+        <DistribuidoraResultsCard
+          periodLabel={incomeStatement.periodLabel}
+          results={distribuidoraResults}
+          currency={currency}
+        />
+      ) : null}
 
       <div className="space-y-4 lg:space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 md:items-stretch">

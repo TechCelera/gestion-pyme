@@ -98,6 +98,7 @@ pnpm run test:e2e
 - `src/stores` - estado cliente (Zustand)
 - `supabase/migrations` - migraciones SQL
 - `docs/DECISIONES.md` - historial de decisiones del proyecto
+- `docs/matias-distribuidora/` - documentación cliente Matías Distribuidora (comercial + técnico + PDF + audios)
 
 ## Deploy
 

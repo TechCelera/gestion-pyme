@@ -131,6 +131,16 @@ CI en GitHub (`.github/workflows/ci.yml`) corre `verify` y E2E en cada push/PR a
 - Mantener prefijos de tipo cuando apliquen (por ejemplo: `fix`, `bug`, `feat`, `docs`, `refactor`).
 - No incluir líneas de coautoría automática de Cursor (por ejemplo: `Co-authored-by: Cursor`).
 
+## Cliente activo: Matías Distribuidora
+
+Si la tarea es adaptar Admin/Finanzas para este cliente (rama `feature/matias-distribuidora` o tenant distribuidora):
+
+1. **Leer primero** `docs/matias-distribuidora/CONTEXTO.md` — contexto comercial, audios, precio, decisión técnica y P0.
+2. Detalle operativo: `docs/matias-distribuidora/handoff-tecnico.md` y `plan-comercial.md`.
+3. **No** crear repo nuevo ni fork; usar `operating_profile: 'distribuidora'` en `companies`.
+4. **Plataforma única** multi-tenant, mismo dominio compartido (ver `docs/DECISIONES.md` §25).
+5. Con Matías en vivo: vender "plataforma + adaptación + implementación", no "desarrollo desde cero".
+
 ## Agente de código (solo Cursor)
 
 - Guía y reglas de **este repo**: `AGENTS.md` y `.cursor/rules/*.mdc` (solo reglas del proyecto).

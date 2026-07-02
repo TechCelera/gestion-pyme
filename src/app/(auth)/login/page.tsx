@@ -1,8 +1,8 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { Suspense, useEffect, useState } from 'react'
+import { Loader2, Store } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { signInAction } from '@/lib/actions/auth'
@@ -12,6 +12,11 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { ROUTES } from '@/lib/constants'
+import {
+  demoLoginEmailPublic,
+  demoLoginPasswordPublic,
+  isDemoLoginPrefilled,
+} from '@/lib/demo/matias-demo'
 import {
   mapGoogleOAuthStartError,
   mapOAuthCallbackError,
@@ -27,8 +32,11 @@ import { useAuthCompletionView } from '@/components/auth/use-auth-completion-vie
 
 function LoginPageContent() {
   const { view, prefill, nextPath } = useAuthCompletionView()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const demoPrefilled = isDemoLoginPrefilled()
+  const demoEmail = demoLoginEmailPublic() ?? ''
+  const demoPassword = demoLoginPasswordPublic() ?? ''
+  const [email, setEmail] = useState(() => (demoPrefilled ? demoEmail : ''))
+  const [password, setPassword] = useState(() => (demoPrefilled ? demoPassword : ''))
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 
@@ -106,23 +114,40 @@ function LoginPageContent() {
 
   return (
     <AuthShell
-      title="Gestion PYME Pro"
-      description="Inicia sesión en tu cuenta"
+      title={demoPrefilled ? 'Matías Distribuidora' : 'Gestion PYME Pro'}
+      description={
+        demoPrefilled
+          ? 'Demo — cuenta lista, solo iniciá sesión'
+          : 'Inicia sesión en tu cuenta'
+      }
       footer={
-        <AuthFooterLink prompt="¿No tienes cuenta?" href={ROUTES.REGISTER} linkLabel="Regístrate" />
+        demoPrefilled ? undefined : (
+          <AuthFooterLink prompt="¿No tienes cuenta?" href={ROUTES.REGISTER} linkLabel="Regístrate" />
+        )
       }
     >
       <div className="space-y-4">
-        <div className="space-y-2">
-          <GoogleSignInButton
-            onClick={handleGoogleLogin}
-            loading={googleLoading}
-            disabled={loading}
-          />
-          <AuthGoogleHint variant="login" />
-        </div>
-
-        <AuthMethodDivider />
+        {demoPrefilled ? (
+          <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+            <Store className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+            <p className="text-muted-foreground">
+              Datos de ejemplo cargados. Tocá{' '}
+              <span className="font-medium text-foreground">Iniciar sesión</span> y listo.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <GoogleSignInButton
+                onClick={handleGoogleLogin}
+                loading={googleLoading}
+                disabled={loading}
+              />
+              <AuthGoogleHint variant="login" />
+            </div>
+            <AuthMethodDivider />
+          </>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4" autoComplete="on">
           <div className="space-y-2">
@@ -142,17 +167,20 @@ function LoginPageContent() {
               required
               disabled={loading || googleLoading}
               className="h-10"
+              readOnly={demoPrefilled}
             />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="password">Contraseña</Label>
-              <Link
-                href={ROUTES.FORGOT_PASSWORD}
-                className="text-xs font-medium text-primary hover:underline"
-              >
-                ¿Olvidaste tu contraseña?
-              </Link>
+              {!demoPrefilled ? (
+                <Link
+                  href={ROUTES.FORGOT_PASSWORD}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              ) : null}
             </div>
             <PasswordInput
               id="password"
@@ -164,6 +192,7 @@ function LoginPageContent() {
               required
               disabled={loading || googleLoading}
               className="h-10"
+              readOnly={demoPrefilled}
             />
           </div>
           <AuthSubmitButton
