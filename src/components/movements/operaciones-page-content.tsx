@@ -339,16 +339,16 @@ export function OperacionesPageContent({
                   <span className="truncate text-xs sm:text-sm">{label}</span>
                 </Button>
               ))}
-              <div className="flex min-w-0 flex-1">
+              <div className="flex shrink-0">
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
                       <Button
                         variant="outline"
-                        className="h-10 w-full min-w-0 flex-1 px-1.5 sm:px-2"
+                        className="h-10 shrink-0 px-2.5 sm:px-3"
                       >
                         <SlidersHorizontal className="h-4 w-4 shrink-0 sm:mr-1" />
-                        <span className="truncate text-xs sm:text-sm">Otras</span>
+                        <span className="text-xs sm:text-sm">Otras</span>
                         <ChevronDown className="ml-0.5 h-3.5 w-3.5 shrink-0 opacity-60 sm:ml-1" />
                       </Button>
                     }
