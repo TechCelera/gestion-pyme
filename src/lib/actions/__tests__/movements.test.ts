@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mockCompaniesTable } from '@/test-utils/supabase-company-mocks'
 import { stubAuthError, stubAuthenticatedContext } from '@/test-utils/mock-server-context'
 import { USER_ROLES } from '@/lib/auth/roles'
@@ -233,6 +233,10 @@ describe('getReportsData server action', () => {
     stubAuthenticatedContext(TEST_AUTH)
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('combina RPC del diario con tendencia proyectada (solo pendientes)', async () => {
     const mockAuthGetUser = vi.fn().mockResolvedValue({
       data: { user: { id: 'user-123' } },
@@ -343,6 +347,11 @@ describe('getReportsData server action', () => {
   })
 
   it('redacta estado de resultados y balance para operador distribuidora', async () => {
+    // 'esta_semana' se resuelve contra el reloj: fijamos junio para que la semana
+    // solape el mes mockeado ('2026-06') y sumRealCashFlowForPeriod cuente su flujo.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+
     stubAuthenticatedContext({
       ...TEST_AUTH,
       role: USER_ROLES.COLLABORATOR,
